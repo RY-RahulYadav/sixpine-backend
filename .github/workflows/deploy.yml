@@ -41,7 +41,6 @@ jobs:
             # Django Settings
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             DEBUG=${{ secrets.DEBUG }}
-            ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
 
             # Database Configuration (PostgreSQL)
             DB_ENGINE=${{ secrets.DB_ENGINE }}

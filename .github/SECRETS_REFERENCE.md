@@ -12,7 +12,8 @@ This document lists all the GitHub secrets that need to be configured in your re
 ### Django Settings
 - `SECRET_KEY` - Django secret key (generate a strong random string)
 - `DEBUG` - Set to `False` for production
-- `ALLOWED_HOSTS` - Comma-separated list of allowed hosts (e.g., `your-domain.com,www.your-domain.com,your-vps-ip`)
+- `ALLOWED_HOSTS` - Comma-separated list of allowed hosts (e.g., `api.sixpine.in,your-domain.com,www.your-domain.com,your-vps-ip`)
+  - **Important**: Must include your API domain (e.g., `api.sixpine.in`) and any other domains that will access the API
 
 ### Database Configuration (PostgreSQL)
 - `DB_ENGINE` - Database engine: `django.db.backends.postgresql`

@@ -45,7 +45,7 @@ For production on your VPS, you need to configure PostgreSQL using environment v
    ```env
    SECRET_KEY=your-production-secret-key
    DEBUG=False
-   ALLOWED_HOSTS=your-domain.com,www.your-domain.com,your-vps-ip
+   ALLOWED_HOSTS=api.sixpine.in,your-domain.com,www.your-domain.com,your-vps-ip
    
    # PostgreSQL Database Settings
    DB_ENGINE=django.db.backends.postgresql
