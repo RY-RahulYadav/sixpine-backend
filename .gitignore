@@ -64,13 +64,8 @@ media_root/
 # ============================================
 # Environment Variables & Secrets
 # ============================================
+# Environment variables (only .env file)
 .env
-.env.local
-.env.*.local
-.env.production
-.env.development
-.env.test
-*.env
 
 # OAuth tokens and sensitive files - NEVER COMMIT THESE
 token.pickle

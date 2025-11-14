@@ -42,8 +42,10 @@ urlpatterns = [
     path('account/check-deletion-eligibility/', views.check_account_deletion_eligibility, name='check_account_deletion_eligibility'),
     path('account/close/', views.close_account, name='close_account'),
     
-    # Vendor authentication
-    path('vendor/register/', views.vendor_register_view, name='vendor_register'),
-    path('vendor/login/', views.vendor_login_view, name='vendor_login'),
+    # Seller authentication (vendor routes kept for backward compatibility)
+    path('seller/register/', views.vendor_register_view, name='seller_register'),
+    path('seller/login/', views.vendor_login_view, name='seller_login'),
+    path('vendor/register/', views.vendor_register_view, name='vendor_register'),  # Backward compatibility
+    path('vendor/login/', views.vendor_login_view, name='vendor_login'),  # Backward compatibility
     path('vendor/profile/', views.vendor_profile_view, name='vendor_profile'),
 ]
