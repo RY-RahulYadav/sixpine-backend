@@ -196,6 +196,7 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv()
 )
 
+
 CORS_ALLOW_CREDENTIALS = True
 
 # Only allow all origins in development
