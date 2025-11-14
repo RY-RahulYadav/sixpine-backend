@@ -8,8 +8,8 @@ djangorestframework>=3.14.0,<4.0.0
 # Database
 # ============================================
 # PostgreSQL adapter (for production/VPS)
-# psycopg[binary]>=2.9.0,<3.0.0
-psycopg2>=2.9,<3.0
+# Use psycopg2-binary for easier installation (no compilation required)
+psycopg2-binary>=2.9.0,<3.0.0
 
 
 # ============================================
