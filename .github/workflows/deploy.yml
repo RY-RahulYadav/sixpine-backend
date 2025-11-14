@@ -1,0 +1,103 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: ["master"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Upload Backend Files to VPS
+        uses: appleboy/scp-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "/tmp/backend/"
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "⬇️ Removing old backend..."
+            rm -rf /var/www/sixpine/backend
+
+            echo "📁 Moving new backend..."
+            mv /tmp/backend /var/www/sixpine/backend
+
+            cd /var/www/sixpine/backend
+
+            echo "📝 Writing environment file..."
+            cat <<EOF > .env
+            # Django Settings
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            DEBUG=${{ secrets.DEBUG }}
+            ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+
+            # Database Configuration (PostgreSQL)
+            DB_ENGINE=${{ secrets.DB_ENGINE }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            DB_SSLMODE=${{ secrets.DB_SSLMODE }}
+
+            # Razorpay Configuration
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
+
+            # Email Configuration
+            EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+            EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+
+            # Google OAuth2 Configuration
+            GOOGLE_OAUTH2_CLIENT_ID=${{ secrets.GOOGLE_OAUTH2_CLIENT_ID }}
+            GOOGLE_OAUTH2_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH2_CLIENT_SECRET }}
+            GOOGLE_OAUTH2_REFRESH_TOKEN=${{ secrets.GOOGLE_OAUTH2_REFRESH_TOKEN }}
+
+            # Frontend URL
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+
+            # CORS Settings
+            CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
+
+            # Twilio Configuration (optional)
+            TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+            TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+            TWILIO_WHATSAPP_FROM=${{ secrets.TWILIO_WHATSAPP_FROM }}
+
+            # Security Settings
+            SECURE_SSL_REDIRECT=${{ secrets.SECURE_SSL_REDIRECT }}
+            EOF
+
+            echo "🐍 Setting up Python virtual environment..."
+            python3 -m venv venv
+            source venv/bin/activate
+
+            echo "⬆️ Upgrading pip..."
+            pip install --upgrade pip
+
+            echo "📦 Installing dependencies..."
+            pip install -r requirements.txt
+
+            echo "🔧 Running migrations..."
+            export DJANGO_SETTINGS_MODULE=ecommerce_backend.settings
+            python manage.py migrate --noinput
+
+            echo "📁 Collecting static files..."
+            python manage.py collectstatic --noinput
+
+            echo "🔄 Restarting Gunicorn..."
+            systemctl restart gunicorn-sixpine
+
+            echo "✅ Backend deployment complete!"
