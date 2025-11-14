@@ -192,7 +192,7 @@ REST_FRAMEWORK = {
 # CORS settings for React frontend
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://sixpine-teal.vercel.app,https://sixpine.in,https://api.sixpine.in/',
+    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://sixpine-teal.vercel.app,https://sixpine.in,https://api.sixpine.in',
     cast=Csv()
 )
 
