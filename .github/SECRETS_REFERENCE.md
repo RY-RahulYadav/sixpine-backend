@@ -52,7 +52,11 @@ This document lists all the GitHub secrets that need to be configured in your re
 ## Frontend Secrets (client/.github/workflows/deploy.yml)
 
 ### API Configuration
-- `VITE_API_BASE_URL` - Backend API base URL (e.g., `https://api.your-domain.com/api`)
+- `VITE_API_BASE_URL` - Backend API base URL 
+  - **MUST use HTTPS** (e.g., `https://api.sixpine.in/api`)
+  - **DO NOT use HTTP** - Will cause mixed content errors
+  - **DO NOT use placeholder values** - Must be your actual API domain
+  - Example: `https://api.sixpine.in/api`
 
 ### VPS Connection (same as backend)
 - `VPS_HOST` - Your VPS server IP address or domain
