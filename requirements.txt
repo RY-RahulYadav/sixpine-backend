@@ -1,0 +1,71 @@
+# ============================================
+# Core Django Framework
+# ============================================
+Django>=5.1.2,<6.0.0
+djangorestframework>=3.14.0,<4.0.0
+
+# ============================================
+# Database
+# ============================================
+# PostgreSQL adapter (for production/VPS)
+psycopg[binary]>=2.9.0,<3.0.0
+
+# ============================================
+# Django Extensions & Middleware
+# ============================================
+# CORS headers for React frontend
+django-cors-headers>=4.3.0,<5.0.0
+
+# Filtering and search
+django-filter>=23.2,<24.0.0
+
+# ============================================
+# Image Processing
+# ============================================
+# Pillow for image handling (Product images, user avatars)
+Pillow>=10.0.0,<11.0.0
+
+# ============================================
+# Environment Variables
+# ============================================
+# python-decouple for environment variable management
+python-decouple>=3.8,<4.0.0
+
+# ============================================
+# Google APIs (Gmail OAuth2)
+# ============================================
+# Google Authentication and OAuth2
+google-auth>=2.23.0,<3.0.0
+google-auth-oauthlib>=1.1.0,<2.0.0
+google-auth-httplib2>=0.1.1,<1.0.0
+google-api-python-client>=2.100.0,<3.0.0
+
+# ============================================
+# Payment Gateway
+# ============================================
+# Razorpay payment integration
+razorpay>=1.4.1,<2.0.0
+
+# ============================================
+# Messaging Services
+# ============================================
+# Twilio for WhatsApp messaging
+twilio>=8.10.0,<9.0.0
+
+# ============================================
+# Excel Export
+# ============================================
+# openpyxl for Excel file generation (data exports)
+openpyxl>=3.1.0,<4.0.0
+
+# ============================================
+# Production Server
+# ============================================
+# Gunicorn WSGI HTTP Server for production
+gunicorn>=21.2.0,<22.0.0
+
+# ============================================
+# Static Files
+# ============================================
+# WhiteNoise for serving static files in production
+whitenoise>=6.6.0,<7.0.0

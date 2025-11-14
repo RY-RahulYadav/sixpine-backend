@@ -1,0 +1,6342 @@
+{
+	"info": {
+		"_postman_id": "32394bdd-460f-4c79-8986-2e5e822464de",
+		"name": "E-Commerce API",
+		"description": "REST API for E-Commerce platform with user authentication, product management, \ncart operations, and order processing.\n\n\nContact Support:\n Name: API Support\n Email: support@yourdomain.com",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39457844"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "register",
+					"item": [
+						{
+							"name": "Register new user",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"tusharjidal\",\n  \"email\": \"tushar@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"password_confirm\": \"SecurePass123!\",\n  \"first_name\": \"Tushar\",\n  \"last_name\": \"Jidal\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register",
+										""
+									]
+								},
+								"description": "Create a new user account"
+							},
+							"response": [
+								{
+									"name": "User created successfully",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"username\": \"tusharjidal\",\n  \"email\": \"tushar@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"password_confirm\": \"SecurePass123!\",\n  \"first_name\": \"Tushar\",\n  \"last_name\": \"Jidal\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/auth/register/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"auth",
+												"register",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"message\": \"User registered successfully\",\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"tusharjidal\",\n    \"email\": \"tushar@example.com\",\n    \"first_name\": \"Tushar\",\n    \"last_name\": \"Jidal\",\n    \"is_staff\": false\n  },\n  \"token\": \"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\"\n}"
+								},
+								{
+									"name": "Bad request",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"username\": \"tusharjidal\",\n  \"email\": \"tushar@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"password_confirm\": \"SecurePass123!\",\n  \"first_name\": \"Tushar\",\n  \"last_name\": \"Jidal\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/auth/register/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"auth",
+												"register",
+												""
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Invalid credentials\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "login",
+					"item": [
+						{
+							"name": "User login",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"tusharjidal\",\n  \"password\": \"SecurePass123!\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login",
+										""
+									]
+								},
+								"description": "Authenticate user and get token"
+							},
+							"response": [
+								{
+									"name": "Login successful",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"username\": \"tusharjidal\",\n  \"password\": \"SecurePass123!\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/auth/login/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"auth",
+												"login",
+												""
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"tusharjidal\",\n    \"email\": \"tushar@example.com\",\n    \"first_name\": \"Tushar\",\n    \"last_name\": \"Jidal\",\n    \"is_staff\": false\n  },\n  \"token\": \"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\"\n}"
+								},
+								{
+									"name": "Invalid credentials",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"username\": \"tusharjidal\",\n  \"password\": \"SecurePass123!\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/auth/login/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"auth",
+												"login",
+												""
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Invalid credentials\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "logout",
+					"item": [
+						{
+							"name": "User logout",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/auth/logout/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"logout",
+										""
+									]
+								},
+								"description": "Logout user and invalidate token"
+							},
+							"response": [
+								{
+									"name": "Logout successful",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/auth/logout/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"auth",
+												"logout",
+												""
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"message\": \"Logged out successfully\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "profile",
+					"item": [
+						{
+							"name": "Get user profile",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/auth/profile/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"profile",
+										""
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "User profile retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/auth/profile/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"auth",
+												"profile",
+												""
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"id\": 1,\n  \"username\": \"tusharjidal\",\n  \"email\": \"tushar@example.com\",\n  \"first_name\": \"Tushar\",\n  \"last_name\": \"Jidal\",\n  \"is_staff\": false\n}"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "products",
+			"item": [
+				{
+					"name": "{slug}",
+					"item": [
+						{
+							"name": "Get product details",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products/:slug/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										":slug",
+										""
+									],
+									"variable": [
+										{
+											"key": "slug",
+											"value": "gaming-laptop-rog-strix-g15",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Product details retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/products/:slug/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"products",
+												":slug",
+												""
+											],
+											"variable": [
+												{
+													"key": "slug"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"id\": 1,\n  \"title\": \"Gaming Laptop - ROG Strix G15\",\n  \"slug\": \"gaming-laptop-rog-strix-g15\",\n  \"description\": \"High-performance gaming laptop with RTX 4060\",\n  \"short_description\": \"Latest gen gaming laptop\",\n  \"price\": \"89999.00\",\n  \"old_price\": \"99999.00\",\n  \"discount_percentage\": 10,\n  \"stock_quantity\": 50,\n  \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n  \"average_rating\": 4.5,\n  \"review_count\": 120\n}"
+								},
+								{
+									"name": "Product not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/products/:slug/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"products",
+												":slug",
+												""
+											],
+											"variable": [
+												{
+													"key": "slug"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Get product list",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/?page=1&category=5&brand=3&min_price=10000&max_price=100000&search=laptop",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								""
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "category",
+									"value": "5"
+								},
+								{
+									"key": "brand",
+									"value": "3"
+								},
+								{
+									"key": "min_price",
+									"value": "10000"
+								},
+								{
+									"key": "max_price",
+									"value": "100000"
+								},
+								{
+									"key": "search",
+									"value": "laptop"
+								}
+							]
+						},
+						"description": "Get paginated list of products with optional filters"
+					},
+					"response": [
+						{
+							"name": "Product list retrieved",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products/?page=1&category=5&brand=3&min_price=10000&max_price=100000&search=laptop",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products",
+										""
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "category",
+											"value": "5"
+										},
+										{
+											"key": "brand",
+											"value": "3"
+										},
+										{
+											"key": "min_price",
+											"value": "10000"
+										},
+										{
+											"key": "max_price",
+											"value": "100000"
+										},
+										{
+											"key": "search",
+											"value": "laptop"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"count\": 150,\n  \"next\": \"http://localhost:8000/api/products/?page=2\",\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"title\": \"Gaming Laptop - ROG Strix G15\",\n      \"slug\": \"gaming-laptop-rog-strix-g15\",\n      \"description\": \"High-performance gaming laptop with RTX 4060\",\n      \"short_description\": \"Latest gen gaming laptop\",\n      \"price\": \"89999.00\",\n      \"old_price\": \"99999.00\",\n      \"discount_percentage\": 10,\n      \"stock_quantity\": 50,\n      \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n      \"average_rating\": 4.5,\n      \"review_count\": 120\n    },\n    {\n      \"id\": 1,\n      \"title\": \"Gaming Laptop - ROG Strix G15\",\n      \"slug\": \"gaming-laptop-rog-strix-g15\",\n      \"description\": \"High-performance gaming laptop with RTX 4060\",\n      \"short_description\": \"Latest gen gaming laptop\",\n      \"price\": \"89999.00\",\n      \"old_price\": \"99999.00\",\n      \"discount_percentage\": 10,\n      \"stock_quantity\": 50,\n      \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n      \"average_rating\": 4.5,\n      \"review_count\": 120\n    }\n  ]\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "home-data",
+			"item": [
+				{
+					"name": "Get homepage data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/home-data/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"home-data",
+								""
+							]
+						},
+						"description": "Get featured products and new arrivals for homepage"
+					},
+					"response": [
+						{
+							"name": "Homepage data retrieved",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/home-data/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"home-data",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"featured_products\": [\n    {\n      \"id\": 1,\n      \"title\": \"Gaming Laptop - ROG Strix G15\",\n      \"slug\": \"gaming-laptop-rog-strix-g15\",\n      \"description\": \"High-performance gaming laptop with RTX 4060\",\n      \"short_description\": \"Latest gen gaming laptop\",\n      \"price\": \"89999.00\",\n      \"old_price\": \"99999.00\",\n      \"discount_percentage\": 10,\n      \"stock_quantity\": 50,\n      \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n      \"average_rating\": 4.5,\n      \"review_count\": 120\n    },\n    {\n      \"id\": 1,\n      \"title\": \"Gaming Laptop - ROG Strix G15\",\n      \"slug\": \"gaming-laptop-rog-strix-g15\",\n      \"description\": \"High-performance gaming laptop with RTX 4060\",\n      \"short_description\": \"Latest gen gaming laptop\",\n      \"price\": \"89999.00\",\n      \"old_price\": \"99999.00\",\n      \"discount_percentage\": 10,\n      \"stock_quantity\": 50,\n      \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n      \"average_rating\": 4.5,\n      \"review_count\": 120\n    }\n  ],\n  \"new_arrivals\": [\n    {\n      \"id\": 1,\n      \"title\": \"Gaming Laptop - ROG Strix G15\",\n      \"slug\": \"gaming-laptop-rog-strix-g15\",\n      \"description\": \"High-performance gaming laptop with RTX 4060\",\n      \"short_description\": \"Latest gen gaming laptop\",\n      \"price\": \"89999.00\",\n      \"old_price\": \"99999.00\",\n      \"discount_percentage\": 10,\n      \"stock_quantity\": 50,\n      \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n      \"average_rating\": 4.5,\n      \"review_count\": 120\n    },\n    {\n      \"id\": 1,\n      \"title\": \"Gaming Laptop - ROG Strix G15\",\n      \"slug\": \"gaming-laptop-rog-strix-g15\",\n      \"description\": \"High-performance gaming laptop with RTX 4060\",\n      \"short_description\": \"Latest gen gaming laptop\",\n      \"price\": \"89999.00\",\n      \"old_price\": \"99999.00\",\n      \"discount_percentage\": 10,\n      \"stock_quantity\": 50,\n      \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n      \"average_rating\": 4.5,\n      \"review_count\": 120\n    }\n  ]\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "cart",
+			"item": [
+				{
+					"name": "add",
+					"item": [
+						{
+							"name": "Add item to cart",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"product_id\": 5,\n  \"quantity\": 2\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add",
+										""
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Item added to cart",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"product_id\": 5,\n  \"quantity\": 2\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/add/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"add",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"message\": \"Item added to cart\",\n  \"cart\": {\n    \"id\": 1,\n    \"items\": [\n      {\n        \"id\": 1,\n        \"product\": {\n          \"id\": 1,\n          \"title\": \"Gaming Laptop - ROG Strix G15\",\n          \"slug\": \"gaming-laptop-rog-strix-g15\",\n          \"description\": \"High-performance gaming laptop with RTX 4060\",\n          \"short_description\": \"Latest gen gaming laptop\",\n          \"price\": \"89999.00\",\n          \"old_price\": \"99999.00\",\n          \"discount_percentage\": 10,\n          \"stock_quantity\": 50,\n          \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n          \"average_rating\": 4.5,\n          \"review_count\": 120\n        },\n        \"quantity\": 2,\n        \"total_price\": \"179998.00\"\n      },\n      {\n        \"id\": 1,\n        \"product\": {\n          \"id\": 1,\n          \"title\": \"Gaming Laptop - ROG Strix G15\",\n          \"slug\": \"gaming-laptop-rog-strix-g15\",\n          \"description\": \"High-performance gaming laptop with RTX 4060\",\n          \"short_description\": \"Latest gen gaming laptop\",\n          \"price\": \"89999.00\",\n          \"old_price\": \"99999.00\",\n          \"discount_percentage\": 10,\n          \"stock_quantity\": 50,\n          \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n          \"average_rating\": 4.5,\n          \"review_count\": 120\n        },\n        \"quantity\": 2,\n        \"total_price\": \"179998.00\"\n      }\n    ],\n    \"total_items\": 3,\n    \"total_price\": \"199997.00\",\n    \"items_count\": 3\n  }\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "items",
+					"item": [
+						{
+							"name": "{item_id}",
+							"item": [
+								{
+									"name": "remove",
+									"item": [
+										{
+											"name": "Remove item from cart",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/cart/items/:item_id/remove/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"cart",
+														"items",
+														":item_id",
+														"remove",
+														""
+													],
+													"variable": [
+														{
+															"key": "item_id",
+															"value": "1",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Item removed from cart",
+													"originalRequest": {
+														"method": "DELETE",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															},
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/cart/items/:item_id/remove/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"cart",
+																"items",
+																":item_id",
+																"remove",
+																""
+															],
+															"variable": [
+																{
+																	"key": "item_id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": "{\n  \"message\": \"Item removed from cart\"\n}"
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "Update cart item quantity",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"quantity\": 3\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/items/:item_id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"items",
+												":item_id",
+												""
+											],
+											"variable": [
+												{
+													"key": "item_id",
+													"value": "1",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Cart item updated",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Accept",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"quantity\": 3\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/cart/items/:item_id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"cart",
+														"items",
+														":item_id",
+														""
+													],
+													"variable": [
+														{
+															"key": "item_id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"id\": 1,\n  \"product\": {\n    \"id\": 1,\n    \"title\": \"Gaming Laptop - ROG Strix G15\",\n    \"slug\": \"gaming-laptop-rog-strix-g15\",\n    \"description\": \"High-performance gaming laptop with RTX 4060\",\n    \"short_description\": \"Latest gen gaming laptop\",\n    \"price\": \"89999.00\",\n    \"old_price\": \"99999.00\",\n    \"discount_percentage\": 10,\n    \"stock_quantity\": 50,\n    \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n    \"average_rating\": 4.5,\n    \"review_count\": 120\n  },\n  \"quantity\": 2,\n  \"total_price\": \"179998.00\"\n}"
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "clear",
+					"item": [
+						{
+							"name": "Clear entire cart",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/cart/clear/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"clear",
+										""
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Cart cleared",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/cart/clear/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"clear",
+												""
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"message\": \"Cart cleared\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Get user cart",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "Authorization",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "{{apiKey}}",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cart/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cart",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Cart retrieved",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "<API Key>",
+										"description": "Added as a part of security scheme: apikey"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/cart/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"id\": 1,\n  \"items\": [\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 2,\n      \"total_price\": \"179998.00\"\n    },\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 2,\n      \"total_price\": \"179998.00\"\n    }\n  ],\n  \"total_items\": 3,\n  \"total_price\": \"199997.00\",\n  \"items_count\": 3\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "addresses",
+			"item": [
+				{
+					"name": "{id}",
+					"item": [
+						{
+							"name": "Get address details",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/addresses/:id/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"addresses",
+										":id",
+										""
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "1",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Address retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/addresses/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"addresses",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"id\": 1,\n  \"type\": \"home\",\n  \"full_name\": \"Tushar Jidal\",\n  \"phone\": \"+91 9876543210\",\n  \"street_address\": \"123 Main Street, Apartment 4B\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postal_code\": \"400001\",\n  \"country\": \"India\",\n  \"is_default\": true\n}"
+								}
+							]
+						},
+						{
+							"name": "Update address",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"id\": 1,\n  \"type\": \"home\",\n  \"full_name\": \"Tushar Jidal\",\n  \"phone\": \"+91 9876543210\",\n  \"street_address\": \"123 Main Street, Apartment 4B\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postal_code\": \"400001\",\n  \"country\": \"India\",\n  \"is_default\": true\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/addresses/:id/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"addresses",
+										":id",
+										""
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "1",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Address updated",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"id\": 1,\n  \"type\": \"home\",\n  \"full_name\": \"Tushar Jidal\",\n  \"phone\": \"+91 9876543210\",\n  \"street_address\": \"123 Main Street, Apartment 4B\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postal_code\": \"400001\",\n  \"country\": \"India\",\n  \"is_default\": true\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/addresses/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"addresses",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"id\": 1,\n  \"type\": \"home\",\n  \"full_name\": \"Tushar Jidal\",\n  \"phone\": \"+91 9876543210\",\n  \"street_address\": \"123 Main Street, Apartment 4B\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postal_code\": \"400001\",\n  \"country\": \"India\",\n  \"is_default\": true\n}"
+								}
+							]
+						},
+						{
+							"name": "Delete address",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/addresses/:id/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"addresses",
+										":id",
+										""
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "1",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Address deleted",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/addresses/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"addresses",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "No Content",
+									"code": 204,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Get user addresses",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "Authorization",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "{{apiKey}}",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/addresses/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"addresses",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Addresses retrieved",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "<API Key>",
+										"description": "Added as a part of security scheme: apikey"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/addresses/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"addresses",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n  {\n    \"id\": 1,\n    \"type\": \"home\",\n    \"full_name\": \"Tushar Jidal\",\n    \"phone\": \"+91 9876543210\",\n    \"street_address\": \"123 Main Street, Apartment 4B\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postal_code\": \"400001\",\n    \"country\": \"India\",\n    \"is_default\": true\n  },\n  {\n    \"id\": 1,\n    \"type\": \"home\",\n    \"full_name\": \"Tushar Jidal\",\n    \"phone\": \"+91 9876543210\",\n    \"street_address\": \"123 Main Street, Apartment 4B\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postal_code\": \"400001\",\n    \"country\": \"India\",\n    \"is_default\": true\n  }\n]"
+						}
+					]
+				},
+				{
+					"name": "Create new address",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "Authorization",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "{{apiKey}}",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"full_name\": \"Tushar Jidal\",\n  \"phone\": \"+91 9876543210\",\n  \"street_address\": \"123 Main Street, Apartment 4B\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postal_code\": \"400001\",\n  \"type\": \"home\",\n  \"country\": \"India\",\n  \"is_default\": true\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/addresses/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"addresses",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Address created",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "<API Key>",
+										"description": "Added as a part of security scheme: apikey"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"full_name\": \"Tushar Jidal\",\n  \"phone\": \"+91 9876543210\",\n  \"street_address\": \"123 Main Street, Apartment 4B\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postal_code\": \"400001\",\n  \"type\": \"home\",\n  \"country\": \"India\",\n  \"is_default\": true\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/addresses/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"addresses",
+										""
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"id\": 1,\n  \"type\": \"home\",\n  \"full_name\": \"Tushar Jidal\",\n  \"phone\": \"+91 9876543210\",\n  \"street_address\": \"123 Main Street, Apartment 4B\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"postal_code\": \"400001\",\n  \"country\": \"India\",\n  \"is_default\": true\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "orders",
+			"item": [
+				{
+					"name": "{order_id}",
+					"item": [
+						{
+							"name": "cancel",
+							"item": [
+								{
+									"name": "Cancel order",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/:order_id/cancel/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												":order_id",
+												"cancel",
+												""
+											],
+											"variable": [
+												{
+													"key": "order_id",
+													"value": "b7b77505-0987-40f9-9dc8-6422781367a7",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Order cancelled",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/orders/:order_id/cancel/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"orders",
+														":order_id",
+														"cancel",
+														""
+													],
+													"variable": [
+														{
+															"key": "order_id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"message\": \"Order cancelled successfully\"\n}"
+										},
+										{
+											"name": "Order cannot be cancelled",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/orders/:order_id/cancel/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"orders",
+														":order_id",
+														"cancel",
+														""
+													],
+													"variable": [
+														{
+															"key": "order_id"
+														}
+													]
+												}
+											},
+											"status": "Bad Request",
+											"code": 400,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"error\": \"Order cannot be cancelled at this stage\"\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "Get order details",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/orders/:order_id/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										":order_id",
+										""
+									],
+									"variable": [
+										{
+											"key": "order_id",
+											"value": "b7b77505-0987-40f9-9dc8-6422781367a7",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Order details retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/:order_id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												":order_id",
+												""
+											],
+											"variable": [
+												{
+													"key": "order_id"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n  \"status\": \"pending\",\n  \"payment_status\": \"pending\",\n  \"subtotal\": \"89999.00\",\n  \"shipping_cost\": \"50.00\",\n  \"tax_amount\": \"4499.95\",\n  \"total_amount\": \"94548.95\",\n  \"items\": [\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 1,\n      \"price\": \"89999.00\",\n      \"total_price\": \"89999.00\"\n    },\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 1,\n      \"price\": \"89999.00\",\n      \"total_price\": \"89999.00\"\n    }\n  ],\n  \"items_count\": 1,\n  \"shipping_address\": {\n    \"id\": 1,\n    \"type\": \"home\",\n    \"full_name\": \"Tushar Jidal\",\n    \"phone\": \"+91 9876543210\",\n    \"street_address\": \"123 Main Street, Apartment 4B\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postal_code\": \"400001\",\n    \"country\": \"India\",\n    \"is_default\": true\n  },\n  \"created_at\": \"2025-10-05T14:30:00Z\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "checkout",
+					"item": [
+						{
+							"name": "Create order from cart",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"shipping_address_id\": 64,\n  \"order_notes\": \"Demo order created from cart\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/orders/checkout/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"checkout",
+										""
+									]
+								},
+								"description": "Creates an order from the user's current cart items.\nAutomatically calculates subtotal, tax (5%), and shipping cost.\nClears the cart after successful order creation.\n"
+							},
+							"response": [
+								{
+									"name": "Successful order creation",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"shipping_address_id\": 64,\n  \"order_notes\": \"Demo order created from cart\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/orders/checkout/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"checkout",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"message\": \"Order created successfully\",\n  \"order\": {\n    \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n    \"status\": \"pending\",\n    \"payment_status\": \"pending\",\n    \"subtotal\": \"89999.00\",\n    \"shipping_cost\": \"0.00\",\n    \"tax_amount\": \"4499.95\",\n    \"total_amount\": \"94498.95\",\n    \"items_count\": 1,\n    \"created_at\": \"2025-10-05T14:30:00Z\"\n  },\n  \"summary\": {\n    \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n    \"items\": [\n      {\n        \"name\": \"Gaming Laptop - ROG Strix G15\",\n        \"quantity\": 1,\n        \"price\": \"89999.00\",\n        \"total\": \"89999.00\"\n      }\n    ],\n    \"items_count\": 1,\n    \"subtotal\": \"89999.00\",\n    \"tax\": \"4499.95\",\n    \"shipping\": \"0.00\",\n    \"total\": \"94498.95\"\n  }\n}"
+								},
+								{
+									"name": "Checkout with delivery instructions",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"shipping_address_id\": 64,\n  \"order_notes\": \"Please call before delivery. Gate code: 1234\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/orders/checkout/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"checkout",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"message\": \"Order created successfully\",\n  \"order\": {\n    \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n    \"status\": \"pending\",\n    \"payment_status\": \"pending\",\n    \"subtotal\": \"89999.00\",\n    \"shipping_cost\": \"0.00\",\n    \"tax_amount\": \"4499.95\",\n    \"total_amount\": \"94498.95\",\n    \"items_count\": 1,\n    \"created_at\": \"2025-10-05T14:30:00Z\"\n  },\n  \"summary\": {\n    \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n    \"items\": [\n      {\n        \"name\": \"Gaming Laptop - ROG Strix G15\",\n        \"quantity\": 1,\n        \"price\": \"89999.00\",\n        \"total\": \"89999.00\"\n      }\n    ],\n    \"items_count\": 1,\n    \"subtotal\": \"89999.00\",\n    \"tax\": \"4499.95\",\n    \"shipping\": \"0.00\",\n    \"total\": \"94498.95\"\n  }\n}"
+								},
+								{
+									"name": "Empty cart",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"shipping_address_id\": 64,\n  \"order_notes\": \"Demo order created from cart\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/orders/checkout/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"checkout",
+												""
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Cart is empty\"\n}"
+								},
+								{
+									"name": "Missing shipping address",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"shipping_address_id\": 64,\n  \"order_notes\": \"Please call before delivery. Gate code: 1234\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/orders/checkout/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"checkout",
+												""
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Shipping address is required\"\n}"
+								},
+								{
+									"name": "Invalid address ID",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"shipping_address_id\": 64,\n  \"order_notes\": \"Demo order created from cart\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/orders/checkout/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"checkout",
+												""
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"Invalid shipping address\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "create",
+					"item": [
+						{
+							"name": "Create custom order",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"shipping_address_id\": 1,\n  \"items\": [\n    {\n      \"product_id\": 5,\n      \"quantity\": 1\n    }\n  ],\n  \"order_notes\": \"Please deliver after 6 PM\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/orders/create/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										"create",
+										""
+									]
+								},
+								"description": "Create an order with specific items (not from cart)"
+							},
+							"response": [
+								{
+									"name": "Order with single item",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"shipping_address_id\": 1,\n  \"items\": [\n    {\n      \"product_id\": 5,\n      \"quantity\": 1\n    }\n  ],\n  \"order_notes\": \"Please deliver after 6 PM\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/orders/create/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"create",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n  \"status\": \"pending\",\n  \"payment_status\": \"pending\",\n  \"subtotal\": \"89999.00\",\n  \"shipping_cost\": \"50.00\",\n  \"tax_amount\": \"4499.95\",\n  \"total_amount\": \"94548.95\",\n  \"items\": [\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 1,\n      \"price\": \"89999.00\",\n      \"total_price\": \"89999.00\"\n    },\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 1,\n      \"price\": \"89999.00\",\n      \"total_price\": \"89999.00\"\n    }\n  ],\n  \"items_count\": 1,\n  \"shipping_address\": {\n    \"id\": 1,\n    \"type\": \"home\",\n    \"full_name\": \"Tushar Jidal\",\n    \"phone\": \"+91 9876543210\",\n    \"street_address\": \"123 Main Street, Apartment 4B\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postal_code\": \"400001\",\n    \"country\": \"India\",\n    \"is_default\": true\n  },\n  \"created_at\": \"2025-10-05T14:30:00Z\"\n}"
+								},
+								{
+									"name": "Order with multiple items",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"shipping_address_id\": 1,\n  \"items\": [\n    {\n      \"product_id\": 5,\n      \"quantity\": 2\n    },\n    {\n      \"product_id\": 8,\n      \"quantity\": 1\n    },\n    {\n      \"product_id\": 12,\n      \"quantity\": 3\n    }\n  ],\n  \"order_notes\": \"Office delivery - call reception\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/orders/create/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"create",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n  \"status\": \"pending\",\n  \"payment_status\": \"pending\",\n  \"subtotal\": \"89999.00\",\n  \"shipping_cost\": \"50.00\",\n  \"tax_amount\": \"4499.95\",\n  \"total_amount\": \"94548.95\",\n  \"items\": [\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 1,\n      \"price\": \"89999.00\",\n      \"total_price\": \"89999.00\"\n    },\n    {\n      \"id\": 1,\n      \"product\": {\n        \"id\": 1,\n        \"title\": \"Gaming Laptop - ROG Strix G15\",\n        \"slug\": \"gaming-laptop-rog-strix-g15\",\n        \"description\": \"High-performance gaming laptop with RTX 4060\",\n        \"short_description\": \"Latest gen gaming laptop\",\n        \"price\": \"89999.00\",\n        \"old_price\": \"99999.00\",\n        \"discount_percentage\": 10,\n        \"stock_quantity\": 50,\n        \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n        \"average_rating\": 4.5,\n        \"review_count\": 120\n      },\n      \"quantity\": 1,\n      \"price\": \"89999.00\",\n      \"total_price\": \"89999.00\"\n    }\n  ],\n  \"items_count\": 1,\n  \"shipping_address\": {\n    \"id\": 1,\n    \"type\": \"home\",\n    \"full_name\": \"Tushar Jidal\",\n    \"phone\": \"+91 9876543210\",\n    \"street_address\": \"123 Main Street, Apartment 4B\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"postal_code\": \"400001\",\n    \"country\": \"India\",\n    \"is_default\": true\n  },\n  \"created_at\": \"2025-10-05T14:30:00Z\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Get user orders",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "Authorization",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "{{apiKey}}",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/orders/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Orders retrieved",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "<API Key>",
+										"description": "Added as a part of security scheme: apikey"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/orders/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"orders",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n  {\n    \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n    \"status\": \"pending\",\n    \"payment_status\": \"pending\",\n    \"subtotal\": \"89999.00\",\n    \"shipping_cost\": \"50.00\",\n    \"tax_amount\": \"4499.95\",\n    \"total_amount\": \"94548.95\",\n    \"items\": [\n      {\n        \"id\": 1,\n        \"product\": {\n          \"id\": 1,\n          \"title\": \"Gaming Laptop - ROG Strix G15\",\n          \"slug\": \"gaming-laptop-rog-strix-g15\",\n          \"description\": \"High-performance gaming laptop with RTX 4060\",\n          \"short_description\": \"Latest gen gaming laptop\",\n          \"price\": \"89999.00\",\n          \"old_price\": \"99999.00\",\n          \"discount_percentage\": 10,\n          \"stock_quantity\": 50,\n          \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n          \"average_rating\": 4.5,\n          \"review_count\": 120\n        },\n        \"quantity\": 1,\n        \"price\": \"89999.00\",\n        \"total_price\": \"89999.00\"\n      },\n      {\n        \"id\": 1,\n        \"product\": {\n          \"id\": 1,\n          \"title\": \"Gaming Laptop - ROG Strix G15\",\n          \"slug\": \"gaming-laptop-rog-strix-g15\",\n          \"description\": \"High-performance gaming laptop with RTX 4060\",\n          \"short_description\": \"Latest gen gaming laptop\",\n          \"price\": \"89999.00\",\n          \"old_price\": \"99999.00\",\n          \"discount_percentage\": 10,\n          \"stock_quantity\": 50,\n          \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n          \"average_rating\": 4.5,\n          \"review_count\": 120\n        },\n        \"quantity\": 1,\n        \"price\": \"89999.00\",\n        \"total_price\": \"89999.00\"\n      }\n    ],\n    \"items_count\": 1,\n    \"shipping_address\": {\n      \"id\": 1,\n      \"type\": \"home\",\n      \"full_name\": \"Tushar Jidal\",\n      \"phone\": \"+91 9876543210\",\n      \"street_address\": \"123 Main Street, Apartment 4B\",\n      \"city\": \"Mumbai\",\n      \"state\": \"Maharashtra\",\n      \"postal_code\": \"400001\",\n      \"country\": \"India\",\n      \"is_default\": true\n    },\n    \"created_at\": \"2025-10-05T14:30:00Z\"\n  },\n  {\n    \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n    \"status\": \"pending\",\n    \"payment_status\": \"pending\",\n    \"subtotal\": \"89999.00\",\n    \"shipping_cost\": \"50.00\",\n    \"tax_amount\": \"4499.95\",\n    \"total_amount\": \"94548.95\",\n    \"items\": [\n      {\n        \"id\": 1,\n        \"product\": {\n          \"id\": 1,\n          \"title\": \"Gaming Laptop - ROG Strix G15\",\n          \"slug\": \"gaming-laptop-rog-strix-g15\",\n          \"description\": \"High-performance gaming laptop with RTX 4060\",\n          \"short_description\": \"Latest gen gaming laptop\",\n          \"price\": \"89999.00\",\n          \"old_price\": \"99999.00\",\n          \"discount_percentage\": 10,\n          \"stock_quantity\": 50,\n          \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n          \"average_rating\": 4.5,\n          \"review_count\": 120\n        },\n        \"quantity\": 1,\n        \"price\": \"89999.00\",\n        \"total_price\": \"89999.00\"\n      },\n      {\n        \"id\": 1,\n        \"product\": {\n          \"id\": 1,\n          \"title\": \"Gaming Laptop - ROG Strix G15\",\n          \"slug\": \"gaming-laptop-rog-strix-g15\",\n          \"description\": \"High-performance gaming laptop with RTX 4060\",\n          \"short_description\": \"Latest gen gaming laptop\",\n          \"price\": \"89999.00\",\n          \"old_price\": \"99999.00\",\n          \"discount_percentage\": 10,\n          \"stock_quantity\": 50,\n          \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n          \"average_rating\": 4.5,\n          \"review_count\": 120\n        },\n        \"quantity\": 1,\n        \"price\": \"89999.00\",\n        \"total_price\": \"89999.00\"\n      }\n    ],\n    \"items_count\": 1,\n    \"shipping_address\": {\n      \"id\": 1,\n      \"type\": \"home\",\n      \"full_name\": \"Tushar Jidal\",\n      \"phone\": \"+91 9876543210\",\n      \"street_address\": \"123 Main Street, Apartment 4B\",\n      \"city\": \"Mumbai\",\n      \"state\": \"Maharashtra\",\n      \"postal_code\": \"400001\",\n      \"country\": \"India\",\n      \"is_default\": true\n    },\n    \"created_at\": \"2025-10-05T14:30:00Z\"\n  }\n]"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "wishlist",
+			"item": [
+				{
+					"name": "{id}",
+					"item": [
+						{
+							"name": "Remove product from wishlist",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/wishlist/:id/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"wishlist",
+										":id",
+										""
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "1",
+											"description": "(Required) "
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Product removed from wishlist",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/wishlist/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"wishlist",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Get user wishlist",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "Authorization",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "{{apiKey}}",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/wishlist/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"wishlist",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Wishlist retrieved",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "<API Key>",
+										"description": "Added as a part of security scheme: apikey"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/wishlist/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"wishlist",
+										""
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n  {\n    \"id\": 1,\n    \"title\": \"Gaming Laptop - ROG Strix G15\",\n    \"slug\": \"gaming-laptop-rog-strix-g15\",\n    \"description\": \"High-performance gaming laptop with RTX 4060\",\n    \"short_description\": \"Latest gen gaming laptop\",\n    \"price\": \"89999.00\",\n    \"old_price\": \"99999.00\",\n    \"discount_percentage\": 10,\n    \"stock_quantity\": 50,\n    \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n    \"average_rating\": 4.5,\n    \"review_count\": 120\n  },\n  {\n    \"id\": 1,\n    \"title\": \"Gaming Laptop - ROG Strix G15\",\n    \"slug\": \"gaming-laptop-rog-strix-g15\",\n    \"description\": \"High-performance gaming laptop with RTX 4060\",\n    \"short_description\": \"Latest gen gaming laptop\",\n    \"price\": \"89999.00\",\n    \"old_price\": \"99999.00\",\n    \"discount_percentage\": 10,\n    \"stock_quantity\": 50,\n    \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n    \"average_rating\": 4.5,\n    \"review_count\": 120\n  }\n]"
+						}
+					]
+				},
+				{
+					"name": "Add product to wishlist",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "Authorization",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "{{apiKey}}",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"product_id\": 5\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/wishlist/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"wishlist",
+								""
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Product added to wishlist",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "<API Key>",
+										"description": "Added as a part of security scheme: apikey"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"product_id\": 5\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/wishlist/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"wishlist",
+										""
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"message\": \"Product added to wishlist\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "admin-api",
+			"item": [
+				{
+					"name": "auth",
+					"item": [
+						{
+							"name": "login",
+							"item": [
+								{
+									"name": "Admin login",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/auth/login/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"auth",
+												"login",
+												""
+											]
+										},
+										"description": "Authenticate admin user and get token"
+									},
+									"response": [
+										{
+											"name": "Login successful",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/auth/login/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"auth",
+														"login",
+														""
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"tusharjidal\",\n    \"email\": \"tushar@example.com\",\n    \"first_name\": \"Tushar\",\n    \"last_name\": \"Jidal\",\n    \"is_staff\": false\n  },\n  \"token\": \"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\"\n}"
+										},
+										{
+											"name": "Invalid credentials or not admin user",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/auth/login/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"auth",
+														"login",
+														""
+													]
+												}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "dashboard",
+					"item": [
+						{
+							"name": "stats",
+							"item": [
+								{
+									"name": "Get dashboard statistics",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/dashboard/stats/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"dashboard",
+												"stats",
+												""
+											]
+										},
+										"description": "Get comprehensive dashboard statistics including sales, orders, users, and products"
+									},
+									"response": [
+										{
+											"name": "Dashboard statistics retrieved",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/dashboard/stats/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"dashboard",
+														"stats",
+														""
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"total_users\": 1250,\n  \"total_orders\": 3420,\n  \"total_revenue\": 2850000.5,\n  \"total_products\": 450,\n  \"pending_orders\": 28,\n  \"low_stock_products\": 15,\n  \"recent_orders\": [\n    {\n      \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n      \"status\": \"pending\",\n      \"payment_status\": \"pending\",\n      \"subtotal\": \"89999.00\",\n      \"shipping_cost\": \"50.00\",\n      \"tax_amount\": \"4499.95\",\n      \"total_amount\": \"94548.95\",\n      \"items\": [\n        {\n          \"id\": 1,\n          \"product\": {\n            \"id\": 1,\n            \"title\": \"Gaming Laptop - ROG Strix G15\",\n            \"slug\": \"gaming-laptop-rog-strix-g15\",\n            \"description\": \"High-performance gaming laptop with RTX 4060\",\n            \"short_description\": \"Latest gen gaming laptop\",\n            \"price\": \"89999.00\",\n            \"old_price\": \"99999.00\",\n            \"discount_percentage\": 10,\n            \"stock_quantity\": 50,\n            \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n            \"average_rating\": 4.5,\n            \"review_count\": 120\n          },\n          \"quantity\": 1,\n          \"price\": \"89999.00\",\n          \"total_price\": \"89999.00\"\n        },\n        {\n          \"id\": 1,\n          \"product\": {\n            \"id\": 1,\n            \"title\": \"Gaming Laptop - ROG Strix G15\",\n            \"slug\": \"gaming-laptop-rog-strix-g15\",\n            \"description\": \"High-performance gaming laptop with RTX 4060\",\n            \"short_description\": \"Latest gen gaming laptop\",\n            \"price\": \"89999.00\",\n            \"old_price\": \"99999.00\",\n            \"discount_percentage\": 10,\n            \"stock_quantity\": 50,\n            \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n            \"average_rating\": 4.5,\n            \"review_count\": 120\n          },\n          \"quantity\": 1,\n          \"price\": \"89999.00\",\n          \"total_price\": \"89999.00\"\n        }\n      ],\n      \"items_count\": 1,\n      \"shipping_address\": {\n        \"id\": 1,\n        \"type\": \"home\",\n        \"full_name\": \"Tushar Jidal\",\n        \"phone\": \"+91 9876543210\",\n        \"street_address\": \"123 Main Street, Apartment 4B\",\n        \"city\": \"Mumbai\",\n        \"state\": \"Maharashtra\",\n        \"postal_code\": \"400001\",\n        \"country\": \"India\",\n        \"is_default\": true\n      },\n      \"created_at\": \"2025-10-05T14:30:00Z\"\n    },\n    {\n      \"order_id\": \"b7b77505-0987-40f9-9dc8-6422781367a7\",\n      \"status\": \"pending\",\n      \"payment_status\": \"pending\",\n      \"subtotal\": \"89999.00\",\n      \"shipping_cost\": \"50.00\",\n      \"tax_amount\": \"4499.95\",\n      \"total_amount\": \"94548.95\",\n      \"items\": [\n        {\n          \"id\": 1,\n          \"product\": {\n            \"id\": 1,\n            \"title\": \"Gaming Laptop - ROG Strix G15\",\n            \"slug\": \"gaming-laptop-rog-strix-g15\",\n            \"description\": \"High-performance gaming laptop with RTX 4060\",\n            \"short_description\": \"Latest gen gaming laptop\",\n            \"price\": \"89999.00\",\n            \"old_price\": \"99999.00\",\n            \"discount_percentage\": 10,\n            \"stock_quantity\": 50,\n            \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n            \"average_rating\": 4.5,\n            \"review_count\": 120\n          },\n          \"quantity\": 1,\n          \"price\": \"89999.00\",\n          \"total_price\": \"89999.00\"\n        },\n        {\n          \"id\": 1,\n          \"product\": {\n            \"id\": 1,\n            \"title\": \"Gaming Laptop - ROG Strix G15\",\n            \"slug\": \"gaming-laptop-rog-strix-g15\",\n            \"description\": \"High-performance gaming laptop with RTX 4060\",\n            \"short_description\": \"Latest gen gaming laptop\",\n            \"price\": \"89999.00\",\n            \"old_price\": \"99999.00\",\n            \"discount_percentage\": 10,\n            \"stock_quantity\": 50,\n            \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n            \"average_rating\": 4.5,\n            \"review_count\": 120\n          },\n          \"quantity\": 1,\n          \"price\": \"89999.00\",\n          \"total_price\": \"89999.00\"\n        }\n      ],\n      \"items_count\": 1,\n      \"shipping_address\": {\n        \"id\": 1,\n        \"type\": \"home\",\n        \"full_name\": \"Tushar Jidal\",\n        \"phone\": \"+91 9876543210\",\n        \"street_address\": \"123 Main Street, Apartment 4B\",\n        \"city\": \"Mumbai\",\n        \"state\": \"Maharashtra\",\n        \"postal_code\": \"400001\",\n        \"country\": \"India\",\n        \"is_default\": true\n      },\n      \"created_at\": \"2025-10-05T14:30:00Z\"\n    }\n  ],\n  \"top_selling_products\": [\n    {\n      \"id\": 8048,\n      \"title\": \"string\",\n      \"sold\": 3051,\n      \"price\": 7781.390995533741,\n      \"revenue\": 8270.378605060077\n    },\n    {\n      \"id\": 9332,\n      \"title\": \"string\",\n      \"sold\": 6463,\n      \"price\": 8392.38408748986,\n      \"revenue\": 1219.6688117980204\n    }\n  ],\n  \"sales_by_day\": [\n    {\n      \"date\": \"1986-12-27\",\n      \"revenue\": 4745.4997895618335,\n      \"orders\": 2327\n    },\n    {\n      \"date\": \"1995-06-06\",\n      \"revenue\": 4251.668870600824,\n      \"orders\": 2601\n    }\n  ]\n}"
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "users",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "toggle_active",
+									"item": [
+										{
+											"name": "Toggle user active status",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/users/:id/toggle_active/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"users",
+														":id",
+														"toggle_active",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "1",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "User status toggled",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/users/:id/toggle_active/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"users",
+																":id",
+																"toggle_active",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "toggle_staff",
+									"item": [
+										{
+											"name": "Toggle user staff status",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/users/:id/toggle_staff/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"users",
+														":id",
+														"toggle_staff",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "1",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Staff status toggled",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/users/:id/toggle_staff/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"users",
+																":id",
+																"toggle_staff",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "reset_password",
+									"item": [
+										{
+											"name": "Reset user password",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"password\": \"newpassword123\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/users/:id/reset_password/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"users",
+														":id",
+														"reset_password",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "1",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Password reset successful",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Content-Type",
+																"value": "application/json"
+															},
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"password\": \"newpassword123\"\n}",
+															"options": {
+																"raw": {
+																	"headerFamily": "json",
+																	"language": "json"
+																}
+															}
+														},
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/users/:id/reset_password/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"users",
+																":id",
+																"reset_password",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "Get user details",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/users/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"users",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "1",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "User details retrieved",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/users/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"users",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								},
+								{
+									"name": "Update user",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"id\": 1,\n  \"username\": \"tusharjidal\",\n  \"email\": \"tushar@example.com\",\n  \"first_name\": \"Tushar\",\n  \"last_name\": \"Jidal\",\n  \"is_staff\": false\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/users/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"users",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "1",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "User updated",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"id\": 1,\n  \"username\": \"tusharjidal\",\n  \"email\": \"tushar@example.com\",\n  \"first_name\": \"Tushar\",\n  \"last_name\": \"Jidal\",\n  \"is_staff\": false\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/users/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"users",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								},
+								{
+									"name": "Delete user",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/users/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"users",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "1",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "User deleted",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/users/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"users",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "No Content",
+											"code": 204,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "List all users",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/users/?page=1&limit=50&search=tushar&ordering=-date_joined",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"users",
+										""
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "50"
+										},
+										{
+											"key": "search",
+											"value": "tushar"
+										},
+										{
+											"key": "ordering",
+											"value": "-date_joined"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "User list retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/users/?page=1&limit=50&search=tushar&ordering=-date_joined",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"users",
+												""
+											],
+											"query": [
+												{
+													"key": "page",
+													"value": "1"
+												},
+												{
+													"key": "limit",
+													"value": "50"
+												},
+												{
+													"key": "search",
+													"value": "tushar"
+												},
+												{
+													"key": "ordering",
+													"value": "-date_joined"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"count\": 400,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"username\": \"tusharjidal\",\n      \"email\": \"tushar@example.com\",\n      \"first_name\": \"Tushar\",\n      \"last_name\": \"Jidal\",\n      \"is_staff\": false\n    },\n    {\n      \"id\": 1,\n      \"username\": \"tusharjidal\",\n      \"email\": \"tushar@example.com\",\n      \"first_name\": \"Tushar\",\n      \"last_name\": \"Jidal\",\n      \"is_staff\": false\n    }\n  ]\n}"
+								}
+							]
+						},
+						{
+							"name": "Create new user",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"is_staff\": false\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/users/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"users",
+										""
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "User created",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"is_staff\": false\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/users/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"users",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "products",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "toggle_active",
+									"item": [
+										{
+											"name": "Toggle product active status",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/products/:id/toggle_active/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"products",
+														":id",
+														"toggle_active",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Product status toggled",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/products/:id/toggle_active/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"products",
+																":id",
+																"toggle_active",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "toggle_featured",
+									"item": [
+										{
+											"name": "Toggle product featured status",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/products/:id/toggle_featured/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"products",
+														":id",
+														"toggle_featured",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Featured status toggled",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/products/:id/toggle_featured/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"products",
+																":id",
+																"toggle_featured",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "update_stock",
+									"item": [
+										{
+											"name": "Update product stock",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"quantity\": 100\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/products/:id/update_stock/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"products",
+														":id",
+														"update_stock",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Stock updated",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Content-Type",
+																"value": "application/json"
+															},
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"quantity\": 100\n}",
+															"options": {
+																"raw": {
+																	"headerFamily": "json",
+																	"language": "json"
+																}
+															}
+														},
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/products/:id/update_stock/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"products",
+																":id",
+																"update_stock",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "Get product details (admin)",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/products/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"products",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "5535",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Product details retrieved",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/products/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"products",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								},
+								{
+									"name": "Update product",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"id\": 1,\n  \"title\": \"Gaming Laptop - ROG Strix G15\",\n  \"slug\": \"gaming-laptop-rog-strix-g15\",\n  \"description\": \"High-performance gaming laptop with RTX 4060\",\n  \"short_description\": \"Latest gen gaming laptop\",\n  \"price\": \"89999.00\",\n  \"old_price\": \"99999.00\",\n  \"discount_percentage\": 10,\n  \"stock_quantity\": 50,\n  \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n  \"average_rating\": 4.5,\n  \"review_count\": 120\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/products/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"products",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "5535",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Product updated",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"id\": 1,\n  \"title\": \"Gaming Laptop - ROG Strix G15\",\n  \"slug\": \"gaming-laptop-rog-strix-g15\",\n  \"description\": \"High-performance gaming laptop with RTX 4060\",\n  \"short_description\": \"Latest gen gaming laptop\",\n  \"price\": \"89999.00\",\n  \"old_price\": \"99999.00\",\n  \"discount_percentage\": 10,\n  \"stock_quantity\": 50,\n  \"main_image\": \"http://localhost:8000/media/products/laptop.jpg\",\n  \"average_rating\": 4.5,\n  \"review_count\": 120\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/products/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"products",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								},
+								{
+									"name": "Delete product",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/products/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"products",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "5535",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Product deleted",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/products/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"products",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "No Content",
+											"code": 204,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "List all products (admin)",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/products/?page=5535&limit=5535&search=string&category=5535&brand=5535&stock_status=out_of_stock&is_active=true",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"products",
+										""
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "5535"
+										},
+										{
+											"key": "limit",
+											"value": "5535"
+										},
+										{
+											"key": "search",
+											"value": "string"
+										},
+										{
+											"key": "category",
+											"value": "5535"
+										},
+										{
+											"key": "brand",
+											"value": "5535"
+										},
+										{
+											"key": "stock_status",
+											"value": "out_of_stock"
+										},
+										{
+											"key": "is_active",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Product list retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/products/?page=5535&limit=5535&search=string&category=5535&brand=5535&stock_status=out_of_stock&is_active=true",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"products",
+												""
+											],
+											"query": [
+												{
+													"key": "page",
+													"value": "5535"
+												},
+												{
+													"key": "limit",
+													"value": "5535"
+												},
+												{
+													"key": "search",
+													"value": "string"
+												},
+												{
+													"key": "category",
+													"value": "5535"
+												},
+												{
+													"key": "brand",
+													"value": "5535"
+												},
+												{
+													"key": "stock_status",
+													"value": "out_of_stock"
+												},
+												{
+													"key": "is_active",
+													"value": "true"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						},
+						{
+							"name": "Create new product",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "multipart/form-data"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "title",
+											"value": "New Gaming Laptop",
+											"description": "(Required) ",
+											"type": "text"
+										},
+										{
+											"key": "price",
+											"value": "85999",
+											"description": "(Required) ",
+											"type": "text"
+										},
+										{
+											"key": "category",
+											"value": "1",
+											"description": "(Required) ",
+											"type": "text"
+										},
+										{
+											"key": "description",
+											"value": "High-end gaming laptop",
+											"type": "text"
+										},
+										{
+											"key": "brand",
+											"value": "2",
+											"type": "text"
+										},
+										{
+											"key": "stock_quantity",
+											"value": "50",
+											"type": "text"
+										},
+										{
+											"key": "images",
+											"value": "string,string",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/products/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"products",
+										""
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Product created",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "multipart/form-data"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "title",
+													"value": "New Gaming Laptop",
+													"description": "(Required) ",
+													"type": "text"
+												},
+												{
+													"key": "price",
+													"value": "85999",
+													"description": "(Required) ",
+													"type": "text"
+												},
+												{
+													"key": "category",
+													"value": "1",
+													"description": "(Required) ",
+													"type": "text"
+												},
+												{
+													"key": "description",
+													"value": "High-end gaming laptop",
+													"type": "text"
+												},
+												{
+													"key": "brand",
+													"value": "2",
+													"type": "text"
+												},
+												{
+													"key": "stock_quantity",
+													"value": "50",
+													"type": "text"
+												},
+												{
+													"key": "images",
+													"value": "string,string",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/products/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"products",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "orders",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "update_status",
+									"item": [
+										{
+											"name": "Update order status",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"status\": \"shipped\",\n  \"notes\": \"Order has been shipped via FedEx\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/orders/:id/update_status/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"orders",
+														":id",
+														"update_status",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Order status updated",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Content-Type",
+																"value": "application/json"
+															},
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"status\": \"shipped\",\n  \"notes\": \"Order has been shipped via FedEx\"\n}",
+															"options": {
+																"raw": {
+																	"headerFamily": "json",
+																	"language": "json"
+																}
+															}
+														},
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/orders/:id/update_status/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"orders",
+																":id",
+																"update_status",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "update_payment_status",
+									"item": [
+										{
+											"name": "Update order payment status",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"payment_status\": \"paid\",\n  \"notes\": \"Payment confirmed\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/orders/:id/update_payment_status/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"orders",
+														":id",
+														"update_payment_status",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Payment status updated",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Content-Type",
+																"value": "application/json"
+															},
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"payment_status\": \"paid\",\n  \"notes\": \"Payment confirmed\"\n}",
+															"options": {
+																"raw": {
+																	"headerFamily": "json",
+																	"language": "json"
+																}
+															}
+														},
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/orders/:id/update_payment_status/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"orders",
+																":id",
+																"update_payment_status",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "update_tracking",
+									"item": [
+										{
+											"name": "Update order tracking information",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"tracking_number\": \"FEDEX1234567890\",\n  \"estimated_delivery\": \"2025-10-10\",\n  \"notes\": \"Package is on its way\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/orders/:id/update_tracking/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"orders",
+														":id",
+														"update_tracking",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Tracking information updated",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Content-Type",
+																"value": "application/json"
+															},
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"tracking_number\": \"FEDEX1234567890\",\n  \"estimated_delivery\": \"2025-10-10\",\n  \"notes\": \"Package is on its way\"\n}",
+															"options": {
+																"raw": {
+																	"headerFamily": "json",
+																	"language": "json"
+																}
+															}
+														},
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/orders/:id/update_tracking/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"orders",
+																":id",
+																"update_tracking",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "notes",
+									"item": [
+										{
+											"name": "Get order notes",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/orders/:id/notes/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"orders",
+														":id",
+														"notes",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Order notes retrieved",
+													"originalRequest": {
+														"method": "GET",
+														"header": [
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/orders/:id/notes/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"orders",
+																":id",
+																"notes",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "add_note",
+									"item": [
+										{
+											"name": "Add note to order",
+											"request": {
+												"auth": {
+													"type": "apikey",
+													"apikey": [
+														{
+															"key": "key",
+															"value": "Authorization",
+															"type": "string"
+														},
+														{
+															"key": "value",
+															"value": "{{apiKey}}",
+															"type": "string"
+														},
+														{
+															"key": "in",
+															"value": "header",
+															"type": "string"
+														}
+													]
+												},
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"note\": \"Customer requested gift wrapping\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/orders/:id/add_note/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"orders",
+														":id",
+														"add_note",
+														""
+													],
+													"variable": [
+														{
+															"key": "id",
+															"value": "5535",
+															"description": "(Required) "
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Note added",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Content-Type",
+																"value": "application/json"
+															},
+															{
+																"key": "Authorization",
+																"value": "<API Key>",
+																"description": "Added as a part of security scheme: apikey"
+															}
+														],
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"note\": \"Customer requested gift wrapping\"\n}",
+															"options": {
+																"raw": {
+																	"headerFamily": "json",
+																	"language": "json"
+																}
+															}
+														},
+														"url": {
+															"raw": "{{baseUrl}}/admin-api/orders/:id/add_note/",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"admin-api",
+																"orders",
+																":id",
+																"add_note",
+																""
+															],
+															"variable": [
+																{
+																	"key": "id"
+																}
+															]
+														}
+													},
+													"status": "Created",
+													"code": 201,
+													"_postman_previewlanguage": "text",
+													"header": [],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "Get order details (admin)",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/orders/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"orders",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "5535",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Order details retrieved",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/orders/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"orders",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "List all orders (admin)",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/orders/?page=5535&limit=5535&search=string&status=pending&payment_status=paid&date_from=2016-01-27&date_to=2016-01-27",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"orders",
+										""
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "5535"
+										},
+										{
+											"key": "limit",
+											"value": "5535"
+										},
+										{
+											"key": "search",
+											"value": "string"
+										},
+										{
+											"key": "status",
+											"value": "pending"
+										},
+										{
+											"key": "payment_status",
+											"value": "paid"
+										},
+										{
+											"key": "date_from",
+											"value": "2016-01-27"
+										},
+										{
+											"key": "date_to",
+											"value": "2016-01-27"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Order list retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/orders/?page=5535&limit=5535&search=string&status=pending&payment_status=paid&date_from=2016-01-27&date_to=2016-01-27",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"orders",
+												""
+											],
+											"query": [
+												{
+													"key": "page",
+													"value": "5535"
+												},
+												{
+													"key": "limit",
+													"value": "5535"
+												},
+												{
+													"key": "search",
+													"value": "string"
+												},
+												{
+													"key": "status",
+													"value": "pending"
+												},
+												{
+													"key": "payment_status",
+													"value": "paid"
+												},
+												{
+													"key": "date_from",
+													"value": "2016-01-27"
+												},
+												{
+													"key": "date_to",
+													"value": "2016-01-27"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "categories",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "Get category details",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/categories/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"categories",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "5535",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Category details retrieved",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/categories/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"categories",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								},
+								{
+									"name": "Update category",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"parent\": 7008,\n  \"sort_order\": 3054,\n  \"is_active\": true\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/categories/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"categories",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "5535",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Category updated",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"parent\": 7008,\n  \"sort_order\": 3054,\n  \"is_active\": true\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/categories/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"categories",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								},
+								{
+									"name": "Delete category",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/categories/:id/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"categories",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "5535",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Category deleted",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/categories/:id/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"categories",
+														":id",
+														""
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "No Content",
+											"code": 204,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "hierarchical",
+							"item": [
+								{
+									"name": "Get categories in hierarchical structure",
+									"request": {
+										"auth": {
+											"type": "apikey",
+											"apikey": [
+												{
+													"key": "key",
+													"value": "Authorization",
+													"type": "string"
+												},
+												{
+													"key": "value",
+													"value": "{{apiKey}}",
+													"type": "string"
+												},
+												{
+													"key": "in",
+													"value": "header",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/categories/hierarchical/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"categories",
+												"hierarchical",
+												""
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Hierarchical category tree retrieved",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "<API Key>",
+														"description": "Added as a part of security scheme: apikey"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/admin-api/categories/hierarchical/",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"admin-api",
+														"categories",
+														"hierarchical",
+														""
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "List all categories",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/categories/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"categories",
+										""
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Category list retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/categories/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"categories",
+												""
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						},
+						{
+							"name": "Create new category",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Electronics\",\n  \"description\": \"Electronic devices and accessories\",\n  \"parent\": null,\n  \"sort_order\": 1,\n  \"is_active\": true\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/categories/",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"categories",
+										""
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Category created",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"Electronics\",\n  \"description\": \"Electronic devices and accessories\",\n  \"parent\": null,\n  \"sort_order\": 1,\n  \"is_active\": true\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/categories/",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"categories",
+												""
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "logs",
+					"item": [
+						{
+							"name": "Get admin action logs",
+							"request": {
+								"auth": {
+									"type": "apikey",
+									"apikey": [
+										{
+											"key": "key",
+											"value": "Authorization",
+											"type": "string"
+										},
+										{
+											"key": "value",
+											"value": "{{apiKey}}",
+											"type": "string"
+										},
+										{
+											"key": "in",
+											"value": "header",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/admin-api/logs/?page=5535&limit=5535&user=5535&action=update&date_from=2016-01-27&date_to=2016-01-27",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin-api",
+										"logs",
+										""
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "5535"
+										},
+										{
+											"key": "limit",
+											"value": "5535"
+										},
+										{
+											"key": "user",
+											"value": "5535",
+											"description": "Filter by user ID"
+										},
+										{
+											"key": "action",
+											"value": "update"
+										},
+										{
+											"key": "date_from",
+											"value": "2016-01-27"
+										},
+										{
+											"key": "date_to",
+											"value": "2016-01-27"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Logs retrieved",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "<API Key>",
+												"description": "Added as a part of security scheme: apikey"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/admin-api/logs/?page=5535&limit=5535&user=5535&action=update&date_from=2016-01-27&date_to=2016-01-27",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin-api",
+												"logs",
+												""
+											],
+											"query": [
+												{
+													"key": "page",
+													"value": "5535"
+												},
+												{
+													"key": "limit",
+													"value": "5535"
+												},
+												{
+													"key": "user",
+													"value": "5535",
+													"description": "Filter by user ID"
+												},
+												{
+													"key": "action",
+													"value": "update"
+												},
+												{
+													"key": "date_from",
+													"value": "2016-01-27"
+												},
+												{
+													"key": "date_to",
+													"value": "2016-01-27"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"count\": 4087,\n  \"results\": [\n    {\n      \"id\": 1959,\n      \"user\": \"string\",\n      \"action\": \"string\",\n      \"model_name\": \"string\",\n      \"object_id\": \"string\",\n      \"details\": \"string\",\n      \"ip_address\": \"string\",\n      \"created_at\": \"1999-05-13T15:48:44.568Z\"\n    },\n    {\n      \"id\": 3039,\n      \"user\": \"string\",\n      \"action\": \"string\",\n      \"model_name\": \"string\",\n      \"object_id\": \"string\",\n      \"details\": \"string\",\n      \"ip_address\": \"string\",\n      \"created_at\": \"1998-03-31T20:28:00.282Z\"\n    }\n  ]\n}"
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api"
+		}
+	]
+}
