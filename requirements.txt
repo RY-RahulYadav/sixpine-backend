@@ -8,7 +8,9 @@ djangorestframework>=3.14.0,<4.0.0
 # Database
 # ============================================
 # PostgreSQL adapter (for production/VPS)
-psycopg[binary]>=2.9.0,<3.0.0
+# psycopg[binary]>=2.9.0,<3.0.0
+psycopg2>=2.9,<3.0
+
 
 # ============================================
 # Django Extensions & Middleware
