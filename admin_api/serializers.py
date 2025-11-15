@@ -295,7 +295,7 @@ class AdminProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'title', 'slug', 'main_image', 'category', 'subcategory', 'price', 'old_price',
+            'id', 'title', 'slug', 'sku', 'main_image', 'category', 'subcategory', 'price', 'old_price',
             'is_on_sale', 'discount_percentage', 'is_featured', 'is_active',
             'variant_count', 'total_stock', 'order_count', 'variants', 'created_at', 'updated_at'
         ]
@@ -348,7 +348,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'title', 'slug', 'short_description', 'long_description',
+            'id', 'title', 'slug', 'sku', 'short_description', 'long_description',
             'main_image', 'category', 'category_id', 'subcategory', 'subcategory_id',
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'brand', 'material', 'material_id', 'dimensions', 'weight', 'warranty',

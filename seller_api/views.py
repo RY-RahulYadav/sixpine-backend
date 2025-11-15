@@ -410,6 +410,7 @@ class SellerProductViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(
                 Q(title__icontains=search) |
+                Q(sku__icontains=search) |
                 Q(short_description__icontains=search)
             )
         if category:

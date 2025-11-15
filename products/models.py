@@ -87,6 +87,7 @@ class Product(models.Model):
     # Basic Information
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
+    sku = models.CharField(max_length=100, unique=True, blank=True, null=True, help_text='Stock Keeping Unit - unique product identifier')
     short_description = models.TextField(max_length=500)
     long_description = models.TextField(blank=True)
     
