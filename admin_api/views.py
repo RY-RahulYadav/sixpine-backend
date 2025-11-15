@@ -212,7 +212,7 @@ class AdminUserViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                 Q(email__icontains=search) |
                 Q(first_name__icontains=search) |
                 Q(last_name__icontains=search) |
-                Q(phone_number__icontains=search)
+                Q(mobile__icontains=search)
             )
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
@@ -451,8 +451,9 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(
                 Q(title__icontains=search) |
-                Q(description__icontains=search) |
-                Q(sku__icontains=search)
+                Q(short_description__icontains=search) |
+                Q(long_description__icontains=search) |
+                Q(brand__icontains=search)
             )
         if category:
             queryset = queryset.filter(category_id=category)
@@ -573,7 +574,7 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(
                 Q(user__username__icontains=search) |
                 Q(user__email__icontains=search) |
-                Q(user__phone_number__icontains=search) |
+                Q(user__mobile__icontains=search) |
                 Q(user__first_name__icontains=search) |
                 Q(user__last_name__icontains=search)
             )
@@ -936,7 +937,7 @@ class AdminContactQueryViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         
         if search:
             queryset = queryset.filter(
-                Q(name__icontains=search) |
+                Q(full_name__icontains=search) |
                 Q(email__icontains=search) |
                 Q(phone_number__icontains=search) |
                 Q(message__icontains=search)
@@ -1051,6 +1052,7 @@ class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
         action_type = self.request.query_params.get('action_type', None)
         model_name = self.request.query_params.get('model_name', None)
         user_id = self.request.query_params.get('user', None)
+        search = self.request.query_params.get('search', None)
         date_from = self.request.query_params.get('date_from', None)
         date_to = self.request.query_params.get('date_to', None)
         
@@ -1059,7 +1061,21 @@ class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
         if model_name:
             queryset = queryset.filter(model_name=model_name)
         if user_id:
-            queryset = queryset.filter(user_id=user_id)
+            # Validate that user_id is a valid integer
+            try:
+                user_id_int = int(user_id)
+                queryset = queryset.filter(user_id=user_id_int)
+            except (ValueError, TypeError):
+                # If not a valid integer, ignore the filter
+                pass
+        if search:
+            queryset = queryset.filter(
+                Q(user__email__icontains=search) |
+                Q(user__username__icontains=search) |
+                Q(model_name__icontains=search) |
+                Q(object_repr__icontains=search) |
+                Q(action_type__icontains=search)
+            )
         if date_from:
             queryset = queryset.filter(created_at__gte=date_from)
         if date_to:
