@@ -42,4 +42,14 @@ urlpatterns = [
     path('browsing-history/categories/', views.get_browsed_categories, name='browsed-categories'),
     path('browsing-history/clear/', views.clear_browsing_history, name='clear-browsing-history'),
     path('browsing-history/', views.get_browsing_history, name='browsing-history'),
+    
+    # Wishlist
+    path('wishlist/', views.wishlist_view, name='wishlist-list'),
+    path('wishlist/<int:id>/', views.remove_from_wishlist, name='wishlist-remove'),
+    
+    # Clear all user data
+    path('clear-all-data/', views.clear_all_user_data, name='clear-all-data'),
+    
+    # Footer settings (public)
+    path('footer-settings/', views.get_footer_settings, name='footer-settings'),
 ]

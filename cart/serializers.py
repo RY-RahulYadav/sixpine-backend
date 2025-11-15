@@ -23,14 +23,17 @@ class CartItemSerializer(serializers.ModelSerializer):
                 product = Product.objects.get(id=attrs['product_id'])
                 variant_id = attrs.get('variant_id')
                 
-                # If product has variants, variant_id must be provided
-                if product.variants.exists() and not variant_id:
-                    raise serializers.ValidationError("Variant is required for this product")
+                # If product has variants but no variant_id provided, automatically select first active variant
+                if product.variants.filter(is_active=True).exists() and not variant_id:
+                    first_variant = product.variants.filter(is_active=True).first()
+                    if first_variant:
+                        attrs['variant_id'] = first_variant.id
+                        variant_id = first_variant.id
                 
-                # If variant_id is provided, validate it
+                # If variant_id is provided (or auto-selected), validate it
                 if variant_id:
                     try:
-                        variant = ProductVariant.objects.get(id=variant_id, product=product)
+                        variant = ProductVariant.objects.get(id=variant_id, product=product, is_active=True)
                         quantity = attrs.get('quantity', 1)
                         if quantity > variant.stock_quantity:
                             raise serializers.ValidationError(

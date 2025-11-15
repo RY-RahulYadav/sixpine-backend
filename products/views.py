@@ -11,14 +11,14 @@ from django.utils import timezone
 from .models import (
     Product, Category, Subcategory, Color, Material, ProductVariant, ProductVariantImage,
     ProductReview, ProductRecommendation, ProductSpecification,
-    ProductFeature, ProductOffer, BrowsingHistory, Discount
+    ProductFeature, ProductOffer, BrowsingHistory, Discount, Wishlist
 )
 from accounts.models import Vendor
 from .serializers import (
     ProductListSerializer, ProductDetailSerializer, ProductSearchSerializer,
     CategorySerializer, SubcategorySerializer, ColorSerializer, MaterialSerializer,
     ProductReviewSerializer, ProductFilterSerializer, ProductOfferSerializer,
-    BrowsingHistorySerializer
+    BrowsingHistorySerializer, WishlistSerializer, WishlistCreateSerializer
 )
 from .filters import ProductFilter, ProductSortFilter, ProductAggregationFilter
 
@@ -891,3 +891,124 @@ def clear_browsing_history(request):
         return Response({
             'message': f'Cleared {deleted_count} item(s) from browsing history'
         })
+
+
+# ==================== Wishlist Views ====================
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def wishlist_view(request):
+    """Get wishlist (GET) or add to wishlist (POST)"""
+    if request.method == 'GET':
+        """Get user's wishlist"""
+        try:
+            wishlist_items = Wishlist.objects.filter(user=request.user).select_related('product').order_by('-added_at')
+            serializer = WishlistSerializer(wishlist_items, many=True)
+            
+            return Response({
+                'count': wishlist_items.count(),
+                'results': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'error': f'Failed to fetch wishlist: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    elif request.method == 'POST':
+        """Add product to wishlist"""
+        try:
+            serializer = WishlistCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                product_id = serializer.validated_data['product_id']
+                product = Product.objects.get(id=product_id, is_active=True)
+                
+                # Check if already in wishlist
+                wishlist_item, created = Wishlist.objects.get_or_create(
+                    user=request.user,
+                    product=product
+                )
+                
+                if created:
+                    wishlist_serializer = WishlistSerializer(wishlist_item)
+                    return Response({
+                        'message': 'Product added to wishlist',
+                        'data': wishlist_serializer.data
+                    }, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({
+                        'message': 'Product already in wishlist',
+                        'data': WishlistSerializer(wishlist_item).data
+                    }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'error': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Product.DoesNotExist:
+            return Response({
+                'error': 'Product not found or inactive'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': f'Failed to add to wishlist: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_from_wishlist(request, id):
+    """Remove product from wishlist"""
+    try:
+        wishlist_item = Wishlist.objects.get(id=id, user=request.user)
+        wishlist_item.delete()
+        
+        return Response({
+            'message': 'Product removed from wishlist'
+        }, status=status.HTTP_200_OK)
+    except Wishlist.DoesNotExist:
+        return Response({
+            'error': 'Wishlist item not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': f'Failed to remove from wishlist: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_footer_settings(request):
+    """Get footer settings (phone number, social media links, and app store URLs) for public display"""
+    from admin_api.models import GlobalSettings
+    
+    settings_map = {}
+    setting_keys = ['footer_phone_number', 'footer_linkedin_url', 'footer_twitter_url', 'footer_instagram_url', 'ios_app_url', 'android_app_url']
+    
+    for key in setting_keys:
+        try:
+            setting = GlobalSettings.objects.get(key=key)
+            settings_map[key] = setting.value
+        except GlobalSettings.DoesNotExist:
+            settings_map[key] = ''
+    
+    return Response(settings_map)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def clear_all_user_data(request):
+    """Clear all user data: browsing history, wishlist, and browsed categories"""
+    try:
+        # Clear browsing history (this also clears browsed categories since they're derived from it)
+        browsing_count, _ = BrowsingHistory.objects.filter(user=request.user).delete()
+        
+        # Clear wishlist
+        wishlist_count, _ = Wishlist.objects.filter(user=request.user).delete()
+        
+        return Response({
+            'message': 'All data cleared successfully',
+            'browsing_history_deleted': browsing_count,
+            'wishlist_deleted': wishlist_count,
+            'total_deleted': browsing_count + wishlist_count
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            'error': f'Failed to clear all data: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

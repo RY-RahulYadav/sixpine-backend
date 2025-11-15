@@ -171,3 +171,47 @@ class OrderNote(models.Model):
 
     def __str__(self):
         return f"Note for Order {self.order.order_id} by {self.created_by.username if self.created_by else 'Unknown'}"
+
+
+class ReturnRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('pickup_scheduled', 'Pickup Scheduled'),
+        ('picked_up', 'Picked Up'),
+        ('refunded', 'Refunded'),
+        ('completed', 'Completed'),
+    ]
+
+    REASON_CHOICES = [
+        ('damaged', 'Damaged'),
+        ('defective', 'Defective'),
+        ('incorrect', 'Incorrect Item'),
+        ('not_as_described', 'Not as Described'),
+        ('wrong_size', 'Wrong Size'),
+        ('wrong_color', 'Wrong Color'),
+        ('other', 'Other'),
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='return_requests')
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='return_requests')
+    reason = models.CharField(max_length=50, choices=REASON_CHOICES)
+    reason_description = models.TextField(blank=True, help_text='Additional details about the return reason')
+    pickup_date = models.DateField(help_text='Preferred pickup date for the return')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    seller_approval = models.BooleanField(null=True, blank=True, help_text='Seller approval status: True=Approved, False=Rejected, None=Pending')
+    seller_notes = models.TextField(blank=True, help_text='Seller notes or comments')
+    refund_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Refund amount if approved')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='return_requests_created')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='return_requests_approved')
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Return Request'
+        verbose_name_plural = 'Return Requests'
+
+    def __str__(self):
+        return f"Return Request for Order {self.order.order_id} - {self.get_status_display()}"

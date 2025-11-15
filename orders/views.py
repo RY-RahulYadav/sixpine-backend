@@ -6,11 +6,11 @@ from django.conf import settings
 import razorpay
 import hmac
 import hashlib
-from .models import Address, Order, OrderStatusHistory
+from .models import Address, Order, OrderStatusHistory, ReturnRequest
 from products.models import Coupon
 from .serializers import (
     AddressSerializer, OrderListSerializer, OrderDetailSerializer, 
-    OrderCreateSerializer
+    OrderCreateSerializer, ReturnRequestSerializer, ReturnRequestCreateSerializer
 )
 from .utils import calculate_order_totals
 from admin_api.models import GlobalSettings
@@ -180,12 +180,24 @@ def checkout_from_cart(request):
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def cancel_order(request, order_id):
-    """Cancel an order"""
+    """Cancel an order - Only COD orders can be cancelled before shipment"""
     order = get_object_or_404(Order, order_id=order_id, user=request.user)
     
-    if order.status not in ['pending', 'confirmed']:
+    # Only allow cancellation for COD orders before shipment
+    if order.payment_method != 'COD':
         return Response({
-            'error': 'Order cannot be cancelled at this stage'
+            'error': 'Only Cash on Delivery (COD) orders can be cancelled. For other payment methods, please use the return option after delivery.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if order.status not in ['pending', 'confirmed', 'processing']:
+        return Response({
+            'error': 'Order cannot be cancelled at this stage. It has already been shipped.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if order has been shipped
+    if order.status == 'shipped':
+        return Response({
+            'error': 'Order cannot be cancelled as it has already been shipped. Please use the return option after delivery.'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     order.status = 'cancelled'

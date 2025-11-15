@@ -1,13 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    dashboard_stats, AdminUserViewSet, AdminCategoryViewSet,
+    dashboard_stats, platform_analytics, AdminUserViewSet, AdminCategoryViewSet,
     AdminSubcategoryViewSet, AdminColorViewSet, AdminMaterialViewSet,
     AdminProductViewSet, AdminOrderViewSet, AdminDiscountViewSet,
     AdminCouponViewSet, payment_charges_settings, global_settings,
     AdminContactQueryViewSet, AdminBulkOrderViewSet, AdminLogViewSet,
     AdminHomePageContentViewSet, AdminBulkOrderPageContentViewSet, AdminDataRequestViewSet,
-    AdminBrandViewSet
+    AdminBrandViewSet, AdminMediaViewSet, AdminPackagingFeedbackViewSet
 )
 from .communication import get_customers_list, get_vendors_list, admin_send_email
 from .auth import admin_login_view
@@ -29,10 +29,13 @@ router.register(r'homepage-content', AdminHomePageContentViewSet, basename='admi
 router.register(r'bulk-order-page-content', AdminBulkOrderPageContentViewSet, basename='admin-bulk-order-page-content')
 router.register(r'data-requests', AdminDataRequestViewSet, basename='admin-data-requests')
 router.register(r'brands', AdminBrandViewSet, basename='admin-brands')
+router.register(r'media', AdminMediaViewSet, basename='admin-media')
+router.register(r'packaging-feedback', AdminPackagingFeedbackViewSet, basename='admin-packaging-feedback')
 
 urlpatterns = [
     path('auth/login/', admin_login_view, name='admin-login'),
     path('dashboard/stats/', dashboard_stats, name='admin-dashboard-stats'),
+    path('platform/analytics/', platform_analytics, name='admin-platform-analytics'),
     path('payment-charges/', payment_charges_settings, name='admin-payment-charges'),
     path('global-settings/', global_settings, name='admin-global-settings'),
     path('communication/customers/', get_customers_list, name='admin-customers-list'),

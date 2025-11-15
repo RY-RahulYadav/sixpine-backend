@@ -4,7 +4,7 @@ from .views import (
     seller_dashboard_stats, seller_brand_analytics, seller_shipment_settings,
     seller_settings, seller_change_password,
     SellerProductViewSet, SellerOrderViewSet,
-    SellerCouponViewSet
+    SellerCouponViewSet, SellerMediaViewSet
 )
 from .communication import get_customers_list, seller_send_email
 from .payment import seller_payment_dashboard
@@ -13,6 +13,7 @@ router = DefaultRouter()
 router.register(r'products', SellerProductViewSet, basename='seller-products')
 router.register(r'orders', SellerOrderViewSet, basename='seller-orders')
 router.register(r'coupons', SellerCouponViewSet, basename='seller-coupons')
+router.register(r'media', SellerMediaViewSet, basename='seller-media')
 
 urlpatterns = [
     path('dashboard/stats/', seller_dashboard_stats, name='seller-dashboard-stats'),

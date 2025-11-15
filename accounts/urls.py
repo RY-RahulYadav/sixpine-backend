@@ -39,8 +39,11 @@ urlpatterns = [
     path('data-requests/<int:request_id>/download/', views.download_data_file, name='download_data_file'),
     
     # Account closure
-    path('account/check-deletion-eligibility/', views.check_account_deletion_eligibility, name='check_account_deletion_eligibility'),
+    path('account/check-deletion-eligibility/', views.check_account_deletion_eligibility, name='check_deletion_eligibility'),
     path('account/close/', views.close_account, name='close_account'),
+    
+    # Packaging feedback
+    path('packaging-feedback/submit/', views.submit_packaging_feedback, name='submit_packaging_feedback'),
     
     # Seller authentication (vendor routes kept for backward compatibility)
     path('seller/register/', views.vendor_register_view, name='seller_register'),

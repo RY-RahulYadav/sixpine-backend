@@ -12,14 +12,14 @@ from .permissions import IsVendorUser
 from admin_api.serializers import (
     AdminProductListSerializer, AdminProductDetailSerializer,
     AdminOrderListSerializer, AdminOrderDetailSerializer, AdminCouponSerializer,
-    SellerOrderListSerializer
+    SellerOrderListSerializer, AdminMediaSerializer
 )
 from products.models import (
     Product, ProductImage,
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, Coupon
 )
 from orders.models import Order, OrderItem
-from accounts.models import Vendor, User
+from accounts.models import Vendor, User, Media
 
 
 # ==================== Dashboard Views ====================
@@ -199,7 +199,63 @@ def seller_brand_analytics(request):
     total_revenue = vendor_order_items.aggregate(
         total=Sum(F('price') * F('quantity'))
     )['total'] or Decimal('0.00')
-    average_order_value = (total_revenue / total_orders) if total_orders > 0 else Decimal('0.00')
+    
+    # Calculate total order value: sum of total_amount (including tax) for orders containing vendor's products
+    # For each order, calculate vendor's share of the total amount customer paid
+    total_order_value = Decimal('0.00')
+    for order in vendor_orders:
+        # Get vendor's items in this order
+        vendor_items = order.items.filter(vendor=vendor)
+        vendor_items_subtotal = vendor_items.aggregate(
+            total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+        )['total'] or Decimal('0.00')
+        
+        # Calculate vendor's share of total amount (proportional to their items)
+        if order.subtotal > 0:
+            vendor_share_ratio = vendor_items_subtotal / order.subtotal
+            vendor_share_of_total = order.total_amount * vendor_share_ratio
+            total_order_value += vendor_share_of_total
+        else:
+            # Fallback: if subtotal is 0, use vendor items value
+            total_order_value += vendor_items_subtotal
+    
+    # Calculate seller's net revenue (order value - platform fee - tax) for delivered orders only
+    from admin_api.models import GlobalSettings
+    delivered_vendor_orders = vendor_orders.filter(status='delivered')
+    total_net_revenue = Decimal('0.00')
+    tax_rate = Decimal(str(GlobalSettings.get_setting('tax_rate', '5.00')))
+    
+    # Calculate for each delivered order item
+    delivered_vendor_order_items = vendor_order_items.filter(order__status='delivered')
+    for order_item in delivered_vendor_order_items:
+        item_subtotal = order_item.price * order_item.quantity
+        order = order_item.order
+        
+        # Calculate vendor's share of platform fee
+        order_total_items = order.items.aggregate(
+            total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+        )['total'] or Decimal('0.00')
+        
+        vendor_share_platform_fee = Decimal('0.00')
+        vendor_share_tax = Decimal('0.00')
+        
+        if order_total_items > 0:
+            # Vendor's share of platform fee = (vendor_items_value / order_total) * platform_fee
+            vendor_share_platform_fee = (item_subtotal / order_total_items) * (order.platform_fee or Decimal('0.00'))
+            
+            # Tax is calculated on subtotal (before platform fee)
+            order_subtotal = order.subtotal
+            if order_subtotal > 0:
+                vendor_share_tax = (item_subtotal / order_subtotal) * (order.tax_amount or Decimal('0.00'))
+            else:
+                # Fallback: calculate tax directly on vendor's item
+                vendor_share_tax = (item_subtotal * tax_rate) / Decimal('100.00')
+        
+        # Seller's net revenue = item value - platform fee - tax
+        net_revenue_item = item_subtotal - vendor_share_platform_fee - vendor_share_tax
+        total_net_revenue += net_revenue_item
+    
+    average_order_value = (total_order_value / total_orders) if total_orders > 0 else Decimal('0.00')
     
     # Orders by status
     orders_by_status = vendor_orders.values('status').annotate(
@@ -213,7 +269,7 @@ def seller_brand_analytics(request):
         count=Count('id')
     ).order_by('month')
     
-    # Calculate revenue per month
+    # Calculate order value and net revenue per month
     orders_by_month = []
     for item in orders_by_month_data:
         month_start = item['month']
@@ -221,6 +277,51 @@ def seller_brand_analytics(request):
             created_at__year=month_start.year,
             created_at__month=month_start.month
         )
+        
+        # Calculate month order value (vendor's share of total_amount)
+        month_order_value = Decimal('0.00')
+        for order in month_orders:
+            vendor_items = order.items.filter(vendor=vendor)
+            vendor_items_subtotal = vendor_items.aggregate(
+                total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total'] or Decimal('0.00')
+            
+            if order.subtotal > 0:
+                vendor_share_ratio = vendor_items_subtotal / order.subtotal
+                vendor_share_of_total = order.total_amount * vendor_share_ratio
+                month_order_value += vendor_share_of_total
+            else:
+                month_order_value += vendor_items_subtotal
+        
+        # Calculate month net revenue (for delivered orders only)
+        month_delivered_items = delivered_vendor_order_items.filter(
+            order__created_at__year=month_start.year,
+            order__created_at__month=month_start.month
+        )
+        month_net_revenue = Decimal('0.00')
+        for order_item in month_delivered_items:
+            item_subtotal = order_item.price * order_item.quantity
+            order = order_item.order
+            
+            order_total_items = order.items.aggregate(
+                total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total'] or Decimal('0.00')
+            
+            vendor_share_platform_fee = Decimal('0.00')
+            vendor_share_tax = Decimal('0.00')
+            
+            if order_total_items > 0:
+                vendor_share_platform_fee = (item_subtotal / order_total_items) * (order.platform_fee or Decimal('0.00'))
+                order_subtotal = order.subtotal
+                if order_subtotal > 0:
+                    vendor_share_tax = (item_subtotal / order_subtotal) * (order.tax_amount or Decimal('0.00'))
+                else:
+                    vendor_share_tax = (item_subtotal * tax_rate) / Decimal('100.00')
+            
+            net_revenue_item = item_subtotal - vendor_share_platform_fee - vendor_share_tax
+            month_net_revenue += net_revenue_item
+        
+        # Calculate month revenue (for backward compatibility)
         month_revenue = vendor_order_items.filter(
             order__created_at__year=month_start.year,
             order__created_at__month=month_start.month
@@ -231,10 +332,12 @@ def seller_brand_analytics(request):
         orders_by_month.append({
             'month': f"{month_start.year}-{str(month_start.month).zfill(2)}",
             'count': item['count'],
-            'revenue': float(month_revenue)
+            'revenue': float(month_revenue),  # Keep for backward compatibility
+            'order_value': float(month_order_value),
+            'net_revenue': float(month_net_revenue)
         })
     
-    # Payment methods - calculate revenue from vendor's order items
+    # Payment methods - calculate order value from vendor's orders
     payment_methods_data = vendor_orders.values('payment_method').annotate(
         count=Count('id')
     ).order_by('-count')
@@ -243,16 +346,27 @@ def seller_brand_analytics(request):
     for item in payment_methods_data:
         method = item['payment_method'] or 'Unknown'
         method_orders = vendor_orders.filter(payment_method=item['payment_method'])
-        method_revenue = vendor_order_items.filter(
-            order__payment_method=item['payment_method']
-        ).aggregate(
-            total=Sum(F('price') * F('quantity'))
-        )['total'] or Decimal('0.00')
+        
+        # Calculate order value (vendor's share of total_amount) for this payment method
+        method_order_value = Decimal('0.00')
+        for order in method_orders:
+            vendor_items = order.items.filter(vendor=vendor)
+            vendor_items_subtotal = vendor_items.aggregate(
+                total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total'] or Decimal('0.00')
+            
+            if order.subtotal > 0:
+                vendor_share_ratio = vendor_items_subtotal / order.subtotal
+                vendor_share_of_total = order.total_amount * vendor_share_ratio
+                method_order_value += vendor_share_of_total
+            else:
+                method_order_value += vendor_items_subtotal
         
         payment_methods.append({
             'method': method,
             'count': item['count'],
-            'revenue': float(method_revenue)
+            'revenue': float(method_order_value),  # Keep 'revenue' key for backward compatibility, but it's actually order_value
+            'order_value': float(method_order_value)
         })
     
     # Product stats
@@ -338,7 +452,9 @@ def seller_brand_analytics(request):
         data = {
             'order_stats': {
                 'total_orders': total_orders,
-                'total_revenue': float(total_revenue),
+                'total_revenue': float(total_revenue),  # Keep for backward compatibility
+                'total_order_value': float(total_order_value),
+                'total_net_revenue': float(total_net_revenue),
                 'average_order_value': float(average_order_value),
                 'orders_by_status': [
                     {'status': item['status'], 'count': item['count']}
@@ -348,7 +464,9 @@ def seller_brand_analytics(request):
                     {
                         'month': item['month'],
                         'count': item['count'],
-                        'revenue': float(item.get('revenue') or Decimal('0.00'))
+                        'revenue': float(item.get('revenue') or Decimal('0.00')),  # Keep for backward compatibility
+                        'order_value': float(item.get('order_value') or Decimal('0.00')),
+                        'net_revenue': float(item.get('net_revenue') or Decimal('0.00'))
                     }
                     for item in orders_by_month
                 ],
@@ -924,4 +1042,121 @@ def seller_change_password(request):
         'success': True,
         'message': 'Password changed successfully'
     }, status=status.HTTP_200_OK)
+
+
+# ==================== Media Management Views ====================
+class SellerMediaViewSet(viewsets.ModelViewSet):
+    """Seller viewset for media management"""
+    permission_classes = [IsAuthenticated, IsVendorUser]
+    serializer_class = AdminMediaSerializer
+    
+    def get_queryset(self):
+        """Only show media uploaded by the current vendor"""
+        vendor = self.request.user.vendor_profile
+        queryset = Media.objects.filter(uploaded_by_vendor=vendor).order_by('-created_at')
+        search = self.request.query_params.get('search', None)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(file_name__icontains=search) |
+                Q(alt_text__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        return queryset
+    
+    @action(detail=False, methods=['post'], url_path='upload')
+    def upload_media(self, request):
+        """Upload image to Cloudinary"""
+        if 'image' not in request.FILES:
+            return Response(
+                {'error': 'No image file provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        image_file = request.FILES['image']
+        vendor = request.user.vendor_profile
+        
+        # Validate file type
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        if image_file.content_type not in allowed_types:
+            return Response(
+                {'error': 'Invalid file type. Only images are allowed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file size (max 10MB)
+        if image_file.size > 10 * 1024 * 1024:
+            return Response(
+                {'error': 'File size too large. Maximum size is 10MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            import cloudinary.uploader
+            
+            # Upload to Cloudinary with vendor-specific folder
+            folder_name = f'seller_media/{vendor.id}'
+            upload_result = cloudinary.uploader.upload(
+                image_file,
+                folder=folder_name,
+                resource_type='image'
+            )
+            
+            # Create Media record
+            media = Media(
+                uploaded_by_vendor=vendor,
+                cloudinary_url=upload_result['secure_url'],
+                cloudinary_public_id=upload_result['public_id'],
+                file_name=image_file.name,
+                file_size=image_file.size,
+                mime_type=image_file.content_type,
+                alt_text=request.data.get('alt_text', ''),
+                description=request.data.get('description', '')
+            )
+            media.full_clean()  # Validate model
+            media.save()
+            
+            serializer = AdminMediaSerializer(media)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Upload failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete media from Cloudinary and database"""
+        media = self.get_object()
+        vendor = request.user.vendor_profile
+        
+        # Only allow deletion of own uploads
+        if media.uploaded_by_vendor != vendor:
+            return Response(
+                {'error': 'You can only delete your own uploads'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            import cloudinary.uploader
+            
+            # Delete from Cloudinary if public_id exists
+            if media.cloudinary_public_id:
+                try:
+                    cloudinary.uploader.destroy(media.cloudinary_public_id)
+                except Exception as e:
+                    # Log error but continue with database deletion
+                    print(f"Cloudinary deletion error: {str(e)}")
+            
+            # Delete from database
+            media.delete()
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Deletion failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 

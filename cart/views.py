@@ -34,20 +34,24 @@ def add_to_cart(request):
     except Product.DoesNotExist:
         return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
     
-    # Check if product has variants - variant_id is required if variants exist
-    has_variants = product.variants.exists()
+    # Check if product has variants - automatically select first variant if not provided
+    has_variants = product.variants.filter(is_active=True).exists()
     variant = None
     
     if has_variants:
-        if not variant_id:
-            return Response({
-                'error': 'Variant is required for this product. Please select a color, size, or pattern.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            variant = ProductVariant.objects.get(id=variant_id, product=product, is_active=True)
-        except ProductVariant.DoesNotExist:
-            return Response({'error': 'Invalid variant selected'}, status=status.HTTP_400_BAD_REQUEST)
+        if variant_id:
+            # Use provided variant_id
+            try:
+                variant = ProductVariant.objects.get(id=variant_id, product=product, is_active=True)
+            except ProductVariant.DoesNotExist:
+                return Response({'error': 'Invalid variant selected'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Automatically select the first active variant
+            variant = product.variants.filter(is_active=True).first()
+            if not variant:
+                return Response({
+                    'error': 'No active variants available for this product'
+                }, status=status.HTTP_400_BAD_REQUEST)
         
         # Stock check for variant
         if quantity > variant.stock_quantity:

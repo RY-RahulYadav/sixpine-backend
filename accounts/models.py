@@ -337,3 +337,134 @@ class Vendor(models.Model):
     def is_active(self):
         """Check if vendor is active"""
         return self.status == 'active' and self.is_verified
+
+
+class Media(models.Model):
+    """Model for storing uploaded media files (images) with Cloudinary URLs"""
+    # Uploader information - can be admin (User) or seller (Vendor)
+    uploaded_by_user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='uploaded_media',
+        blank=True, 
+        null=True,
+        help_text='Admin user who uploaded this media'
+    )
+    uploaded_by_vendor = models.ForeignKey(
+        Vendor,
+        on_delete=models.CASCADE,
+        related_name='uploaded_media',
+        blank=True,
+        null=True,
+        help_text='Vendor/Seller who uploaded this media'
+    )
+    
+    # Media information
+    cloudinary_url = models.URLField(max_length=500, help_text='Cloudinary URL of the uploaded image')
+    cloudinary_public_id = models.CharField(max_length=200, blank=True, null=True, help_text='Cloudinary public ID for deletion')
+    file_name = models.CharField(max_length=200, blank=True, help_text='Original file name')
+    file_size = models.PositiveIntegerField(blank=True, null=True, help_text='File size in bytes')
+    mime_type = models.CharField(max_length=100, blank=True, help_text='MIME type of the file')
+    
+    # Metadata
+    alt_text = models.CharField(max_length=200, blank=True, help_text='Alt text for accessibility')
+    description = models.TextField(blank=True, help_text='Optional description')
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'media'
+        ordering = ['-created_at']
+        verbose_name = 'Media'
+        verbose_name_plural = 'Media'
+    
+    def __str__(self):
+        uploader = self.uploaded_by_user.email if self.uploaded_by_user else (self.uploaded_by_vendor.brand_name if self.uploaded_by_vendor else 'Unknown')
+        return f"{self.file_name or 'Media'} - {uploader}"
+    
+    def clean(self):
+        """Ensure either user or vendor is set, but not both"""
+        from django.core.exceptions import ValidationError
+        if not self.uploaded_by_user and not self.uploaded_by_vendor:
+            raise ValidationError('Either uploaded_by_user or uploaded_by_vendor must be set.')
+        if self.uploaded_by_user and self.uploaded_by_vendor:
+            raise ValidationError('Cannot set both uploaded_by_user and uploaded_by_vendor.')
+
+
+class PackagingFeedback(models.Model):
+    """Model for storing packaging feedback from users"""
+    FEEDBACK_TYPE_CHOICES = [
+        ('general', 'General Feedback'),
+        ('damaged', 'Damaged Item'),
+        ('excessive_packaging', 'Excessive Packaging'),
+        ('insufficient_packaging', 'Insufficient Packaging'),
+        ('sustainability', 'Sustainability Concern'),
+        ('other', 'Other'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('reviewed', 'Reviewed'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed'),
+    ]
+    
+    # User information (optional for anonymous feedback, required for logged-in users)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='packaging_feedback',
+        blank=True,
+        null=True,
+        help_text='User who submitted the feedback (null for anonymous)'
+    )
+    
+    # Feedback details
+    feedback_type = models.CharField(max_length=50, choices=FEEDBACK_TYPE_CHOICES, default='general')
+    rating = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text='Rating from 1-5 (1=very poor, 5=excellent)'
+    )
+    was_helpful = models.BooleanField(
+        blank=True,
+        null=True,
+        help_text='Whether the information was helpful (Yes/No)'
+    )
+    message = models.TextField(help_text='Detailed feedback message')
+    
+    # Order/Product context (optional)
+    order_id = models.CharField(max_length=100, blank=True, null=True, help_text='Related order ID if applicable')
+    product_id = models.IntegerField(blank=True, null=True, help_text='Related product ID if applicable')
+    
+    # Contact information (for anonymous users)
+    email = models.EmailField(blank=True, null=True, help_text='Email for anonymous feedback')
+    name = models.CharField(max_length=200, blank=True, null=True, help_text='Name for anonymous feedback')
+    
+    # Admin fields
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(blank=True, null=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='reviewed_packaging_feedback',
+        blank=True,
+        null=True
+    )
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'packaging_feedback'
+        ordering = ['-created_at']
+        verbose_name = 'Packaging Feedback'
+        verbose_name_plural = 'Packaging Feedback'
+    
+    def __str__(self):
+        user_info = self.user.email if self.user else (self.email or 'Anonymous')
+        return f"Packaging Feedback from {user_info} - {self.get_feedback_type_display()}"

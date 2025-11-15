@@ -3,7 +3,7 @@ from django.db.models import Q
 from .models import (
     Category, Subcategory, Color, Material, Product, ProductImage, ProductVariant,
     ProductVariantImage, ProductReview, ProductRecommendation, ProductSpecification, 
-    ProductFeature, ProductOffer, BrowsingHistory
+    ProductFeature, ProductOffer, BrowsingHistory, Wishlist
 )
 
 
@@ -359,3 +359,25 @@ class BrowsingHistorySerializer(serializers.ModelSerializer):
             'viewed_at', 'view_count', 'last_viewed'
         ]
         read_only_fields = ['user', 'viewed_at', 'last_viewed']
+
+
+class WishlistSerializer(serializers.ModelSerializer):
+    """Serializer for wishlist items"""
+    product = ProductListSerializer(read_only=True)
+    
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'product', 'added_at', 'updated_at']
+        read_only_fields = ['user', 'added_at', 'updated_at']
+
+
+class WishlistCreateSerializer(serializers.Serializer):
+    """Serializer for creating wishlist items"""
+    product_id = serializers.IntegerField(required=True)
+    
+    def validate_product_id(self, value):
+        try:
+            product = Product.objects.get(id=value, is_active=True)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product not found or inactive")
+        return value

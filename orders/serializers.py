@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Address, Order, OrderItem, OrderStatusHistory, OrderNote
+from .models import Address, Order, OrderItem, OrderStatusHistory, OrderNote, ReturnRequest
 from products.serializers import ProductListSerializer, ProductVariantSerializer
 
 
@@ -233,3 +233,80 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 variant.save()
         
         return order
+
+
+class ReturnRequestSerializer(serializers.ModelSerializer):
+    """Serializer for return requests"""
+    order_id = serializers.UUIDField(source='order.order_id', read_only=True)
+    order_item_id = serializers.IntegerField(source='order_item.id', read_only=True)
+    product_title = serializers.CharField(source='order_item.product.title', read_only=True)
+    product_image = serializers.CharField(source='order_item.product.main_image', read_only=True)
+    customer_name = serializers.CharField(source='order.user.get_full_name', read_only=True)
+    customer_email = serializers.EmailField(source='order.user.email', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.get_full_name', read_only=True)
+
+    class Meta:
+        model = ReturnRequest
+        fields = [
+            'id', 'order', 'order_id', 'order_item', 'order_item_id', 'product_title', 'product_image',
+            'reason', 'reason_description', 'pickup_date', 'status', 'seller_approval', 'seller_notes',
+            'refund_amount', 'customer_name', 'customer_email', 'created_by_name', 'approved_by_name',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['status', 'seller_approval', 'refund_amount', 'created_at', 'updated_at', 'created_by', 'approved_by']
+
+
+class ReturnRequestCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating return requests"""
+    order_id = serializers.UUIDField(write_only=True, help_text='Order ID (UUID)')
+    
+    class Meta:
+        model = ReturnRequest
+        fields = ['order_id', 'order_item', 'reason', 'reason_description', 'pickup_date']
+    
+    def validate(self, attrs):
+        order_id = attrs.pop('order_id')
+        order_item = attrs['order_item']
+        
+        # Get order by order_id (UUID)
+        try:
+            order = Order.objects.get(order_id=order_id)
+        except Order.DoesNotExist:
+            raise serializers.ValidationError({"order_id": "Order not found"})
+        
+        # Validate that order belongs to the user
+        if order.user != self.context['request'].user:
+            raise serializers.ValidationError("Order does not belong to you")
+        
+        # Validate that order item belongs to the order
+        if order_item.order != order:
+            raise serializers.ValidationError("Order item does not belong to this order")
+        
+        # Validate that order is delivered (can only return delivered items)
+        if order.status != 'delivered':
+            raise serializers.ValidationError("Returns can only be requested for delivered orders")
+        
+        # Check if return window is still valid (10 days from delivery)
+        if order.delivered_at:
+            from django.utils import timezone
+            from datetime import timedelta
+            days_since_delivery = (timezone.now().date() - order.delivered_at.date()).days
+            if days_since_delivery > 10:
+                raise serializers.ValidationError("Return window has expired. Returns must be requested within 10 days of delivery.")
+        
+        # Check if there's already a pending return request for this item
+        existing_return = ReturnRequest.objects.filter(
+            order_item=order_item,
+            status__in=['pending', 'approved', 'pickup_scheduled']
+        ).exists()
+        if existing_return:
+            raise serializers.ValidationError("A return request already exists for this item")
+        
+        # Add order to validated_data
+        attrs['order'] = order
+        return attrs
+    
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)

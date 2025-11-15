@@ -21,9 +21,9 @@ from .serializers import (
     AdminContactQuerySerializer, AdminBulkOrderSerializer, AdminLogSerializer,
     AdminCouponSerializer, HomePageContentSerializer, BulkOrderPageContentSerializer,
     AdminDataRequestSerializer, AdminBrandSerializer, AdminBrandDetailSerializer,
-    SellerOrderListSerializer
+    SellerOrderListSerializer, AdminMediaSerializer, AdminPackagingFeedbackSerializer
 )
-from accounts.models import User, ContactQuery, BulkOrder, DataRequest, Vendor
+from accounts.models import User, ContactQuery, BulkOrder, DataRequest, Vendor, Media, PackagingFeedback
 from accounts.data_export_utils import export_orders_to_excel, export_addresses_to_excel, export_payment_options_to_excel
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage,
@@ -182,6 +182,317 @@ def dashboard_stats(request):
     
     serializer = DashboardStatsSerializer(data)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def platform_analytics(request):
+    """Get comprehensive platform analytics including seller profit, Sixpine products, and orders"""
+    from decimal import Decimal
+    from django.db.models import Count, Sum, F, Q, DecimalField
+    from datetime import datetime, timedelta
+    from accounts.models import Vendor
+    
+    # Calculate date ranges
+    today = timezone.now().date()
+    thirty_days_ago = today - timedelta(days=30)
+    twelve_months_ago = today - timedelta(days=365)
+    
+    # ========== ORDER STATS ==========
+    total_orders = Order.objects.count()
+    delivered_orders = Order.objects.filter(status='delivered')
+    
+    # Total order value (all orders)
+    total_order_value = Order.objects.aggregate(
+        total=Sum(F('total_amount'), output_field=DecimalField(max_digits=10, decimal_places=2))
+    )['total'] or Decimal('0.00')
+    
+    # Orders by status
+    orders_by_status = Order.objects.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    # Orders by month (last 12 months)
+    orders_by_month = []
+    for i in range(12):
+        month_start = today.replace(day=1) - timedelta(days=30 * i)
+        month_orders = Order.objects.filter(
+            created_at__year=month_start.year,
+            created_at__month=month_start.month
+        )
+        month_order_value = month_orders.aggregate(
+            total=Sum(F('total_amount'), output_field=DecimalField(max_digits=10, decimal_places=2))
+        )['total'] or Decimal('0.00')
+        
+        orders_by_month.append({
+            'month': f"{month_start.year}-{str(month_start.month).zfill(2)}",
+            'count': month_orders.count(),
+            'order_value': float(month_order_value)
+        })
+    orders_by_month.reverse()
+    
+    # Payment methods
+    payment_methods = Order.objects.values('payment_method').annotate(
+        count=Count('id'),
+        total_value=Sum(F('total_amount'), output_field=DecimalField(max_digits=10, decimal_places=2))
+    ).order_by('-count')
+    
+    # ========== SELLER PROFIT STATS ==========
+    # Get orders with seller products (not Sixpine)
+    seller_orders = Order.objects.filter(
+        items__product__vendor__isnull=False
+    ).exclude(
+        Q(items__product__brand__iexact='Sixpine')
+    ).distinct()
+    
+    seller_delivered_orders = seller_orders.filter(status='delivered')
+    
+    # Seller net profit = tax + platform fee from delivered orders
+    seller_net_profit = seller_delivered_orders.aggregate(
+        total=Sum(F('tax_amount') + F('platform_fee'), output_field=DecimalField(max_digits=10, decimal_places=2))
+    )['total'] or Decimal('0.00')
+    
+    # Seller order value (proportional share of total_amount)
+    seller_order_value = Decimal('0.00')
+    for order in seller_orders:
+        seller_items = order.items.filter(product__vendor__isnull=False).exclude(
+            Q(product__brand__iexact='Sixpine')
+        )
+        if seller_items.exists():
+            seller_items_subtotal = seller_items.aggregate(
+                total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total'] or Decimal('0.00')
+            
+            if order.subtotal > 0:
+                seller_share_ratio = seller_items_subtotal / order.subtotal
+                seller_share_of_total = order.total_amount * seller_share_ratio
+                seller_order_value += seller_share_of_total
+            else:
+                seller_order_value += seller_items_subtotal
+    
+    # Seller orders by month
+    seller_orders_by_month = []
+    for i in range(12):
+        month_start = today.replace(day=1) - timedelta(days=30 * i)
+        month_seller_orders = seller_orders.filter(
+            created_at__year=month_start.year,
+            created_at__month=month_start.month
+        )
+        
+        month_seller_value = Decimal('0.00')
+        for order in month_seller_orders:
+            seller_items = order.items.filter(product__vendor__isnull=False).exclude(
+                Q(product__brand__iexact='Sixpine')
+            )
+            if seller_items.exists():
+                seller_items_subtotal = seller_items.aggregate(
+                    total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+                )['total'] or Decimal('0.00')
+                
+                if order.subtotal > 0:
+                    seller_share_ratio = seller_items_subtotal / order.subtotal
+                    seller_share_of_total = order.total_amount * seller_share_ratio
+                    month_seller_value += seller_share_of_total
+                else:
+                    month_seller_value += seller_items_subtotal
+        
+        seller_orders_by_month.append({
+            'month': f"{month_start.year}-{str(month_start.month).zfill(2)}",
+            'count': month_seller_orders.count(),
+            'order_value': float(month_seller_value),
+            'net_profit': float(seller_delivered_orders.filter(
+                created_at__year=month_start.year,
+                created_at__month=month_start.month
+            ).aggregate(
+                total=Sum(F('tax_amount') + F('platform_fee'), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total'] or Decimal('0.00'))
+        })
+    seller_orders_by_month.reverse()
+    
+    # ========== SIXPINE PRODUCTS STATS ==========
+    # Get Sixpine products (brand='Sixpine' or vendor is null)
+    sixpine_products = Product.objects.filter(
+        Q(brand__iexact='Sixpine') | Q(vendor__isnull=True)
+    )
+    total_sixpine_products = sixpine_products.count()
+    active_sixpine_products = sixpine_products.filter(is_active=True).count()
+    
+    # Get orders with Sixpine products
+    sixpine_orders = Order.objects.filter(
+        Q(items__product__brand__iexact='Sixpine') | Q(items__product__vendor__isnull=True)
+    ).distinct()
+    
+    sixpine_delivered_orders = sixpine_orders.filter(status='delivered')
+    
+    # Sixpine profit = total order value of Sixpine products (full amount for delivered orders)
+    sixpine_profit = Decimal('0.00')
+    for order in sixpine_delivered_orders:
+        sixpine_items = order.items.filter(
+            Q(product__brand__iexact='Sixpine') | Q(product__vendor__isnull=True)
+        )
+        if sixpine_items.exists():
+            sixpine_items_subtotal = sixpine_items.aggregate(
+                total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total'] or Decimal('0.00')
+            
+            if order.subtotal > 0:
+                sixpine_share_ratio = sixpine_items_subtotal / order.subtotal
+                sixpine_share_of_total = order.total_amount * sixpine_share_ratio
+                sixpine_profit += sixpine_share_of_total
+            else:
+                sixpine_profit += sixpine_items_subtotal
+    
+    # Sixpine order value (all orders, not just delivered)
+    sixpine_order_value = Decimal('0.00')
+    for order in sixpine_orders:
+        sixpine_items = order.items.filter(
+            Q(product__brand__iexact='Sixpine') | Q(product__vendor__isnull=True)
+        )
+        if sixpine_items.exists():
+            sixpine_items_subtotal = sixpine_items.aggregate(
+                total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total'] or Decimal('0.00')
+            
+            if order.subtotal > 0:
+                sixpine_share_ratio = sixpine_items_subtotal / order.subtotal
+                sixpine_share_of_total = order.total_amount * sixpine_share_ratio
+                sixpine_order_value += sixpine_share_of_total
+            else:
+                sixpine_order_value += sixpine_items_subtotal
+    
+    # Sixpine orders by month
+    sixpine_orders_by_month = []
+    for i in range(12):
+        month_start = today.replace(day=1) - timedelta(days=30 * i)
+        month_sixpine_orders = sixpine_orders.filter(
+            created_at__year=month_start.year,
+            created_at__month=month_start.month
+        )
+        
+        month_sixpine_value = Decimal('0.00')
+        for order in month_sixpine_orders:
+            sixpine_items = order.items.filter(
+                Q(product__brand__iexact='Sixpine') | Q(product__vendor__isnull=True)
+            )
+            if sixpine_items.exists():
+                sixpine_items_subtotal = sixpine_items.aggregate(
+                    total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+                )['total'] or Decimal('0.00')
+                
+                if order.subtotal > 0:
+                    sixpine_share_ratio = sixpine_items_subtotal / order.subtotal
+                    sixpine_share_of_total = order.total_amount * sixpine_share_ratio
+                    month_sixpine_value += sixpine_share_of_total
+                else:
+                    month_sixpine_value += sixpine_items_subtotal
+        
+        # Calculate Sixpine profit for this month (from delivered orders)
+        month_sixpine_profit = Decimal('0.00')
+        month_delivered_sixpine_orders = sixpine_delivered_orders.filter(
+            created_at__year=month_start.year,
+            created_at__month=month_start.month
+        )
+        for order in month_delivered_sixpine_orders:
+            sixpine_items = order.items.filter(
+                Q(product__brand__iexact='Sixpine') | Q(product__vendor__isnull=True)
+            )
+            if sixpine_items.exists():
+                sixpine_items_subtotal = sixpine_items.aggregate(
+                    total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+                )['total'] or Decimal('0.00')
+                
+                if order.subtotal > 0:
+                    sixpine_share_ratio = sixpine_items_subtotal / order.subtotal
+                    sixpine_share_of_total = order.total_amount * sixpine_share_ratio
+                    month_sixpine_profit += sixpine_share_of_total
+                else:
+                    month_sixpine_profit += sixpine_items_subtotal
+        
+        sixpine_orders_by_month.append({
+            'month': f"{month_start.year}-{str(month_start.month).zfill(2)}",
+            'count': month_sixpine_orders.count(),
+            'order_value': float(month_sixpine_value),
+            'profit': float(month_sixpine_profit)
+        })
+    sixpine_orders_by_month.reverse()
+    
+    # Top selling Sixpine products
+    sixpine_top_products = OrderItem.objects.filter(
+        Q(product__brand__iexact='Sixpine') | Q(product__vendor__isnull=True)
+    ).values('product').annotate(
+        sold=Sum('quantity'),
+        revenue=Sum(F('quantity') * F('price'), output_field=DecimalField(max_digits=10, decimal_places=2))
+    ).order_by('-sold')[:10]
+    
+    top_sixpine_products = []
+    for item in sixpine_top_products:
+        try:
+            product = Product.objects.get(id=item['product'])
+            top_sixpine_products.append({
+                'id': product.id,
+                'title': product.title,
+                'sold': item['sold'],
+                'revenue': float(item.get('revenue') or Decimal('0.00'))
+            })
+        except Product.DoesNotExist:
+            continue
+    
+    # ========== PLATFORM SUMMARY ==========
+    total_net_revenue = seller_net_profit + sixpine_profit
+    total_products = Product.objects.count()
+    total_seller_products = Product.objects.filter(vendor__isnull=False).exclude(
+        Q(brand__iexact='Sixpine')
+    ).count()
+    
+    # Total vendors
+    total_vendors = Vendor.objects.filter(status='active').count()
+    
+    data = {
+        'order_stats': {
+            'total_orders': total_orders,
+            'total_order_value': float(total_order_value),
+            'average_order_value': float(total_order_value / total_orders) if total_orders > 0 else 0,
+            'orders_by_status': [
+                {'status': item['status'], 'count': item['count']}
+                for item in orders_by_status
+            ],
+            'orders_by_month': orders_by_month,
+            'payment_methods': [
+                {
+                    'method': item['payment_method'] or 'Unknown',
+                    'count': item['count'],
+                    'total_value': float(item.get('total_value') or Decimal('0.00'))
+                }
+                for item in payment_methods
+            ]
+        },
+        'seller_stats': {
+            'total_vendors': total_vendors,
+            'total_seller_products': total_seller_products,
+            'total_seller_orders': seller_orders.count(),
+            'seller_order_value': float(seller_order_value),
+            'seller_net_profit': float(seller_net_profit),
+            'orders_by_month': seller_orders_by_month
+        },
+        'sixpine_stats': {
+            'total_products': total_sixpine_products,
+            'active_products': active_sixpine_products,
+            'total_orders': sixpine_orders.count(),
+            'sixpine_order_value': float(sixpine_order_value),
+            'sixpine_profit': float(sixpine_profit),
+            'orders_by_month': sixpine_orders_by_month,
+            'top_products': top_sixpine_products
+        },
+        'platform_summary': {
+            'total_products': total_products,
+            'total_order_value': float(total_order_value),
+            'total_net_revenue': float(total_net_revenue),
+            'seller_net_profit': float(seller_net_profit),
+            'sixpine_profit': float(sixpine_profit)
+        }
+    }
+    
+    return Response(data)
 
 
 # ==================== User Management Views ====================
@@ -903,13 +1214,20 @@ def global_settings(request):
         value = data.get('value')
         description = data.get('description', '')
         
-        if not key or value is None:
+        if not key:
             return Response(
-                {'error': 'key and value are required'},
+                {'error': 'key is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        setting = GlobalSettings.set_setting(key, value, description)
+        # Allow empty strings for optional fields (like social media URLs)
+        if value is None:
+            return Response(
+                {'error': 'value is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        setting = GlobalSettings.set_setting(key, str(value), description)
         
         create_admin_log(
             request=request,
@@ -1517,4 +1835,170 @@ class AdminBrandViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
         from orders.models import Order, OrderItem
         orders = Order.objects.filter(items__vendor=vendor).distinct().order_by('-created_at')
         serializer = AdminOrderListSerializer(orders, many=True)
+        return Response(serializer.data)
+
+
+# ==================== Media Management Views ====================
+class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
+    """Admin viewset for media management"""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = AdminMediaSerializer
+    
+    def get_queryset(self):
+        """Only show media uploaded by admin users (not sellers)"""
+        queryset = Media.objects.filter(uploaded_by_user__isnull=False).order_by('-created_at')
+        search = self.request.query_params.get('search', None)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(file_name__icontains=search) |
+                Q(alt_text__icontains=search) |
+                Q(description__icontains=search) |
+                Q(uploaded_by_user__email__icontains=search)
+            )
+        
+        return queryset
+    
+    @action(detail=False, methods=['post'], url_path='upload')
+    def upload_media(self, request):
+        """Upload image to Cloudinary"""
+        if 'image' not in request.FILES:
+            return Response(
+                {'error': 'No image file provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        image_file = request.FILES['image']
+        
+        # Validate file type
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        if image_file.content_type not in allowed_types:
+            return Response(
+                {'error': 'Invalid file type. Only images are allowed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file size (max 10MB)
+        if image_file.size > 10 * 1024 * 1024:
+            return Response(
+                {'error': 'File size too large. Maximum size is 10MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            import cloudinary.uploader
+            
+            # Upload to Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                image_file,
+                folder='admin_media',
+                resource_type='image'
+            )
+            
+            # Create Media record
+            media = Media(
+                uploaded_by_user=request.user,
+                cloudinary_url=upload_result['secure_url'],
+                cloudinary_public_id=upload_result['public_id'],
+                file_name=image_file.name,
+                file_size=image_file.size,
+                mime_type=image_file.content_type,
+                alt_text=request.data.get('alt_text', ''),
+                description=request.data.get('description', '')
+            )
+            media.full_clean()  # Validate model
+            media.save()
+            
+            serializer = AdminMediaSerializer(media)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Upload failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete media from Cloudinary and database"""
+        media = self.get_object()
+        
+        # Only allow deletion of own uploads
+        if media.uploaded_by_user != request.user:
+            return Response(
+                {'error': 'You can only delete your own uploads'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            import cloudinary.uploader
+            
+            # Delete from Cloudinary if public_id exists
+            if media.cloudinary_public_id:
+                try:
+                    cloudinary.uploader.destroy(media.cloudinary_public_id)
+                except Exception as e:
+                    # Log error but continue with database deletion
+                    print(f"Cloudinary deletion error: {str(e)}")
+            
+            # Delete from database
+            media.delete()
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Deletion failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# ==================== Packaging Feedback Views ====================
+class AdminPackagingFeedbackViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
+    """Admin viewset for packaging feedback management"""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = AdminPackagingFeedbackSerializer
+    
+    def get_queryset(self):
+        queryset = PackagingFeedback.objects.all().select_related('user', 'reviewed_by').order_by('-created_at')
+        search = self.request.query_params.get('search', None)
+        status_filter = self.request.query_params.get('status', None)
+        feedback_type = self.request.query_params.get('feedback_type', None)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(message__icontains=search) |
+                Q(user__email__icontains=search) |
+                Q(email__icontains=search) |
+                Q(name__icontains=search) |
+                Q(order_id__icontains=search)
+            )
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if feedback_type:
+            queryset = queryset.filter(feedback_type=feedback_type)
+        
+        return queryset
+    
+    @action(detail=True, methods=['post'], url_path='update-status')
+    def update_status(self, request, pk=None):
+        """Update feedback status"""
+        feedback = self.get_object()
+        new_status = request.data.get('status')
+        admin_notes = request.data.get('admin_notes', '')
+        
+        if new_status not in dict(PackagingFeedback.STATUS_CHOICES):
+            return Response(
+                {'error': 'Invalid status'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        feedback.status = new_status
+        if admin_notes:
+            feedback.admin_notes = admin_notes
+        if new_status in ['reviewed', 'resolved']:
+            feedback.reviewed_by = request.user
+            feedback.reviewed_at = timezone.now()
+        feedback.save()
+        
+        serializer = self.get_serializer(feedback)
         return Response(serializer.data)

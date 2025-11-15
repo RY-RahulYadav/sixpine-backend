@@ -40,10 +40,15 @@ def get_first_6_products():
         fallback_image = default_images[idx % len(default_images)]
         product_image = product.main_image if product.main_image and product.main_image.strip() else fallback_image
         
+        # Get variant count
+        variant_count = product.variants.filter(is_active=True).count()
+        
+        product_slug = product.slug or f'product-{product.id}'
         product_data = {
             'id': product.id,
             'productId': product.id,
-            'productSlug': product.slug or f'product-{product.id}',
+            'productSlug': product_slug,
+            'slug': product_slug,  # Add slug field for Productdetails_Slider1 component
             'title': product.title,
             'subtitle': product.short_description[:50] if product.short_description else '',
             'image': product_image,  # Use 'image' for Discover & Top Rated sections
@@ -55,6 +60,8 @@ def get_first_6_products():
             'oldPrice': f"₹{int(product.old_price):,}" if product.old_price else None,
             'newPrice': f"₹{int(product.price):,}",
             'discount': f"{discount}% off" if discount > 0 else None,
+            'variant_count': variant_count,
+            'variantCount': variant_count,
         }
         product_list.append(product_data)
     
@@ -62,10 +69,12 @@ def get_first_6_products():
     while len(product_list) < 6:
         idx = len(product_list) + 1
         placeholder_img = default_images[(idx - 1) % len(default_images)]
+        placeholder_slug = f'product-{idx}'
         product_list.append({
             'id': idx,
             'productId': None,
-            'productSlug': f'product-{idx}',
+            'productSlug': placeholder_slug,
+            'slug': placeholder_slug,  # Add slug field for Productdetails_Slider1 component
             'title': f'Sample Product {idx}',
             'subtitle': 'Sample subtitle',
             'image': placeholder_img,
@@ -97,7 +106,8 @@ def seed_all_homepage_sections():
                 'price': '₹ 2,499',
                 'buttonText': 'BUY NOW',
                 'backgroundColor': '#C4A484',
-                'imageSrc': '/images/Home/studytable.jpg'
+                'imageSrc': '/images/Home/studytable.jpg',
+                'navigateUrl': '/best-deals'
             },
             {
                 'id': 2,
@@ -106,7 +116,8 @@ def seed_all_homepage_sections():
                 'price': '₹ 15,999',
                 'buttonText': 'BUY NOW',
                 'backgroundColor': '#8B7355',
-                'imageSrc': '/images/Home/furnishing.jpg'
+                'imageSrc': '/images/Home/furnishing.jpg',
+                'navigateUrl': '/best-deals'
             },
             {
                 'id': 3,
@@ -115,7 +126,8 @@ def seed_all_homepage_sections():
                 'price': '₹ 25,999',
                 'buttonText': 'BUY NOW',
                 'backgroundColor': '#A68B5B',
-                'imageSrc': '/images/Home/bedroom.jpg'
+                'imageSrc': '/images/Home/bedroom.jpg',
+                'navigateUrl': '/best-deals'
             }
         ],
         'specialDealBanner': {
@@ -124,7 +136,8 @@ def seed_all_homepage_sections():
             'discountText': '₹5000 OFF',
             'instantDiscountText': 'INSTANT DISCOUNT',
             'buttonText': 'BUY NOW',
-            'backgroundImage': '/images/Home/bedroomPanel.webp'
+            'backgroundImage': '/images/Home/bedroomPanel.webp',
+            'navigateUrl': '/best-deals'
         },
         'mattressBanner': {
             'badgeText': 'Ships in 2 Days',
@@ -134,11 +147,13 @@ def seed_all_homepage_sections():
             'startingText': 'Starting From',
             'price': '₹9,999',
             'deliveryText': 'FREE Delivery Available',
-            'backgroundImage': '/images/metress.png'
+            'backgroundImage': '/images/metress.png',
+            'navigateUrl': '/best-deals'
         },
         'bottomBanner': {
             'imageUrl': 'https://ii1.pepperfry.com/assets/a08eed1c-bbbd-4e8b-b381-07df5fbfe959.jpg',
-            'altText': 'Sixpine Banner'
+            'altText': 'Sixpine Banner',
+            'navigateUrl': '/best-deals'
         }
     }
     
@@ -162,10 +177,10 @@ def seed_all_homepage_sections():
                 'linkText': 'See more',
                 'linkUrl': '#',
                 'items': [
-                    {'id': 1, 'imageUrl': '/images/Home/sofa1.jpg', 'text': 'Sixpine Premium', 'altText': 'Sofa'},
-                    {'id': 2, 'imageUrl': '/images/Home/sofa2.jpg', 'text': 'LEGACY OF COMFORT...', 'altText': 'Sofa'},
-                    {'id': 3, 'imageUrl': '/images/Home/sofa3.jpg', 'text': 'LEGACY OF COMFORT...', 'altText': 'Sofa'},
-                    {'id': 4, 'imageUrl': '/images/Home/sofa4.jpg', 'text': 'LEGACY OF COMFORT...', 'altText': 'Sofa'}
+                    {'id': 1, 'imageUrl': '/images/Home/sofa1.jpg', 'text': 'Sixpine Premium', 'altText': 'Sofa', 'navigateUrl': '/best-deals'},
+                    {'id': 2, 'imageUrl': '/images/Home/sofa2.jpg', 'text': 'LEGACY OF COMFORT...', 'altText': 'Sofa', 'navigateUrl': '/best-deals'},
+                    {'id': 3, 'imageUrl': '/images/Home/sofa3.jpg', 'text': 'LEGACY OF COMFORT...', 'altText': 'Sofa', 'navigateUrl': '/best-deals'},
+                    {'id': 4, 'imageUrl': '/images/Home/sofa4.jpg', 'text': 'LEGACY OF COMFORT...', 'altText': 'Sofa', 'navigateUrl': '/best-deals'}
                 ]
             },
             {
@@ -175,10 +190,10 @@ def seed_all_homepage_sections():
                 'linkUrl': '#',
                 'isSpecial': True,
                 'items': [
-                    {'id': 1, 'imageUrl': '/images/Home/Cookware1.jpg', 'text': 'Kitchen & Dining', 'altText': 'Cookware'},
-                    {'id': 2, 'imageUrl': '/images/Home/Cans.jpg', 'text': 'Home Improvement', 'altText': 'Cans'},
-                    {'id': 3, 'imageUrl': '/images/Home/Decor.jpg', 'text': 'Décor', 'altText': 'Decor'},
-                    {'id': 4, 'imageUrl': '/images/Home/Pillow.jpg', 'text': 'Bedding & Bath', 'altText': 'Pillow'}
+                    {'id': 1, 'imageUrl': '/images/Home/Cookware1.jpg', 'text': 'Kitchen & Dining', 'altText': 'Cookware', 'navigateUrl': '/best-deals'},
+                    {'id': 2, 'imageUrl': '/images/Home/Cans.jpg', 'text': 'Home Improvement', 'altText': 'Cans', 'navigateUrl': '/best-deals'},
+                    {'id': 3, 'imageUrl': '/images/Home/Decor.jpg', 'text': 'Décor', 'altText': 'Decor', 'navigateUrl': '/best-deals'},
+                    {'id': 4, 'imageUrl': '/images/Home/Pillow.jpg', 'text': 'Bedding & Bath', 'altText': 'Pillow', 'navigateUrl': '/best-deals'}
                 ]
             },
             {
@@ -227,17 +242,18 @@ def seed_all_homepage_sections():
         'offerBadge': "UPTO 60% OFF",
         'leftProductCard': {
             'name': "Light Show",
-            'img': "/images/Home/FloorLamps.jpg"
+            'img': "/images/Home/FloorLamps.jpg",
+            'navigateUrl': '/best-deals'
         },
         'categoryItems': [
-            {'id': 1, 'name': "Floor Lamps", 'img': "/images/Home/FloorLamps.jpg"},
-            {'id': 2, 'name': "Hanging Lights", 'img': "/images/Home/HangingLights.jpg"},
-            {'id': 3, 'name': "Home Temple", 'img': "/images/Home/HomeTemple.webp"},
-            {'id': 4, 'name': "Serving Trays", 'img': "/images/Home/ServingTrays.jpg"},
-            {'id': 5, 'name': "Wall Decor", 'img': "/images/Home/Decor.jpg"},
-            {'id': 6, 'name': "Kitchen Racks", 'img': "/images/Home/Cookware.jpg"},
-            {'id': 7, 'name': "Chopping Board", 'img': "/images/Home/ServingTrays.jpg"},
-            {'id': 8, 'name': "Artificial Plants", 'img': "/images/Home/FloorLamps.jpg"}
+            {'id': 1, 'name': "Floor Lamps", 'img': "/images/Home/FloorLamps.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 2, 'name': "Hanging Lights", 'img': "/images/Home/HangingLights.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 3, 'name': "Home Temple", 'img': "/images/Home/HomeTemple.webp", 'navigateUrl': '/best-deals'},
+            {'id': 4, 'name': "Serving Trays", 'img': "/images/Home/ServingTrays.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 5, 'name': "Wall Decor", 'img': "/images/Home/Decor.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 6, 'name': "Kitchen Racks", 'img': "/images/Home/Cookware.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 7, 'name': "Chopping Board", 'img': "/images/Home/ServingTrays.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 8, 'name': "Artificial Plants", 'img': "/images/Home/FloorLamps.jpg", 'navigateUrl': '/best-deals'}
         ],
         'sliderCards': [
             {
@@ -247,6 +263,7 @@ def seed_all_homepage_sections():
                 'desc': "Built to Hold the Drama",
                 'price': "₹1,800",
                 'img': "/images/Home/sofa1.jpg",
+                'navigateUrl': '/best-deals'
             },
             {
                 'id': 2,
@@ -255,6 +272,7 @@ def seed_all_homepage_sections():
                 'desc': "Built to Hold the Drama",
                 'price': "₹3,989",
                 'img': "/images/Home/sofa4.jpg",
+                'navigateUrl': '/best-deals'
             },
             {
                 'id': 3,
@@ -263,6 +281,7 @@ def seed_all_homepage_sections():
                 'desc': "Built to Hold the Drama",
                 'price': "₹3,000",
                 'img': "/images/Home/sofa2.jpg",
+                'navigateUrl': '/best-deals'
             }
         ]
     }
@@ -283,31 +302,31 @@ def seed_all_homepage_sections():
         'sectionTitle': "Shop By Categories",
         'filterButtons': ["All", "Living", "Bedroom", "Dining", "Mattress", "Decor", "Study"],
         'categories': [
-            {'id': 1, 'title': "Sofas", 'category': "Living", 'img': "/images/Home/sofa1.jpg"},
-            {'id': 2, 'title': "Beds", 'category': "Bedroom", 'img': "/images/Home/bedroom.jpg"},
-            {'id': 3, 'title': "Dining", 'category': "Dining", 'img': "/images/Home/dining.jpg"},
-            {'id': 4, 'title': "Tv units", 'category': "Living", 'img': "/images/Home/tv.jpg"},
-            {'id': 5, 'title': "Coffee tables", 'category': "Living", 'img': "/images/Home/coffee.jpg"},
-            {'id': 6, 'title': "Cabinets", 'category': "Living", 'img': "/images/Home/cabinet.jpg"},
-            {'id': 7, 'title': "Mattresses", 'category': "Mattress", 'img': "/images/Home/mattress.jpg"},
-            {'id': 8, 'title': "Wardrobes", 'category': "Bedroom", 'img': "/images/Home/wardrobe.jpg"},
-            {'id': 9, 'title': "Sofa cum bed", 'category': "Bedroom", 'img': "/images/Home/sofacumbed.jpg"},
-            {'id': 10, 'title': "Bookshelves", 'category': "Decor", 'img': "/images/Home/bookshelf.jpg"},
-            {'id': 11, 'title': "All study tables", 'category': "Study", 'img': "/images/Home/studytable.jpg"},
-            {'id': 12, 'title': "Home furnishing", 'category': "Decor", 'img': "/images/Home/furnishing.jpg"}
+            {'id': 1, 'title': "Sofas", 'category': "Living", 'img': "/images/Home/sofa1.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 2, 'title': "Beds", 'category': "Bedroom", 'img': "/images/Home/bedroom.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 3, 'title': "Dining", 'category': "Dining", 'img': "/images/Home/dining.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 4, 'title': "Tv units", 'category': "Living", 'img': "/images/Home/tv.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 5, 'title': "Coffee tables", 'category': "Living", 'img': "/images/Home/coffee.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 6, 'title': "Cabinets", 'category': "Living", 'img': "/images/Home/cabinet.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 7, 'title': "Mattresses", 'category': "Mattress", 'img': "/images/Home/mattress.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 8, 'title': "Wardrobes", 'category': "Bedroom", 'img': "/images/Home/wardrobe.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 9, 'title': "Sofa cum bed", 'category': "Bedroom", 'img': "/images/Home/sofacumbed.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 10, 'title': "Bookshelves", 'category': "Decor", 'img': "/images/Home/bookshelf.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 11, 'title': "All study tables", 'category': "Study", 'img': "/images/Home/studytable.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 12, 'title': "Home furnishing", 'category': "Decor", 'img': "/images/Home/furnishing.jpg", 'navigateUrl': '/best-deals'}
         ],
         'sliderTitle': "India's Finest Online Furniture Brand",
         'shortDescription': "Buy Furniture Online from our extensive collection of wooden furniture units to give your home an elegant touch at affordable prices.",
         'fullDescription': "Buy Furniture Online from our extensive collection of wooden furniture units to give your home an elegant touch at affordable prices. We offer a wide range of Lorem ipsum dolor sit amet consectetur adipisicing elit. Ducimus deleniti dolor a aspernatur esse necessitatibus nihil blanditiis repellat ipsa ut praesentium qui, neque quidem soluta earum impedit eveniet corrupti fugit.",
         'sliderItems': [
-            {'id': 1, 'title': "Living Room", 'img': "/images/Home/livingroom.jpg", 'url': ""},
-            {'id': 2, 'title': "Bedroom", 'img': "/images/Home/bedroom.jpg", 'url': ""},
-            {'id': 3, 'title': "Dining Room", 'img': "/images/Home/diningroom.jpg", 'url': ""},
-            {'id': 4, 'title': "Study", 'img': "/images/Home/studytable.jpg", 'url': ""},
-            {'id': 5, 'title': "Outdoor", 'img': "/images/Home/outdoor.jpg", 'url': ""},
-            {'id': 6, 'title': "Living Room", 'img': "/images/Home/livingroom.jpg", 'url': ""},
-            {'id': 7, 'title': "Bedroom", 'img': "/images/Home/bedroom.jpg", 'url': ""},
-            {'id': 8, 'title': "Dining Room", 'img': "/images/Home/diningroom.jpg", 'url': ""}
+            {'id': 1, 'title': "Living Room", 'img': "/images/Home/livingroom.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 2, 'title': "Bedroom", 'img': "/images/Home/bedroom.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 3, 'title': "Dining Room", 'img': "/images/Home/diningroom.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 4, 'title': "Study", 'img': "/images/Home/studytable.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 5, 'title': "Outdoor", 'img': "/images/Home/outdoor.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 6, 'title': "Living Room", 'img': "/images/Home/livingroom.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 7, 'title': "Bedroom", 'img': "/images/Home/bedroom.jpg", 'navigateUrl': '/best-deals'},
+            {'id': 8, 'title': "Dining Room", 'img': "/images/Home/diningroom.jpg", 'navigateUrl': '/best-deals'}
         ]
     }
     
@@ -329,6 +348,7 @@ def seed_all_homepage_sections():
     
     for product in products[:6]:
         # Format for Discover & Top Rated sections
+        product_slug = product.get('slug') or product.get('productSlug') or '#'
         formatted_product = {
             'id': product.get('id', product.get('productId', 0)),
             'title': product.get('title', ''),
@@ -340,7 +360,11 @@ def seed_all_homepage_sections():
             'reviews': product.get('reviews', 0),
             'image': product.get('image', product.get('img', '/images/Home/sofa1.jpg')),
             'productId': product.get('productId'),
-            'productSlug': product.get('productSlug', '#')
+            'productSlug': product_slug,
+            'slug': product_slug,  # Add slug field for ProductCard component
+            'navigateUrl': f"/products-details/{product_slug}" if product_slug and product_slug != '#' else '/best-deals',
+            'variant_count': product.get('variant_count', product.get('variantCount', 0)),
+            'variantCount': product.get('variant_count', product.get('variantCount', 0))
         }
         discover_products.append(formatted_product)
         top_rated_products.append(formatted_product)
@@ -505,8 +529,8 @@ def seed_all_homepage_sections():
     banner_cards_content = {
         'heading': "Crafted In India",
         'bannerCards': [
-            {'img': "/images/Home/bannerCards.webp"},
-            {'img': "/images/Home/bannerCards.webp"}
+            {'img': "/images/Home/bannerCards.webp", 'navigateUrl': '/best-deals'},
+            {'img': "/images/Home/bannerCards.webp", 'navigateUrl': '/best-deals'}
         ],
         'slider1Title': "Customers frequently viewed | Popular products in the last 7 days",
         'slider1ViewAllUrl': "#",

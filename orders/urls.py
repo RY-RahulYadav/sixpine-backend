@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import return_views
 
 urlpatterns = [
     path('addresses/', views.AddressListCreateView.as_view(), name='address-list'),
@@ -15,4 +16,8 @@ urlpatterns = [
     path('orders/complete-payment/', views.complete_payment, name='complete-payment'),
     path('payment-charges/', views.get_payment_charges, name='get-payment-charges'),
     path('coupons/validate/', views.validate_coupon, name='validate-coupon'),
+    path('returns/submit/', return_views.submit_return_request, name='submit-return-request'),
+    path('returns/', return_views.get_return_requests, name='get-return-requests'),
+    path('returns/seller/', return_views.get_seller_return_requests, name='get-seller-return-requests'),
+    path('returns/<int:return_request_id>/approve/', return_views.approve_return_request, name='approve-return-request'),
 ]

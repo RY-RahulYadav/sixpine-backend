@@ -37,7 +37,15 @@ def admin_login_view(request):
     if not user.is_staff:
         print(f"Error: User {username} is not staff")
         return Response(
-            {'error': 'Access denied. Admin privileges required.'},
+            {'error': 'Access denied. Admin privileges required. Please use the regular login page.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Prevent vendor users from logging in through admin login (unless they're also staff)
+    if hasattr(user, 'vendor_profile') and not user.is_superuser:
+        print(f"Error: User {username} is a vendor, not an admin")
+        return Response(
+            {'error': 'Vendor users must login through the seller login page.'},
             status=status.HTTP_403_FORBIDDEN
         )
     

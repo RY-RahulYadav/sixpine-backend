@@ -88,10 +88,23 @@ def request_otp_view(request):
     otp_method = data['otp_method']
     
     # Check if user already exists
-    if User.objects.filter(email=email).exists():
+    existing_user = User.objects.filter(email=email).first()
+    if existing_user:
+        # Check if user is staff/admin
+        if existing_user.is_staff or existing_user.is_superuser:
+            return Response({
+                'success': False,
+                'error': 'This email is registered as an admin. Please use the admin login page.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        # Check if user is a vendor
+        if hasattr(existing_user, 'vendor_profile'):
+            return Response({
+                'success': False,
+                'error': 'This email is registered as a seller. Please use the seller login page.'
+            }, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             'success': False,
-            'error': 'User with this email already exists'
+            'error': 'User with this email already exists. Please login instead.'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     # Generate 6-digit OTP
@@ -179,6 +192,24 @@ def verify_otp_view(request):
         otp_obj.is_used = True
         otp_obj.is_verified = True
         otp_obj.save()
+        
+        # Check if user already exists (double-check before creating)
+        if User.objects.filter(email=email).exists():
+            existing_user = User.objects.get(email=email)
+            if existing_user.is_staff or existing_user.is_superuser:
+                return Response({
+                    'success': False,
+                    'error': 'This email is registered as an admin. Please use the admin login page.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if hasattr(existing_user, 'vendor_profile'):
+                return Response({
+                    'success': False,
+                    'error': 'This email is registered as a seller. Please use the seller login page.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'success': False,
+                'error': 'User with this email already exists. Please login instead.'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Create user from stored data
         user_data = otp_obj.user_data
@@ -996,6 +1027,55 @@ def vendor_login_view(request):
         'success': False,
         'error': serializer.errors.get('non_field_errors', ['Invalid credentials'])[0]
     }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # Allow both authenticated and anonymous users
+def submit_packaging_feedback(request):
+    """Submit packaging feedback - can be from logged-in or anonymous users"""
+    try:
+        from .serializers import PackagingFeedbackCreateSerializer
+        from .models import PackagingFeedback
+        
+        serializer = PackagingFeedbackCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            # If user is authenticated, use their user account
+            # Otherwise, use email/name from form (anonymous feedback)
+            user = request.user if request.user.is_authenticated else None
+            
+            feedback = PackagingFeedback.objects.create(
+                user=user,
+                feedback_type=serializer.validated_data.get('feedback_type', 'general'),
+                rating=serializer.validated_data.get('rating'),
+                was_helpful=serializer.validated_data.get('was_helpful'),
+                message=serializer.validated_data['message'],
+                order_id=serializer.validated_data.get('order_id'),
+                product_id=serializer.validated_data.get('product_id'),
+                email=serializer.validated_data.get('email') if not user else None,
+                name=serializer.validated_data.get('name') if not user else None,
+            )
+            
+            return Response({
+                'success': True,
+                'message': 'Thank you for your feedback! We appreciate your input.',
+                'data': {
+                    'id': feedback.id,
+                    'feedback_type': feedback.get_feedback_type_display(),
+                    'created_at': feedback.created_at
+                }
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            'success': False,
+            'error': 'Invalid data provided',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Failed to submit feedback: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from accounts.models import User, Vendor
+from accounts.models import User, Vendor, Media, PackagingFeedback
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage, 
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, 
@@ -1285,4 +1285,59 @@ class AdminDataRequestSerializer(serializers.ModelSerializer):
     
     def get_user_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+
+
+# ==================== Media Serializers ====================
+class AdminMediaSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.SerializerMethodField()
+    uploaded_by_type = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Media
+        fields = [
+            'id', 'cloudinary_url', 'cloudinary_public_id', 'file_name', 
+            'file_size', 'mime_type', 'alt_text', 'description',
+            'uploaded_by_user', 'uploaded_by_vendor', 'uploaded_by_name',
+            'uploaded_by_type', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_uploaded_by_name(self, obj):
+        if obj.uploaded_by_user:
+            return obj.uploaded_by_user.email
+        elif obj.uploaded_by_vendor:
+            return obj.uploaded_by_vendor.brand_name or obj.uploaded_by_vendor.business_name
+        return 'Unknown'
+    
+    def get_uploaded_by_type(self, obj):
+        if obj.uploaded_by_user:
+            return 'admin'
+        elif obj.uploaded_by_vendor:
+            return 'seller'
+        return 'unknown'
+
+
+# ==================== Packaging Feedback Serializers ====================
+class AdminPackagingFeedbackSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    feedback_type_display = serializers.CharField(source='get_feedback_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    reviewed_by_email = serializers.EmailField(source='reviewed_by.email', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = PackagingFeedback
+        fields = [
+            'id', 'user', 'user_email', 'user_name', 'feedback_type', 'feedback_type_display',
+            'rating', 'was_helpful', 'message', 'order_id', 'product_id',
+            'email', 'name', 'status', 'status_display', 'admin_notes',
+            'reviewed_by', 'reviewed_by_email', 'reviewed_at',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'reviewed_at']
+    
+    def get_user_name(self, obj):
+        if obj.user:
+            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+        return obj.name or 'Anonymous'
 

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import User, OTPVerification, PasswordResetToken, ContactQuery, BulkOrder, PaymentPreference, SavedCard, DataRequest, Vendor
+from .models import User, OTPVerification, PasswordResetToken, ContactQuery, BulkOrder, PaymentPreference, SavedCard, DataRequest, Vendor, PackagingFeedback
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -70,6 +70,14 @@ class UserLoginSerializer(serializers.Serializer):
             
             if not user.is_active:
                 raise serializers.ValidationError("User account is disabled")
+            
+            # Prevent staff/admin users from logging in through regular login
+            if user.is_staff or user.is_superuser:
+                raise serializers.ValidationError("Admin users must login through the admin login page")
+            
+            # Prevent vendor users from logging in through regular login
+            if hasattr(user, 'vendor_profile'):
+                raise serializers.ValidationError("Vendor users must login through the seller login page")
             
             attrs['user'] = user
             return attrs
@@ -372,8 +380,16 @@ class VendorRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'password': e.messages})
         
         # Check if user with email already exists
-        if User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError({'email': 'A user with this email already exists'})
+        existing_user = User.objects.filter(email=attrs['email']).first()
+        if existing_user:
+            # Check if user is staff/admin
+            if existing_user.is_staff or existing_user.is_superuser:
+                raise serializers.ValidationError({'email': 'This email is registered as an admin. Please use the admin login page.'})
+            # Check if user is already a vendor
+            if hasattr(existing_user, 'vendor_profile'):
+                raise serializers.ValidationError({'email': 'This email is already registered as a seller. Please use the seller login page.'})
+            # Regular user exists - they should use regular login
+            raise serializers.ValidationError({'email': 'This email is already registered. Please use the regular login page.'})
         
         # Check if vendor with business email already exists (only if provided)
         business_email = attrs.get('business_email')
@@ -451,6 +467,41 @@ class VendorSerializer(serializers.ModelSerializer):
         ]
 
 
+class PackagingFeedbackCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating packaging feedback"""
+    feedback_type = serializers.ChoiceField(
+        choices=[
+            ('general', 'General Feedback'),
+            ('damaged', 'Damaged Item'),
+            ('excessive_packaging', 'Excessive Packaging'),
+            ('insufficient_packaging', 'Insufficient Packaging'),
+            ('sustainability', 'Sustainability Concern'),
+            ('other', 'Other'),
+        ],
+        required=False,
+        default='general'
+    )
+    rating = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=5)
+    was_helpful = serializers.BooleanField(required=False, allow_null=True)
+    order_id = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=100)
+    product_id = serializers.IntegerField(required=False, allow_null=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    name = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=200)
+    
+    class Meta:
+        model = PackagingFeedback
+        fields = [
+            'feedback_type', 'rating', 'was_helpful', 'message',
+            'order_id', 'product_id', 'email', 'name'
+        ]
+    
+    def validate_message(self, value):
+        """Ensure message is provided"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Message is required")
+        return value.strip()
+
+
 class VendorLoginSerializer(serializers.Serializer):
     """Serializer for vendor login"""
     username = serializers.CharField()
@@ -479,7 +530,14 @@ class VendorLoginSerializer(serializers.Serializer):
             
             # Check if user has vendor profile
             if not hasattr(user, 'vendor_profile'):
-                raise serializers.ValidationError("This account is not registered as a vendor")
+                # If user is staff/superuser but doesn't have vendor profile, they should use admin login
+                if user.is_staff or user.is_superuser:
+                    raise serializers.ValidationError("Admin users must login through the admin login page")
+                # Otherwise, they're a regular user
+                raise serializers.ValidationError("This account is not registered as a vendor. Please use the regular login page.")
+            
+            # Allow vendor login even if user has staff privileges (they can be both vendor and admin)
+            # Only block if they're staff/superuser but don't have vendor profile (handled above)
             
             vendor = user.vendor_profile
             if not vendor.is_active:
