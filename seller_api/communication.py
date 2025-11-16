@@ -3,9 +3,37 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.conf import settings
 from accounts.models import User, Vendor
 from accounts.gmail_oauth_service import GmailOAuth2Service
+from admin_api.models import GlobalSettings
 from .permissions import IsVendorUser
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsVendorUser])
+def get_admin_email(request):
+    """Get admin email from settings (for seller communication)"""
+    try:
+        admin_email = GlobalSettings.get_setting('admin_email', None)
+        
+        # If not set in settings, fallback to first superuser email or DEFAULT_FROM_EMAIL
+        if not admin_email:
+            admin_users = User.objects.filter(is_staff=True, is_superuser=True, is_active=True)
+            if admin_users.exists():
+                admin_email = admin_users.first().email
+            else:
+                admin_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@sixpine.com')
+        
+        return Response({
+            'success': True,
+            'admin_email': admin_email
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
@@ -98,16 +126,20 @@ def seller_send_email(request):
                 }, status=status.HTTP_404_NOT_FOUND)
         
         elif recipient_type == 'admin':
-            # Get admin email from settings or use a default admin user
-            from django.conf import settings
-            admin_users = User.objects.filter(is_staff=True, is_superuser=True, is_active=True)
-            if admin_users.exists():
-                admin_user = admin_users.first()
-                recipient_email = admin_user.email
-                recipient_name = 'Admin'
+            # Get admin email from settings first, then fallback to superuser or default
+            admin_email = GlobalSettings.get_setting('admin_email', None)
+            
+            if admin_email:
+                recipient_email = admin_email
             else:
-                recipient_email = settings.DEFAULT_FROM_EMAIL
-                recipient_name = 'Admin'
+                # Fallback to first superuser email
+                admin_users = User.objects.filter(is_staff=True, is_superuser=True, is_active=True)
+                if admin_users.exists():
+                    recipient_email = admin_users.first().email
+                else:
+                    recipient_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'admin@sixpine.com')
+            
+            recipient_name = 'Admin'
         else:
             return Response({
                 'success': False,

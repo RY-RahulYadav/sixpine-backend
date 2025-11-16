@@ -26,7 +26,11 @@ def get_return_requests(request):
     """Get return requests for the authenticated user"""
     return_requests = ReturnRequest.objects.filter(
         order__user=request.user
-    ).select_related('order', 'order_item__product', 'created_by').order_by('-created_at')
+    ).select_related(
+        'order', 'order_item__product', 'order_item__variant', 'created_by'
+    ).prefetch_related(
+        'order_item__product__variants'
+    ).order_by('-created_at')
     
     serializer = ReturnRequestSerializer(return_requests, many=True)
     return Response(serializer.data)
@@ -49,7 +53,11 @@ def get_seller_return_requests(request):
     # Get return requests for products owned by this vendor
     return_requests = ReturnRequest.objects.filter(
         order_item__vendor=vendor
-    ).select_related('order', 'order_item__product', 'order__user', 'created_by').order_by('-created_at')
+    ).select_related(
+        'order', 'order_item__product', 'order_item__variant', 'order__user', 'created_by'
+    ).prefetch_related(
+        'order_item__product__variants'
+    ).order_by('-created_at')
     
     serializer = ReturnRequestSerializer(return_requests, many=True)
     return Response(serializer.data)

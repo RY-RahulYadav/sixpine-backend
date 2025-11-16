@@ -6,7 +6,7 @@ from .views import (
     SellerProductViewSet, SellerOrderViewSet,
     SellerCouponViewSet, SellerMediaViewSet
 )
-from .communication import get_customers_list, seller_send_email
+from .communication import get_customers_list, get_admin_email, seller_send_email
 from .payment import seller_payment_dashboard
 
 router = DefaultRouter()
@@ -22,6 +22,7 @@ urlpatterns = [
     path('settings/', seller_settings, name='seller-settings'),
     path('settings/change-password/', seller_change_password, name='seller-change-password'),
     path('communication/customers/', get_customers_list, name='seller-customers-list'),
+    path('communication/admin-email/', get_admin_email, name='seller-admin-email'),
     path('communication/send-email/', seller_send_email, name='seller-send-email'),
     path('payment/dashboard/', seller_payment_dashboard, name='seller-payment-dashboard'),
     path('', include(router.urls)),

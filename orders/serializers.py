@@ -264,11 +264,31 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
     order_id = serializers.UUIDField(source='order.order_id', read_only=True)
     order_item_id = serializers.IntegerField(source='order_item.id', read_only=True)
     product_title = serializers.CharField(source='order_item.product.title', read_only=True)
-    product_image = serializers.CharField(source='order_item.product.main_image', read_only=True)
+    product_image = serializers.SerializerMethodField()
     customer_name = serializers.CharField(source='order.user.get_full_name', read_only=True)
     customer_email = serializers.EmailField(source='order.user.email', read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     approved_by_name = serializers.CharField(source='approved_by.get_full_name', read_only=True)
+    
+    def get_product_image(self, obj):
+        """Get image from first variant of product, then variant from order item, then product main_image"""
+        order_item = obj.order_item
+        product = order_item.product
+        
+        # First try: Use first active variant image from product (user's requirement)
+        first_variant = product.variants.filter(is_active=True).first()
+        if first_variant and first_variant.image and str(first_variant.image).strip():
+            return str(first_variant.image).strip()
+        
+        # Second try: Use variant image from order item if it exists and has image
+        if order_item.variant and order_item.variant.image and str(order_item.variant.image).strip():
+            return str(order_item.variant.image).strip()
+        
+        # Third try: Use product main_image
+        if product.main_image and str(product.main_image).strip():
+            return str(product.main_image).strip()
+        
+        return None
 
     class Meta:
         model = ReturnRequest

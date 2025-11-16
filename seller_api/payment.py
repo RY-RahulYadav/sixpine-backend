@@ -145,20 +145,63 @@ def seller_payment_dashboard(request):
                 'items_count': vendor_items.count()
             })
         
-        # Monthly breakdown
+        # Monthly breakdown - Calculate net revenue for each month (only delivered orders)
         this_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         last_month = (this_month - timedelta(days=1)).replace(day=1)
         
         this_month_orders = vendor_orders.filter(created_at__gte=this_month)
         last_month_orders = vendor_orders.filter(created_at__gte=last_month, created_at__lt=this_month)
         
+        # Calculate this month's net revenue (only for delivered orders)
+        this_month_net_revenue = Decimal('0.00')
+        this_month_delivered_orders = this_month_orders.filter(status='delivered')
+        for order in this_month_delivered_orders:
+            vendor_items = order.items.filter(vendor=vendor)
+            for item in vendor_items:
+                item_subtotal = item.price * item.quantity
+                order_total_items = order.items.aggregate(
+                    total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+                )['total'] or Decimal('0.00')
+                
+                if order_total_items > 0:
+                    vendor_share_platform_fee = (item_subtotal / order_total_items) * (order.platform_fee or Decimal('0.00'))
+                    order_subtotal = order.subtotal
+                    if order_subtotal > 0:
+                        vendor_share_tax = (item_subtotal / order_subtotal) * (order.tax_amount or Decimal('0.00'))
+                    else:
+                        vendor_share_tax = (item_subtotal * tax_rate) / Decimal('100.00')
+                    net_revenue_item = item_subtotal - vendor_share_platform_fee - vendor_share_tax
+                    this_month_net_revenue += net_revenue_item
+        
+        # Calculate last month's net revenue (only for delivered orders)
+        last_month_net_revenue = Decimal('0.00')
+        last_month_delivered_orders = last_month_orders.filter(status='delivered')
+        for order in last_month_delivered_orders:
+            vendor_items = order.items.filter(vendor=vendor)
+            for item in vendor_items:
+                item_subtotal = item.price * item.quantity
+                order_total_items = order.items.aggregate(
+                    total=Sum(F('price') * F('quantity'), output_field=DecimalField(max_digits=10, decimal_places=2))
+                )['total'] or Decimal('0.00')
+                
+                if order_total_items > 0:
+                    vendor_share_platform_fee = (item_subtotal / order_total_items) * (order.platform_fee or Decimal('0.00'))
+                    order_subtotal = order.subtotal
+                    if order_subtotal > 0:
+                        vendor_share_tax = (item_subtotal / order_subtotal) * (order.tax_amount or Decimal('0.00'))
+                    else:
+                        vendor_share_tax = (item_subtotal * tax_rate) / Decimal('100.00')
+                    net_revenue_item = item_subtotal - vendor_share_platform_fee - vendor_share_tax
+                    last_month_net_revenue += net_revenue_item
+        
+        # Keep old fields for backward compatibility but also add net revenue fields
         this_month_value = sum(
             item.price * item.quantity 
             for order in this_month_orders 
             for item in order.items.filter(vendor=vendor)
         )
         last_month_value = sum(
-            item.price * item.quantity 
+            item.price * item.quantity
             for order in last_month_orders 
             for item in order.items.filter(vendor=vendor)
         )
@@ -173,6 +216,8 @@ def seller_payment_dashboard(request):
                 'total_orders': vendor_orders.count(),
                 'this_month_value': float(this_month_value),
                 'last_month_value': float(last_month_value),
+                'this_month_net_revenue': float(this_month_net_revenue),
+                'last_month_net_revenue': float(last_month_net_revenue),
                 'orders_by_status': [
                     {
                         'status': item['status'],

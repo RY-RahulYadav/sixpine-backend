@@ -298,6 +298,9 @@ class AdminProductListSerializer(serializers.ModelSerializer):
     is_on_sale = serializers.SerializerMethodField()
     discount_percentage = serializers.SerializerMethodField()
     
+    # Use first variant image for main_image
+    main_image = serializers.SerializerMethodField()
+    
     class Meta:
         model = Product
         fields = [
@@ -305,6 +308,14 @@ class AdminProductListSerializer(serializers.ModelSerializer):
             'is_on_sale', 'discount_percentage', 'is_featured', 'is_active',
             'variant_count', 'total_stock', 'order_count', 'variants', 'created_at', 'updated_at'
         ]
+    
+    def get_main_image(self, obj):
+        """Get image from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.image:
+            return first_variant.image
+        # Fallback to product main_image if no variant image
+        return obj.main_image
     
     def get_price(self, obj):
         """Get price from first active variant"""
