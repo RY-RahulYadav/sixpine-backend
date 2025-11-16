@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import GlobalSettings, AdminLog, AdminDashboardSetting, HomePageContent, BulkOrderPageContent
+from .models import GlobalSettings, AdminLog, AdminDashboardSetting, HomePageContent, BulkOrderPageContent, FAQPageContent, Advertisement
 
 
 @admin.register(GlobalSettings)
@@ -46,4 +46,24 @@ class BulkOrderPageContentAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'created_at', 'updated_at')
     search_fields = ('section_name', 'section_key')
     ordering = ('order', 'section_name')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(FAQPageContent)
+class FAQPageContentAdmin(admin.ModelAdmin):
+    """FAQ Page Content admin"""
+    list_display = ('section_name', 'section_key', 'is_active', 'order', 'updated_at')
+    list_filter = ('is_active', 'created_at', 'updated_at')
+    search_fields = ('section_name', 'section_key')
+    ordering = ('order', 'section_name')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(Advertisement)
+class AdvertisementAdmin(admin.ModelAdmin):
+    """Advertisement admin"""
+    list_display = ('title', 'discount_percentage', 'is_active', 'display_order', 'valid_from', 'valid_until', 'updated_at')
+    list_filter = ('is_active', 'created_at', 'updated_at')
+    search_fields = ('title', 'description', 'button_text')
+    ordering = ('display_order', '-created_at')
     readonly_fields = ('created_at', 'updated_at')

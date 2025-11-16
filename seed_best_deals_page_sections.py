@@ -33,12 +33,14 @@ def get_first_8_products():
     
     for idx, product in enumerate(products):
         discount = 0
-        original_price = float(product.price) if product.price else 0
+        # Get price from first active variant
+        first_variant = product.variants.filter(is_active=True).first()
+        original_price = float(first_variant.price) if first_variant and first_variant.price else 0
         sale_price = original_price
         
-        if product.old_price and product.price:
-            original_price = float(product.old_price)
-            sale_price = float(product.price)
+        if first_variant and first_variant.old_price and first_variant.price:
+            original_price = float(first_variant.old_price)
+            sale_price = float(first_variant.price)
             discount = int(((original_price - sale_price) / original_price) * 100)
         
         fallback_image = default_images[idx % len(default_images)]

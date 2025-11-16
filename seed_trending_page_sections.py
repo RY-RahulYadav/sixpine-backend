@@ -29,8 +29,11 @@ def get_first_4_products():
     
     for idx, product in enumerate(products):
         discount = 0
-        if product.old_price and product.price:
-            discount = int(((float(product.old_price) - float(product.price)) / float(product.old_price)) * 100)
+        # Get price from first active variant
+        first_variant = product.variants.filter(is_active=True).first()
+        first_variant_price = float(first_variant.price) if first_variant and first_variant.price else 0
+        if first_variant and first_variant.old_price and first_variant.price:
+            discount = int(((float(first_variant.old_price) - float(first_variant.price)) / float(first_variant.old_price)) * 100)
         
         fallback_image = default_images[idx % len(default_images)]
         product_image = product.main_image if product.main_image and product.main_image.strip() else fallback_image
@@ -41,7 +44,7 @@ def get_first_4_products():
             'productId': product.id,
             'productSlug': product_slug,
             'name': product.title,
-            'price': f"₹{int(product.price):,}",
+            'price': f"₹{int(first_variant_price):,}",
             'rating': float(product.average_rating) if product.average_rating else 4.0,
             'reviewCount': product.review_count or 0,
             'image': product_image,

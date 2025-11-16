@@ -101,16 +101,16 @@ class ProductOfferInline(admin.TabularInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = [
-        'title', 'category', 'subcategory', 'price', 'old_price', 'discount_percentage',
+        'title', 'category', 'subcategory',
         'average_rating', 'review_count', 'is_featured', 'is_active', 'created_at'
     ]
     list_filter = [
-        'category', 'subcategory', 'is_featured', 'is_active', 'is_on_sale',
+        'category', 'subcategory', 'is_featured', 'is_active',
         'assembly_required', 'created_at'
     ]
     search_fields = ['title', 'short_description', 'brand', 'material']
     prepopulated_fields = {'slug': ('title',)}
-    readonly_fields = ['discount_percentage', 'average_rating', 'review_count', 'created_at', 'updated_at']
+    readonly_fields = ['average_rating', 'review_count', 'created_at', 'updated_at']
     ordering = ['-created_at']
     
     fieldsets = (
@@ -120,8 +120,9 @@ class ProductAdmin(admin.ModelAdmin):
         ('Categorization', {
             'fields': ('category', 'subcategory', 'brand')
         }),
-        ('Pricing', {
-            'fields': ('price', 'old_price', 'is_on_sale', 'discount_percentage')
+        ('Note', {
+            'description': 'Pricing is now managed in Product Variants. Each variant has its own price and old_price.',
+            'fields': ()
         }),
         ('Product Details', {
             'fields': ('main_image', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required')

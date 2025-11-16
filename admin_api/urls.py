@@ -6,7 +6,7 @@ from .views import (
     AdminProductViewSet, AdminOrderViewSet, AdminDiscountViewSet,
     AdminCouponViewSet, payment_charges_settings, global_settings,
     AdminContactQueryViewSet, AdminBulkOrderViewSet, AdminLogViewSet,
-    AdminHomePageContentViewSet, AdminBulkOrderPageContentViewSet, AdminDataRequestViewSet,
+    AdminHomePageContentViewSet, AdminBulkOrderPageContentViewSet, AdminFAQPageContentViewSet, AdminAdvertisementViewSet, AdminDataRequestViewSet,
     AdminBrandViewSet, AdminMediaViewSet, AdminPackagingFeedbackViewSet
 )
 from .communication import get_customers_list, get_vendors_list, admin_send_email
@@ -27,6 +27,8 @@ router.register(r'bulk-orders', AdminBulkOrderViewSet, basename='admin-bulk-orde
 router.register(r'logs', AdminLogViewSet, basename='admin-logs')
 router.register(r'homepage-content', AdminHomePageContentViewSet, basename='admin-homepage-content')
 router.register(r'bulk-order-page-content', AdminBulkOrderPageContentViewSet, basename='admin-bulk-order-page-content')
+router.register(r'faq-page-content', AdminFAQPageContentViewSet, basename='admin-faq-page-content')
+router.register(r'advertisements', AdminAdvertisementViewSet, basename='admin-advertisements')
 router.register(r'data-requests', AdminDataRequestViewSet, basename='admin-data-requests')
 router.register(r'brands', AdminBrandViewSet, basename='admin-brands')
 router.register(r'media', AdminMediaViewSet, basename='admin-media')

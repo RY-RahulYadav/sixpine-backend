@@ -95,11 +95,7 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     
-    # Pricing
-    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    old_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
-    is_on_sale = models.BooleanField(default=False)
-    discount_percentage = models.PositiveIntegerField(default=0, validators=[MaxValueValidator(100)])
+    # Note: Pricing is now only in ProductVariant model, not in Product
     
     # Images
     # store an external or CDN URL to the product's main image
@@ -139,15 +135,6 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.title)
-        
-        # Calculate discount percentage
-        if self.old_price and self.old_price > self.price:
-            self.discount_percentage = int(((self.old_price - self.price) / self.old_price) * 100)
-            self.is_on_sale = True
-        else:
-            self.discount_percentage = 0
-            self.is_on_sale = False
-            
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -198,9 +185,10 @@ class ProductVariant(models.Model):
     # Variant title for display (e.g., "White 4-Door Modern")
     title = models.CharField(max_length=200, blank=True)
     
-    # Variant-specific pricing (optional, inherits from product if not set)
-    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    old_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # Variant-specific pricing (required - variants are the actual products)
+    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], help_text='Price is required for variants')
+    old_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    discount_percentage = models.PositiveIntegerField(default=0, validators=[MaxValueValidator(100)], help_text='Discount percentage calculated from old_price and price')
     
     # Stock management
     stock_quantity = models.PositiveIntegerField(default=0)
@@ -231,11 +219,15 @@ class ProductVariant(models.Model):
                 variant_parts.append(self.pattern)
             self.title = ' '.join(variant_parts) if variant_parts else ''
         
-        # Inherit pricing from product if not set
+        # Price is required - variants are the actual products
         if not self.price:
-            self.price = self.product.price
-        if not self.old_price:
-            self.old_price = self.product.old_price
+            raise ValueError("Price is required for ProductVariant. Variants are the actual products.")
+        
+        # Calculate discount percentage
+        if self.old_price and self.old_price > self.price:
+            self.discount_percentage = int(((self.old_price - self.price) / self.old_price) * 100)
+        else:
+            self.discount_percentage = 0
             
         # Update stock status
         self.is_in_stock = self.stock_quantity > 0
@@ -368,13 +360,25 @@ class Discount(models.Model):
 
 
 class Coupon(models.Model):
-    """Coupon codes for discounts - Vendor-specific"""
+    """Coupon codes for discounts"""
     DISCOUNT_TYPES = [
         ('percentage', 'Percentage'),
         ('fixed', 'Fixed Amount'),
     ]
     
+    COUPON_TYPES = [
+        ('sixpine', 'Sixpine Products Only - Reduces product prices'),
+        ('common', 'All Products (Common) - Reduces product prices'),
+        ('seller', 'Platform Fee & Tax Only - Does NOT reduce seller product prices'),
+    ]
+    
     code = models.CharField(max_length=50, db_index=True)
+    coupon_type = models.CharField(
+        max_length=20, 
+        choices=COUPON_TYPES, 
+        default='common',
+        help_text='Type of coupon: Sixpine products only, all products, or seller products (reduces only platform fee and tax)'
+    )
     vendor = models.ForeignKey('accounts.Vendor', on_delete=models.CASCADE, related_name='coupons', null=True, blank=True, help_text='Vendor who owns this coupon. If null, coupon applies to all products.')
     description = models.TextField(blank=True)
     discount_type = models.CharField(max_length=20, choices=DISCOUNT_TYPES, default='percentage')
@@ -397,9 +401,10 @@ class Coupon(models.Model):
         verbose_name_plural = "Coupons"
     
     def __str__(self):
+        coupon_type_label = dict(self.COUPON_TYPES).get(self.coupon_type, self.coupon_type)
         if self.vendor:
-            return f"{self.code} - {self.vendor.brand_name}"
-        return f"{self.code} - {self.discount_value}{'%' if self.discount_type == 'percentage' else '₹'}"
+            return f"{self.code} - {self.vendor.brand_name} ({coupon_type_label})"
+        return f"{self.code} - {self.discount_value}{'%' if self.discount_type == 'percentage' else '₹'} ({coupon_type_label})"
     
     def is_valid(self):
         """Check if coupon is currently valid"""
@@ -424,10 +429,17 @@ class Coupon(models.Model):
         
         return True, "Valid"
     
-    def calculate_discount(self, order_amount, vendor_products_amount=None):
+    def calculate_discount(self, order_amount, vendor_products_amount=None, platform_fee=None, tax_amount=None):
         """Calculate discount amount for given order amount
-        If vendor_products_amount is provided and coupon has a vendor, 
-        discount is calculated only on vendor's products amount.
+        
+        For seller coupons (coupon_type='seller'), discount is calculated only on 
+        platform fee and tax, not on product prices.
+        
+        Args:
+            order_amount: Total order amount
+            vendor_products_amount: Amount for vendor-specific products (if applicable)
+            platform_fee: Platform fee amount (required for seller coupons)
+            tax_amount: Tax amount (required for seller coupons)
         """
         from decimal import Decimal
         
@@ -435,6 +447,36 @@ class Coupon(models.Model):
         if not isinstance(order_amount, Decimal):
             order_amount = Decimal(str(order_amount))
         
+        # Seller coupons: discount ONLY on platform fee and tax (NOT on seller product prices)
+        if self.coupon_type == 'seller':
+            if platform_fee is None or tax_amount is None:
+                return Decimal('0'), "Platform fee and tax amounts are required for seller coupons"
+            
+            if not isinstance(platform_fee, Decimal):
+                platform_fee = Decimal(str(platform_fee))
+            if not isinstance(tax_amount, Decimal):
+                tax_amount = Decimal(str(tax_amount))
+            
+            # Check minimum order amount on total order
+            if order_amount < self.min_order_amount:
+                return Decimal('0'), f"Minimum order amount of ₹{self.min_order_amount} required"
+            
+            # Calculate discount on platform fee + tax ONLY (NOT on seller product prices)
+            applicable_amount = platform_fee + tax_amount
+            
+            if applicable_amount <= 0:
+                return Decimal('0'), "No platform fee or tax to discount"
+            
+            if self.discount_type == 'percentage':
+                discount = (applicable_amount * self.discount_value) / Decimal('100')
+                if self.max_discount_amount:
+                    discount = min(discount, self.max_discount_amount)
+            else:
+                discount = min(self.discount_value, applicable_amount)
+            
+            return discount, "Discount applied on platform fee and tax only (seller product prices unchanged)"
+        
+        # Sixpine and common coupons: discount on product prices
         # If coupon is vendor-specific, use vendor_products_amount if provided
         if self.vendor and vendor_products_amount is not None:
             if not isinstance(vendor_products_amount, Decimal):

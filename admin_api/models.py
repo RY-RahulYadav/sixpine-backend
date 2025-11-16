@@ -162,3 +162,109 @@ class BulkOrderPageContent(models.Model):
     
     def __str__(self):
         return f"{self.section_name} ({self.section_key})"
+
+
+class FAQPageContent(models.Model):
+    """FAQ page content sections for customization"""
+    section_key = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text='Unique identifier for the section'
+    )
+    section_name = models.CharField(
+        max_length=200,
+        help_text='Human-readable section name'
+    )
+    content = models.JSONField(
+        default=dict,
+        help_text='Section content as JSON'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Whether this section is visible on the FAQ page'
+    )
+    order = models.IntegerField(
+        default=0,
+        help_text='Display order on the page'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "FAQ Page Content"
+        verbose_name_plural = "FAQ Page Contents"
+        ordering = ['order', 'section_name']
+    
+    def __str__(self):
+        return f"{self.section_name} ({self.section_key})"
+
+
+class Advertisement(models.Model):
+    """Advertisement model for product detail pages"""
+    title = models.CharField(
+        max_length=200,
+        help_text='Advertisement title (e.g., "Special Offer: 20% Off")'
+    )
+    description = models.TextField(
+        blank=True,
+        help_text='Optional description text'
+    )
+    image = models.URLField(
+        max_length=500,
+        help_text='Advertisement image URL'
+    )
+    button_text = models.CharField(
+        max_length=50,
+        default='Check Now',
+        help_text='Button text (e.g., "Check Now", "Shop Now")'
+    )
+    button_link = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text='Button link URL (product slug or external URL)'
+    )
+    discount_percentage = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Discount percentage to display (e.g., 20 for 20% Off)'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Whether this advertisement is active'
+    )
+    display_order = models.IntegerField(
+        default=0,
+        help_text='Display order (lower numbers appear first)'
+    )
+    valid_from = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Advertisement start date/time'
+    )
+    valid_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Advertisement end date/time'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Advertisement"
+        verbose_name_plural = "Advertisements"
+        ordering = ['display_order', '-created_at']
+    
+    def __str__(self):
+        return f"{self.title} ({'Active' if self.is_active else 'Inactive'})"
+    
+    def is_valid(self):
+        """Check if advertisement is currently valid"""
+        if not self.is_active:
+            return False
+        from django.utils import timezone
+        now = timezone.now()
+        if self.valid_from and now < self.valid_from:
+            return False
+        if self.valid_until and now > self.valid_until:
+            return False
+        return True

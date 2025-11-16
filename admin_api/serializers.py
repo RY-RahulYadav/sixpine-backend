@@ -8,7 +8,7 @@ from products.models import (
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from accounts.models import ContactQuery, BulkOrder, DataRequest
-from .models import GlobalSettings, AdminLog, HomePageContent, BulkOrderPageContent
+from .models import GlobalSettings, AdminLog, HomePageContent, BulkOrderPageContent, FAQPageContent, Advertisement
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta
@@ -237,7 +237,7 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
         model = ProductVariant
         fields = [
             'id', 'title', 'color', 'color_id', 'size', 'pattern',
-            'price', 'old_price', 'stock_quantity', 'is_in_stock',
+            'price', 'old_price', 'discount_percentage', 'stock_quantity', 'is_in_stock',
             'image', 'images', 'is_active', 'created_at', 'updated_at'
         ]
 
@@ -292,6 +292,12 @@ class AdminProductListSerializer(serializers.ModelSerializer):
     order_count = serializers.SerializerMethodField()
     variants = serializers.SerializerMethodField()
     
+    # Price fields from first variant (for display purposes)
+    price = serializers.SerializerMethodField()
+    old_price = serializers.SerializerMethodField()
+    is_on_sale = serializers.SerializerMethodField()
+    discount_percentage = serializers.SerializerMethodField()
+    
     class Meta:
         model = Product
         fields = [
@@ -299,6 +305,34 @@ class AdminProductListSerializer(serializers.ModelSerializer):
             'is_on_sale', 'discount_percentage', 'is_featured', 'is_active',
             'variant_count', 'total_stock', 'order_count', 'variants', 'created_at', 'updated_at'
         ]
+    
+    def get_price(self, obj):
+        """Get price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.price:
+            return float(first_variant.price)
+        return None
+    
+    def get_old_price(self, obj):
+        """Get old_price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price:
+            return float(first_variant.old_price)
+        return None
+    
+    def get_is_on_sale(self, obj):
+        """Check if first variant is on sale"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price and first_variant.price:
+            return float(first_variant.old_price) > float(first_variant.price)
+        return False
+    
+    def get_discount_percentage(self, obj):
+        """Get discount percentage from first variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.discount_percentage:
+            return first_variant.discount_percentage
+        return 0
     
     def get_variant_count(self, obj):
         return obj.variants.count()
@@ -345,6 +379,13 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
     offers = AdminProductOfferSerializer(many=True, required=False)
     recommendations = AdminProductRecommendationSerializer(many=True, required=False)
     
+    # Note: price and old_price are not in Product model anymore - only in variants
+    # These fields are kept for backward compatibility but will be read-only
+    price = serializers.SerializerMethodField(read_only=True)
+    old_price = serializers.SerializerMethodField(read_only=True)
+    is_on_sale = serializers.SerializerMethodField(read_only=True)
+    discount_percentage = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = Product
         fields = [
@@ -358,6 +399,34 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             'features', 'offers', 'recommendations', 'average_rating', 'review_count',
             'created_at', 'updated_at'
         ]
+    
+    def get_price(self, obj):
+        """Get price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.price:
+            return float(first_variant.price)
+        return None
+    
+    def get_old_price(self, obj):
+        """Get old_price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price:
+            return float(first_variant.old_price)
+        return None
+    
+    def get_is_on_sale(self, obj):
+        """Check if first variant is on sale"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price and first_variant.price:
+            return float(first_variant.old_price) > float(first_variant.price)
+        return False
+    
+    def get_discount_percentage(self, obj):
+        """Get discount percentage from first variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.discount_percentage:
+            return first_variant.discount_percentage
+        return 0
     
     def create(self, validated_data):
         images_data = validated_data.pop('images', [])
@@ -1208,14 +1277,15 @@ class AdminCouponSerializer(serializers.ModelSerializer):
     is_valid_now = serializers.SerializerMethodField()
     remaining_uses = serializers.SerializerMethodField()
     vendor_name = serializers.SerializerMethodField()
+    coupon_type_display = serializers.CharField(source='get_coupon_type_display', read_only=True)
     
     class Meta:
         model = Coupon
         fields = [
-            'id', 'code', 'vendor', 'vendor_name', 'description', 'discount_type', 'discount_value',
-            'min_order_amount', 'max_discount_amount', 'valid_from', 'valid_until',
-            'is_active', 'usage_limit', 'used_count', 'one_time_use_per_user',
-            'is_valid_now', 'remaining_uses', 'created_at', 'updated_at'
+            'id', 'code', 'coupon_type', 'coupon_type_display', 'vendor', 'vendor_name', 'description', 
+            'discount_type', 'discount_value', 'min_order_amount', 'max_discount_amount', 
+            'valid_from', 'valid_until', 'is_active', 'usage_limit', 'used_count', 
+            'one_time_use_per_user', 'is_valid_now', 'remaining_uses', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at', 'used_count']
     
@@ -1229,6 +1299,15 @@ class AdminCouponSerializer(serializers.ModelSerializer):
         if obj.usage_limit:
             return obj.usage_limit - obj.used_count
         return None
+    
+    def validate_coupon_type(self, value):
+        """Prevent admins from creating 'common' coupons that reduce seller product prices"""
+        if value == 'common':
+            raise serializers.ValidationError(
+                "Admin cannot create 'common' coupons that reduce prices of other sellers' products. "
+                "Use 'sixpine' for Sixpine products only or 'seller' for platform fee & tax only."
+            )
+        return value
 
 
 # ==================== Home Page Content Serializers ====================
@@ -1264,6 +1343,41 @@ class BulkOrderPageContentSerializer(serializers.ModelSerializer):
         if not isinstance(value, dict):
             raise serializers.ValidationError("Content must be a JSON object")
         return value
+
+
+class FAQPageContentSerializer(serializers.ModelSerializer):
+    """Serializer for FAQ page content sections"""
+    class Meta:
+        model = FAQPageContent
+        fields = [
+            'id', 'section_key', 'section_name', 'content',
+            'is_active', 'order', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate_content(self, value):
+        """Validate that content is a dict"""
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Content must be a JSON object")
+        return value
+
+
+class AdvertisementSerializer(serializers.ModelSerializer):
+    """Serializer for advertisements"""
+    is_valid_now = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Advertisement
+        fields = [
+            'id', 'title', 'description', 'image', 'button_text', 'button_link',
+            'discount_percentage', 'is_active', 'display_order',
+            'valid_from', 'valid_until', 'is_valid_now', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_is_valid_now(self, obj):
+        """Check if advertisement is currently valid"""
+        return obj.is_valid()
 
 
 class AdminDataRequestSerializer(serializers.ModelSerializer):

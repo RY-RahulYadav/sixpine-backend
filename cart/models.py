@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from products.models import Product, ProductVariant
 from django.core.validators import MinValueValidator
+from decimal import Decimal
 
 
 class Cart(models.Model):
@@ -42,8 +43,17 @@ class CartItem(models.Model):
 
     @property
     def total_price(self):
-        # Use variant price if available, otherwise product price
-        price = self.variant.price if self.variant and self.variant.price else self.product.price
+        # Use variant price if available, otherwise get from first active variant
+        if self.variant and self.variant.price:
+            price = self.variant.price
+        else:
+            # Fallback: get price from first active variant
+            first_variant = self.product.variants.filter(is_active=True).first()
+            if first_variant and first_variant.price:
+                price = first_variant.price
+            else:
+                # If no variant found, return 0 (shouldn't happen in normal flow)
+                return Decimal('0.00')
         return self.quantity * price
 
     def save(self, *args, **kwargs):

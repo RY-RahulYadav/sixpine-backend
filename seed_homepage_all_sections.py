@@ -31,14 +31,29 @@ def get_first_6_products():
     ]
     
     for idx, product in enumerate(products):
-        # Calculate discount percentage
-        discount = 0
-        if product.old_price and product.price:
-            discount = int(((float(product.old_price) - float(product.price)) / float(product.old_price)) * 100)
+        # Get first active variant for price and image
+        first_variant = product.variants.filter(is_active=True).first()
         
-        # Use product image if available, otherwise use default image from list
+        # Calculate discount percentage from variant
+        discount = 0
+        variant_price = None
+        variant_old_price = None
+        
+        if first_variant:
+            variant_price = float(first_variant.price) if first_variant.price else None
+            variant_old_price = float(first_variant.old_price) if first_variant.old_price else None
+            if variant_old_price and variant_price and variant_old_price > variant_price:
+                discount = int(((variant_old_price - variant_price) / variant_old_price) * 100)
+            elif first_variant.discount_percentage:
+                discount = first_variant.discount_percentage
+        
+        # Use variant image if available, then product main_image, otherwise use default image from list
         fallback_image = default_images[idx % len(default_images)]
-        product_image = product.main_image if product.main_image and product.main_image.strip() else fallback_image
+        product_image = fallback_image
+        if first_variant and first_variant.image:
+            product_image = first_variant.image
+        elif product.main_image and product.main_image.strip():
+            product_image = product.main_image
         
         # Get variant count
         variant_count = product.variants.filter(is_active=True).count()
@@ -56,9 +71,9 @@ def get_first_6_products():
             'desc': (product.short_description[:100] if product.short_description else ''),
             'rating': float(product.average_rating) if product.average_rating else 4.0,
             'reviews': product.review_count or 0,
-            'price': f"₹{int(product.price):,}",
-            'oldPrice': f"₹{int(product.old_price):,}" if product.old_price else None,
-            'newPrice': f"₹{int(product.price):,}",
+            'price': f"₹{int(variant_price):,}" if variant_price else "₹0",
+            'oldPrice': f"₹{int(variant_old_price):,}" if variant_old_price else None,
+            'newPrice': f"₹{int(variant_price):,}" if variant_price else "₹0",
             'discount': f"{discount}% off" if discount > 0 else None,
             'variant_count': variant_count,
             'variantCount': variant_count,

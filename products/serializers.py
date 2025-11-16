@@ -54,7 +54,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         model = ProductVariant
         fields = [
             'id', 'title', 'color', 'color_id', 'size', 'pattern', 'price', 'old_price',
-            'stock_quantity', 'is_in_stock', 'image', 'images'
+            'discount_percentage', 'stock_quantity', 'is_in_stock', 'image', 'images'
         ]
 
 
@@ -97,6 +97,15 @@ class ProductListSerializer(serializers.ModelSerializer):
     review_count = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
     
+    # Price fields from first variant (for display purposes)
+    price = serializers.SerializerMethodField()
+    old_price = serializers.SerializerMethodField()
+    is_on_sale = serializers.SerializerMethodField()
+    discount_percentage = serializers.SerializerMethodField()
+    
+    # Use first variant image for main_image
+    main_image = serializers.SerializerMethodField()
+    
     class Meta:
         model = Product
         fields = [
@@ -106,6 +115,42 @@ class ProductListSerializer(serializers.ModelSerializer):
             'brand', 'material', 'images', 'variants', 'available_colors',
             'variant_count', 'is_featured', 'created_at'
         ]
+    
+    def get_main_image(self, obj):
+        """Get image from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.image:
+            return first_variant.image
+        # Fallback to product main_image if no variant image
+        return obj.main_image
+    
+    def get_price(self, obj):
+        """Get price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.price:
+            return float(first_variant.price)
+        return None
+    
+    def get_old_price(self, obj):
+        """Get old_price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price:
+            return float(first_variant.old_price)
+        return None
+    
+    def get_is_on_sale(self, obj):
+        """Check if first variant is on sale"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price and first_variant.price:
+            return float(first_variant.old_price) > float(first_variant.price)
+        return False
+    
+    def get_discount_percentage(self, obj):
+        """Get discount percentage from first variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.discount_percentage:
+            return first_variant.discount_percentage
+        return 0
     
     def get_available_colors(self, obj):
         """Get unique colors available for this product"""
@@ -157,6 +202,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     average_rating = serializers.SerializerMethodField()
     review_percentages = serializers.SerializerMethodField()
     
+    # Price fields from first variant (for display purposes)
+    price = serializers.SerializerMethodField()
+    old_price = serializers.SerializerMethodField()
+    is_on_sale = serializers.SerializerMethodField()
+    discount_percentage = serializers.SerializerMethodField()
+    
     class Meta:
         model = Product
         fields = [
@@ -171,6 +222,34 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'available_colors', 'available_sizes', 'available_patterns',
             'meta_title', 'meta_description', 'is_featured', 'created_at', 'updated_at'
         ]
+    
+    def get_price(self, obj):
+        """Get price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.price:
+            return float(first_variant.price)
+        return None
+    
+    def get_old_price(self, obj):
+        """Get old_price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price:
+            return float(first_variant.old_price)
+        return None
+    
+    def get_is_on_sale(self, obj):
+        """Check if first variant is on sale"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price and first_variant.price:
+            return float(first_variant.old_price) > float(first_variant.price)
+        return False
+    
+    def get_discount_percentage(self, obj):
+        """Get discount percentage from first variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.discount_percentage:
+            return first_variant.discount_percentage
+        return 0
     
     def get_buy_with_products(self, obj):
         """Get 'Buy with it' recommended products"""
@@ -297,6 +376,12 @@ class ProductSearchSerializer(serializers.ModelSerializer):
     category = serializers.CharField(source='category.name', read_only=True)
     subcategory = serializers.CharField(source='subcategory.name', read_only=True)
     
+    # Price fields from first variant (for display purposes)
+    price = serializers.SerializerMethodField()
+    old_price = serializers.SerializerMethodField()
+    is_on_sale = serializers.SerializerMethodField()
+    discount_percentage = serializers.SerializerMethodField()
+    
     class Meta:
         model = Product
         fields = [
@@ -304,6 +389,34 @@ class ProductSearchSerializer(serializers.ModelSerializer):
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'average_rating', 'review_count', 'category', 'subcategory', 'brand'
         ]
+    
+    def get_price(self, obj):
+        """Get price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.price:
+            return float(first_variant.price)
+        return None
+    
+    def get_old_price(self, obj):
+        """Get old_price from first active variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price:
+            return float(first_variant.old_price)
+        return None
+    
+    def get_is_on_sale(self, obj):
+        """Check if first variant is on sale"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.old_price and first_variant.price:
+            return float(first_variant.old_price) > float(first_variant.price)
+        return False
+    
+    def get_discount_percentage(self, obj):
+        """Get discount percentage from first variant"""
+        first_variant = obj.variants.filter(is_active=True).first()
+        if first_variant and first_variant.discount_percentage:
+            return first_variant.discount_percentage
+        return 0
 
 
 class ProductFilterSerializer(serializers.Serializer):

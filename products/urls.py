@@ -27,6 +27,8 @@ urlpatterns = [
     path('home-data/', views.get_home_data, name='home-data'),
     path('homepage-content/', views.get_homepage_content, name='homepage-content'),
     path('bulk-order-page-content/', views.get_bulk_order_page_content, name='bulk-order-page-content'),
+    path('faq-page-content/', views.get_faq_page_content, name='faq-page-content'),
+    path('advertisements/', views.get_active_advertisements, name='active-advertisements'),
     
     # Product reviews
     path('products/<slug:slug>/reviews/', views.ProductReviewListView.as_view(), name='product-reviews'),

@@ -10,7 +10,7 @@ from decimal import Decimal
 import os
 
 from .permissions import IsAdminUser, IsAdminOrReadOnly
-from .models import GlobalSettings, HomePageContent, BulkOrderPageContent
+from .models import GlobalSettings, HomePageContent, BulkOrderPageContent, FAQPageContent, Advertisement
 from .serializers import (
     DashboardStatsSerializer, AdminUserListSerializer, AdminUserDetailSerializer,
     AdminUserCreateSerializer, AdminUserUpdateSerializer, AdminCategorySerializer,
@@ -19,7 +19,7 @@ from .serializers import (
     AdminOrderListSerializer, AdminOrderDetailSerializer, AdminDiscountSerializer,
     PaymentChargeSerializer, GlobalSettingsSerializer,
     AdminContactQuerySerializer, AdminBulkOrderSerializer, AdminLogSerializer,
-    AdminCouponSerializer, HomePageContentSerializer, BulkOrderPageContentSerializer,
+    AdminCouponSerializer, HomePageContentSerializer, BulkOrderPageContentSerializer, FAQPageContentSerializer, AdvertisementSerializer,
     AdminDataRequestSerializer, AdminBrandSerializer, AdminBrandDetailSerializer,
     SellerOrderListSerializer, AdminMediaSerializer, AdminPackagingFeedbackSerializer
 )
@@ -1532,6 +1532,115 @@ class AdminBulkOrderPageContentViewSet(AdminLoggingMixin, viewsets.ModelViewSet)
             object_id=instance.id,
             object_repr=str(instance),
             details={'section_key': instance.section_key}
+        )
+        instance.delete()
+
+
+# ==================== FAQ Page Content Views ====================
+class AdminFAQPageContentViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
+    """Admin viewset for managing FAQ page content sections"""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    queryset = FAQPageContent.objects.all()
+    serializer_class = FAQPageContentSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        section_key = self.request.query_params.get('section_key', None)
+        is_active = self.request.query_params.get('is_active', None)
+        
+        if section_key:
+            queryset = queryset.filter(section_key=section_key)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        return queryset.order_by('order', 'section_name')
+    
+    def perform_create(self, serializer):
+        """Create with logging"""
+        instance = serializer.save()
+        create_admin_log(
+            request=self.request,
+            action_type='create',
+            model_name='FAQPageContent',
+            object_id=instance.id,
+            object_repr=str(instance),
+            details={'section_key': instance.section_key}
+        )
+    
+    def perform_update(self, serializer):
+        """Update with logging"""
+        instance = serializer.save()
+        create_admin_log(
+            request=self.request,
+            action_type='update',
+            model_name='FAQPageContent',
+            object_id=instance.id,
+            object_repr=str(instance),
+            details={'section_key': instance.section_key}
+        )
+    
+    def perform_destroy(self, instance):
+        """Delete with logging"""
+        create_admin_log(
+            request=self.request,
+            action_type='delete',
+            model_name='FAQPageContent',
+            object_id=instance.id,
+            object_repr=str(instance),
+            details={'section_key': instance.section_key}
+        )
+        instance.delete()
+
+
+# ==================== Advertisement Views ====================
+class AdminAdvertisementViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
+    """Admin viewset for managing advertisements"""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    queryset = Advertisement.objects.all()
+    serializer_class = AdvertisementSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        is_active = self.request.query_params.get('is_active', None)
+        
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        return queryset.order_by('display_order', '-created_at')
+    
+    def perform_create(self, serializer):
+        """Create with logging"""
+        instance = serializer.save()
+        create_admin_log(
+            request=self.request,
+            action_type='create',
+            model_name='Advertisement',
+            object_id=instance.id,
+            object_repr=str(instance),
+            details={'title': instance.title}
+        )
+    
+    def perform_update(self, serializer):
+        """Update with logging"""
+        instance = serializer.save()
+        create_admin_log(
+            request=self.request,
+            action_type='update',
+            model_name='Advertisement',
+            object_id=instance.id,
+            object_repr=str(instance),
+            details={'title': instance.title}
+        )
+    
+    def perform_destroy(self, instance):
+        """Delete with logging"""
+        create_admin_log(
+            request=self.request,
+            action_type='delete',
+            model_name='Advertisement',
+            object_id=instance.id,
+            object_repr=str(instance),
+            details={'title': instance.title}
         )
         instance.delete()
 

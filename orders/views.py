@@ -3,6 +3,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django.http import HttpResponse
+from io import BytesIO
+from xhtml2pdf import pisa
 import razorpay
 import hmac
 import hashlib
@@ -508,13 +511,25 @@ def verify_razorpay_payment(request):
         if not cart.items.exists():
             return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Helper function to get price from cart item
+        def get_cart_item_price(cart_item):
+            """Get price from variant, or first active variant if no variant selected"""
+            if cart_item.variant and cart_item.variant.price:
+                return cart_item.variant.price
+            # Fallback: get price from first active variant
+            first_variant = cart_item.product.variants.filter(is_active=True).first()
+            if first_variant and first_variant.price:
+                return first_variant.price
+            raise ValueError(f'Product {cart_item.product.title} has no valid price')
+        
         # Calculate totals
         subtotal = Decimal('0.00')
         for cart_item in cart.items.all():
-            price = cart_item.product.price
-            if cart_item.variant and cart_item.variant.price:
-                price = cart_item.variant.price
-            subtotal += price * cart_item.quantity
+            try:
+                price = get_cart_item_price(cart_item)
+                subtotal += price * cart_item.quantity
+            except ValueError as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         # Handle coupon if provided
         coupon = None
@@ -529,10 +544,11 @@ def verify_razorpay_payment(request):
                         vendor_subtotal = Decimal('0.00')
                         for cart_item in cart.items.all():
                             if cart_item.product.vendor and cart_item.product.vendor.id == coupon.vendor.id:
-                                price = cart_item.product.price
-                                if cart_item.variant and cart_item.variant.price:
-                                    price = cart_item.variant.price
-                                vendor_subtotal += price * cart_item.quantity
+                                try:
+                                    price = get_cart_item_price(cart_item)
+                                    vendor_subtotal += price * cart_item.quantity
+                                except ValueError:
+                                    continue  # Skip if no valid price
                         discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
                     else:
                         discount_amount, _ = coupon.calculate_discount(subtotal)
@@ -570,20 +586,25 @@ def verify_razorpay_payment(request):
             from orders.models import OrderItem
             from products.models import ProductVariant
             
-            # Get price from variant if available, otherwise from product
-            price = cart_item.product.price
-            if cart_item.variant and cart_item.variant.price:
-                price = cart_item.variant.price
+            # Get price and variant (use selected variant or first active variant)
+            try:
+                price = get_cart_item_price(cart_item)
+                # Use selected variant if available, otherwise get first active variant
+                variant = cart_item.variant
+                if not variant:
+                    variant = cart_item.product.variants.filter(is_active=True).first()
+            except ValueError as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
             
             OrderItem.objects.create(
                 order=order,
                 product=cart_item.product,
-                variant=cart_item.variant,
+                variant=variant,  # Use the correct variant (selected or first active)
                 quantity=cart_item.quantity,
                 price=price,
-                variant_color=cart_item.variant.color.name if cart_item.variant else '',
-                variant_size=cart_item.variant.size if cart_item.variant else '',
-                variant_pattern=cart_item.variant.pattern if cart_item.variant else ''
+                variant_color=variant.color.name if variant else '',
+                variant_size=variant.size if variant else '',
+                variant_pattern=variant.pattern if variant else ''
             )
         
         # Create status history
@@ -624,49 +645,25 @@ def verify_razorpay_payment(request):
             'quantity': cart_item.quantity
         })
     
+    # Helper function to get price from cart item
+    def get_cart_item_price(cart_item):
+        """Get price from variant, or first active variant if no variant selected"""
+        if cart_item.variant and cart_item.variant.price:
+            return cart_item.variant.price
+        # Fallback: get price from first active variant
+        first_variant = cart_item.product.variants.filter(is_active=True).first()
+        if first_variant and first_variant.price:
+            return first_variant.price
+        raise ValueError(f'Product {cart_item.product.title} has no valid price')
+    
     # Calculate totals
     subtotal = Decimal('0.00')
     for cart_item in cart.items.all():
-        price = cart_item.product.price
-        if cart_item.variant and cart_item.variant.price:
-            price = cart_item.variant.price
-        subtotal += price * cart_item.quantity
-    
-    # Handle coupon if provided
-    coupon = None
-    coupon_discount = Decimal('0.00')
-    if coupon_id:
         try:
-            coupon = Coupon.objects.get(id=coupon_id)
-            can_use, message = coupon.can_be_used_by_user(request.user)
-            if can_use:
-                # If coupon is vendor-specific, calculate discount only on vendor's products
-                if coupon.vendor:
-                    vendor_subtotal = Decimal('0.00')
-                    for cart_item in cart.items.all():
-                        if cart_item.product.vendor and cart_item.product.vendor.id == coupon.vendor.id:
-                            price = cart_item.product.price
-                            if cart_item.variant and cart_item.variant.price:
-                                price = cart_item.variant.price
-                            vendor_subtotal += price * cart_item.quantity
-                    
-                    if vendor_subtotal == 0:
-                        return Response({
-                            'error': f'This coupon applies only to products from {coupon.vendor.brand_name}. Please add products from this vendor to your cart.'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                    
-                    discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
-                else:
-                    discount_amount, _ = coupon.calculate_discount(subtotal)
-                
-                coupon_discount = Decimal(str(discount_amount))
-                # Update coupon usage
-                coupon.used_count += 1
-                coupon.save()
-            else:
-                return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
-        except Coupon.DoesNotExist:
-            return Response({'error': 'Invalid coupon'}, status=status.HTTP_400_BAD_REQUEST)
+            price = get_cart_item_price(cart_item)
+            subtotal += price * cart_item.quantity
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     # Map payment method to internal format for platform fee calculation
     # Use payment_method_from_request (from frontend: CC, NB, UPI, etc.) for calculation
@@ -678,15 +675,77 @@ def verify_razorpay_payment(request):
         # Default to CC (Card) if not specified
         payment_method_for_calc = 'CC'
     
-    # Calculate totals with platform fee (after coupon discount)
-    # Platform fee is calculated based on payment method (CC = 2.36%, UPI = 0%, etc.)
-    subtotal_after_discount = subtotal - coupon_discount
-    totals = calculate_order_totals(subtotal_after_discount, payment_method_for_calc)
+    # Calculate initial totals (before coupon discount)
+    initial_totals = calculate_order_totals(subtotal, payment_method_for_calc)
+    
+    # Handle coupon if provided
+    coupon = None
+    coupon_discount = Decimal('0.00')
+    if coupon_id:
+        try:
+            coupon = Coupon.objects.get(id=coupon_id)
+            can_use, message = coupon.can_be_used_by_user(request.user)
+            if can_use:
+                # Seller coupons: discount on platform fee and tax only
+                if coupon.coupon_type == 'seller':
+                    discount_amount, discount_message = coupon.calculate_discount(
+                        subtotal,
+                        platform_fee=initial_totals['platform_fee'],
+                        tax_amount=initial_totals['tax_amount']
+                    )
+                    coupon_discount = Decimal(str(discount_amount))
+                    # For seller coupons, discount is applied to total, not subtotal
+                    totals = {
+                        'subtotal': subtotal,  # Subtotal remains unchanged
+                        'platform_fee': initial_totals['platform_fee'],
+                        'tax_amount': initial_totals['tax_amount'],
+                        'shipping_cost': initial_totals['shipping_cost'],
+                        'total_amount': subtotal + initial_totals['platform_fee'] + initial_totals['tax_amount'] - coupon_discount
+                    }
+                else:
+                    # Sixpine and common coupons: discount on product prices
+                    if coupon.vendor:
+                        vendor_subtotal = Decimal('0.00')
+                        for cart_item in cart.items.all():
+                            if cart_item.product.vendor and cart_item.product.vendor.id == coupon.vendor.id:
+                                try:
+                                    price = get_cart_item_price(cart_item)
+                                    vendor_subtotal += price * cart_item.quantity
+                                except ValueError:
+                                    continue  # Skip if no valid price
+                        
+                        if vendor_subtotal == 0:
+                            return Response({
+                                'error': f'This coupon applies only to products from {coupon.vendor.brand_name}. Please add products from this vendor to your cart.'
+                            }, status=status.HTTP_400_BAD_REQUEST)
+                        
+                        discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
+                    else:
+                        discount_amount, _ = coupon.calculate_discount(subtotal)
+                    
+                    coupon_discount = Decimal(str(discount_amount))
+                    # Calculate totals with platform fee (after coupon discount on subtotal)
+                    subtotal_after_discount = subtotal - coupon_discount
+                    totals = calculate_order_totals(subtotal_after_discount, payment_method_for_calc)
+                
+                # Update coupon usage
+                coupon.used_count += 1
+                coupon.save()
+            else:
+                return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+        except Coupon.DoesNotExist:
+            return Response({'error': 'Invalid coupon'}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        # No coupon: use initial totals
+        totals = initial_totals
     
     print(f'[PLATFORM_FEE] Calculation for order:')
     print(f'[PLATFORM_FEE]    - Payment Method (from request): {payment_method_from_request}')
     print(f'[PLATFORM_FEE]    - Payment Method (for calc): {payment_method_for_calc}')
-    print(f'[PLATFORM_FEE]    - Subtotal after discount: {subtotal_after_discount}')
+    print(f'[PLATFORM_FEE]    - Subtotal: {subtotal}')
+    if coupon:
+        print(f'[PLATFORM_FEE]    - Coupon Type: {coupon.coupon_type}')
+        print(f'[PLATFORM_FEE]    - Coupon Discount: {coupon_discount}')
     print(f'[PLATFORM_FEE]    - Platform Fee: {totals["platform_fee"]}')
     print(f'[PLATFORM_FEE]    - Tax: {totals["tax_amount"]}')
     print(f'[PLATFORM_FEE]    - Total: {totals["total_amount"]}')
@@ -715,10 +774,15 @@ def verify_razorpay_payment(request):
         from orders.models import OrderItem
         from products.models import ProductVariant
         
-        # Get price from variant if available, otherwise from product
-        price = cart_item.product.price
-        if cart_item.variant and cart_item.variant.price:
-            price = cart_item.variant.price
+        # Get price and variant (use selected variant or first active variant)
+        try:
+            price = get_cart_item_price(cart_item)
+            # Use selected variant if available, otherwise get first active variant
+            variant = cart_item.variant
+            if not variant:
+                variant = cart_item.product.variants.filter(is_active=True).first()
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         # Get vendor from product
         vendor = cart_item.product.vendor if hasattr(cart_item.product, 'vendor') else None
@@ -727,20 +791,20 @@ def verify_razorpay_payment(request):
         OrderItem.objects.create(
             order=order,
             product=cart_item.product,
-            variant=cart_item.variant,
+            variant=variant,  # Use the correct variant (selected or first active)
             vendor=vendor,
             quantity=cart_item.quantity,
             price=price,
-            variant_color=cart_item.variant.color.name if cart_item.variant else '',
-            variant_size=cart_item.variant.size if cart_item.variant else '',
-            variant_pattern=cart_item.variant.pattern if cart_item.variant else ''
+            variant_color=variant.color.name if variant else '',
+            variant_size=variant.size if variant else '',
+            variant_pattern=variant.pattern if variant else ''
         )
         
         # Update variant stock if variant exists
-        if cart_item.variant:
-            cart_item.variant.stock_quantity -= cart_item.quantity
-            cart_item.variant.is_in_stock = cart_item.variant.stock_quantity > 0
-            cart_item.variant.save()
+        if variant:
+            variant.stock_quantity -= cart_item.quantity
+            variant.is_in_stock = variant.stock_quantity > 0
+            variant.save()
     
     # Fetch payment details to get token_id and customer_id if card was saved
     saved_card_info = None
@@ -1123,8 +1187,23 @@ def validate_coupon(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
     
-    # Calculate discount (on vendor products if vendor-specific, otherwise on total)
-    discount_amount, discount_message = coupon.calculate_discount(order_amount, vendor_products_amount)
+    # For seller coupons, we need platform fee and tax to calculate discount
+    from .utils import calculate_order_totals
+    
+    # Calculate initial totals to get platform fee and tax
+    initial_totals = calculate_order_totals(order_amount, 'CC')  # Default to CC for validation
+    
+    # Calculate discount based on coupon type
+    if coupon.coupon_type == 'seller':
+        # Seller coupons: discount on platform fee and tax only
+        discount_amount, discount_message = coupon.calculate_discount(
+            order_amount,
+            platform_fee=initial_totals['platform_fee'],
+            tax_amount=initial_totals['tax_amount']
+        )
+    else:
+        # Sixpine and common coupons: discount on product prices
+        discount_amount, discount_message = coupon.calculate_discount(order_amount, vendor_products_amount)
     
     # Convert Decimal to float for JSON response
     discount_amount = float(discount_amount)
@@ -1210,13 +1289,28 @@ def checkout_with_cod(request):
     if not cart.items.exists():
         return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
     
+    # Helper function to get price from cart item
+    def get_cart_item_price(cart_item):
+        """Get price from variant, or first active variant if no variant selected"""
+        if cart_item.variant and cart_item.variant.price:
+            return cart_item.variant.price
+        # Fallback: get price from first active variant
+        first_variant = cart_item.product.variants.filter(is_active=True).first()
+        if first_variant and first_variant.price:
+            return first_variant.price
+        raise ValueError(f'Product {cart_item.product.title} has no valid price')
+    
     # Calculate totals
     subtotal = Decimal('0.00')
     for cart_item in cart.items.all():
-        price = cart_item.product.price
-        if cart_item.variant and cart_item.variant.price:
-            price = cart_item.variant.price
-        subtotal += price * cart_item.quantity
+        try:
+            price = get_cart_item_price(cart_item)
+            subtotal += price * cart_item.quantity
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Calculate initial totals (before coupon discount)
+    initial_totals = calculate_order_totals(subtotal, 'COD')
     
     # Handle coupon if provided
     coupon = None
@@ -1226,26 +1320,48 @@ def checkout_with_cod(request):
             coupon = Coupon.objects.get(id=coupon_id)
             can_use, message = coupon.can_be_used_by_user(request.user)
             if can_use:
-                # If coupon is vendor-specific, calculate discount only on vendor's products
-                if coupon.vendor:
-                    vendor_subtotal = Decimal('0.00')
-                    for cart_item in cart.items.all():
-                        if cart_item.product.vendor and cart_item.product.vendor.id == coupon.vendor.id:
-                            price = cart_item.product.price
-                            if cart_item.variant and cart_item.variant.price:
-                                price = cart_item.variant.price
-                            vendor_subtotal += price * cart_item.quantity
-                    
-                    if vendor_subtotal == 0:
-                        return Response({
-                            'error': f'This coupon applies only to products from {coupon.vendor.brand_name}. Please add products from this vendor to your cart.'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                    
-                    discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
+                # Seller coupons: discount on platform fee and tax only
+                if coupon.coupon_type == 'seller':
+                    discount_amount, discount_message = coupon.calculate_discount(
+                        subtotal,
+                        platform_fee=initial_totals['platform_fee'],
+                        tax_amount=initial_totals['tax_amount']
+                    )
+                    coupon_discount = Decimal(str(discount_amount))
+                    # For seller coupons, discount is applied to total, not subtotal
+                    totals = {
+                        'subtotal': subtotal,  # Subtotal remains unchanged
+                        'platform_fee': initial_totals['platform_fee'],
+                        'tax_amount': initial_totals['tax_amount'],
+                        'shipping_cost': initial_totals['shipping_cost'],
+                        'total_amount': subtotal + initial_totals['platform_fee'] + initial_totals['tax_amount'] - coupon_discount
+                    }
                 else:
-                    discount_amount, _ = coupon.calculate_discount(subtotal)
+                    # Sixpine and common coupons: discount on product prices
+                    if coupon.vendor:
+                        vendor_subtotal = Decimal('0.00')
+                        for cart_item in cart.items.all():
+                            if cart_item.product.vendor and cart_item.product.vendor.id == coupon.vendor.id:
+                                try:
+                                    price = get_cart_item_price(cart_item)
+                                    vendor_subtotal += price * cart_item.quantity
+                                except ValueError:
+                                    continue  # Skip if no valid price
+                        
+                        if vendor_subtotal == 0:
+                            return Response({
+                                'error': f'This coupon applies only to products from {coupon.vendor.brand_name}. Please add products from this vendor to your cart.'
+                            }, status=status.HTTP_400_BAD_REQUEST)
+                        
+                        discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
+                    else:
+                        discount_amount, _ = coupon.calculate_discount(subtotal)
+                    
+                    coupon_discount = Decimal(str(discount_amount))
+                    # Calculate totals with platform fee (after coupon discount on subtotal)
+                    subtotal_after_discount = subtotal - coupon_discount
+                    totals = calculate_order_totals(subtotal_after_discount, 'COD')
                 
-                coupon_discount = Decimal(str(discount_amount))
                 # Update coupon usage
                 coupon.used_count += 1
                 coupon.save()
@@ -1253,10 +1369,9 @@ def checkout_with_cod(request):
                 return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
         except Coupon.DoesNotExist:
             return Response({'error': 'Invalid coupon'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Calculate totals with platform fee (after coupon discount)
-    subtotal_after_discount = subtotal - coupon_discount
-    totals = calculate_order_totals(subtotal_after_discount, 'COD')
+    else:
+        # No coupon: use initial totals
+        totals = initial_totals
     
     # Create order
     order = Order.objects.create(
@@ -1280,10 +1395,15 @@ def checkout_with_cod(request):
         from orders.models import OrderItem
         from products.models import ProductVariant
         
-        # Get price from variant if available, otherwise from product
-        price = cart_item.product.price
-        if cart_item.variant and cart_item.variant.price:
-            price = cart_item.variant.price
+        # Get price and variant (use selected variant or first active variant)
+        try:
+            price = get_cart_item_price(cart_item)
+            # Use selected variant if available, otherwise get first active variant
+            variant = cart_item.variant
+            if not variant:
+                variant = cart_item.product.variants.filter(is_active=True).first()
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         # Get vendor from product
         vendor = cart_item.product.vendor if hasattr(cart_item.product, 'vendor') else None
@@ -1292,20 +1412,20 @@ def checkout_with_cod(request):
         OrderItem.objects.create(
             order=order,
             product=cart_item.product,
-            variant=cart_item.variant,
+            variant=variant,  # Use the correct variant (selected or first active)
             vendor=vendor,
             quantity=cart_item.quantity,
             price=price,
-            variant_color=cart_item.variant.color.name if cart_item.variant else '',
-            variant_size=cart_item.variant.size if cart_item.variant else '',
-            variant_pattern=cart_item.variant.pattern if cart_item.variant else ''
+            variant_color=variant.color.name if variant else '',
+            variant_size=variant.size if variant else '',
+            variant_pattern=variant.pattern if variant else ''
         )
         
         # Update variant stock if variant exists
-        if cart_item.variant:
-            cart_item.variant.stock_quantity -= cart_item.quantity
-            cart_item.variant.is_in_stock = cart_item.variant.stock_quantity > 0
-            cart_item.variant.save()
+        if variant:
+            variant.stock_quantity -= cart_item.quantity
+            variant.is_in_stock = variant.stock_quantity > 0
+            variant.save()
     
     # Create initial status history
     OrderStatusHistory.objects.create(
@@ -1324,3 +1444,296 @@ def checkout_with_cod(request):
         'message': 'Order created successfully',
         'order': OrderDetailSerializer(order, context={'request': request}).data
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def download_invoice(request, order_id):
+    """Generate and download invoice PDF for an order"""
+    # Get order
+    order = get_object_or_404(Order, order_id=order_id, user=request.user)
+    
+    # Format order date
+    order_date = order.created_at.strftime('%d %b %Y')
+    
+    # Get user information
+    user_name = f"{order.user.first_name} {order.user.last_name}".strip() or order.user.username
+    user_email = order.user.email
+    
+    # Get shipping address
+    shipping_address = order.shipping_address
+    address_lines = [
+        shipping_address.full_name,
+        shipping_address.street_address,
+        f"{shipping_address.city} {shipping_address.postal_code}",
+        f"Phone: {shipping_address.phone}"
+    ]
+    
+    # Format order items
+    items_html = ""
+    for item in order.items.all():
+        product_name = item.product.title
+        variant_parts = []
+        
+        # Get variant information from stored fields (always available)
+        if item.variant_color:
+            variant_parts.append(item.variant_color)
+        if item.variant_size:
+            variant_parts.append(item.variant_size)
+        if item.variant_pattern:
+            variant_parts.append(item.variant_pattern)
+        
+        variant_info = " - ".join(variant_parts) if variant_parts else ""
+        
+        unit_price = float(item.price)
+        total_price = float(item.price * item.quantity)
+        
+        items_html += f"""
+        <tr>
+            <td>{product_name}</td>
+            <td>{variant_info if variant_info else '-'}</td>
+            <td>{item.quantity}</td>
+            <td>Rs.{unit_price:,.2f}</td>
+            <td>Rs.{total_price:,.2f}</td>
+        </tr>
+        """
+    
+    # Format amounts
+    subtotal = float(order.subtotal)
+    platform_fee = float(order.platform_fee)
+    tax_amount = float(order.tax_amount)
+    total_amount = float(order.total_amount)
+    
+    # Generate invoice number
+    invoice_number = f"INV-{str(order.order_id).upper()[:8]}"
+    
+    # HTML template
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice</title>
+<style>
+/* ---------- PAGE SETTINGS ---------- */
+@page {{
+    size: A4;
+    margin: 25mm;
+}}
+
+/* ---------- GLOBAL STYLES ---------- */
+body {{
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #333;
+}}
+
+h1, h2, h3 {{
+    margin: 0 0 8px 0;
+}}
+
+.section-title {{
+    font-size: 16px;
+    margin-top: 20px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #ccc;
+    font-weight: bold;
+}}
+
+/* ---------- HEADER ---------- */
+.header-table {{
+    width: 100%;
+    margin-bottom: 20px;
+}}
+
+.header-table td {{
+    vertical-align: top;
+}}
+
+.invoice-title {{
+    font-size: 28px;
+    font-weight: bold;
+    color: #0044cc;
+}}
+
+/* ---------- SIMPLE INFO TABLE ---------- */
+.info-table {{
+    width: 100%;
+    margin-top: 10px;
+}}
+
+.info-table td {{
+    padding: 3px 0;
+}}
+
+/* ---------- ITEM TABLE ---------- */
+.items-table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}}
+
+.items-table th {{
+    background: #f2f2f2;
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    font-weight: bold;
+}}
+
+.items-table td {{
+    border: 1px solid #ddd;
+    padding: 8px;
+}}
+
+/* ---------- SUMMARY TABLE ---------- */
+.summary-table {{
+    width: 100%;
+    margin-top: 15px;
+}}
+
+.summary-table td {{
+    padding: 4px 0;
+}}
+
+.summary-table .label {{
+    text-align: left;
+}}
+
+.summary-table .value {{
+    text-align: right;
+}}
+
+.summary-total {{
+    font-weight: bold;
+    font-size: 15px;
+    border-top: 1px solid #000;
+    padding-top: 8px;
+}}
+
+/* ---------- FOOTER ---------- */
+.footer {{
+    margin-top: 40px;
+    text-align: center;
+    font-size: 12px;
+}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<table class="header-table">
+    <tr>
+        <td>
+            <h1>Sixpine</h1>
+            <div>Premium Furniture & Home Decor</div>
+        </td>
+        <td style="text-align:right;">
+            <div class="invoice-title">INVOICE</div>
+        </td>
+    </tr>
+</table>
+
+<!-- ORDER DETAILS -->
+<h3 class="section-title">Order Details</h3>
+<table class="info-table">
+    <tr>
+        <td><b>Order ID:</b> {str(order.order_id).upper()[:8]}</td>
+        <td><b>Date:</b> {order_date}</td>
+        <td><b>Invoice #:</b> {invoice_number}</td>
+    </tr>
+</table>
+
+<!-- BILLING -->
+<h3 class="section-title">Billing Information</h3>
+<table class="info-table">
+    <tr><td><b>Name:</b> {user_name}</td></tr>
+    <tr><td><b>Email:</b> {user_email}</td></tr>
+</table>
+
+<!-- SHIPPING -->
+<h3 class="section-title">Shipping Address</h3>
+<table class="info-table">
+"""
+    
+    for line in address_lines:
+        html_content += f"    <tr><td>{line}</td></tr>\n"
+    
+    html_content += """</table>
+
+<!-- ITEMS -->
+<h3 class="section-title">Order Items</h3>
+
+<table class="items-table">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Variant</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+
+    <tbody>
+"""
+    
+    html_content += items_html
+    
+    html_content += f"""
+    </tbody>
+</table>
+
+<!-- SUMMARY -->
+<table class="summary-table">
+    <tr>
+        <td class="label">Subtotal:</td>
+        <td class="value">Rs.{subtotal:,.2f}</td>
+    </tr>
+    <tr>
+        <td class="label">Platform Fee:</td>
+        <td class="value">Rs.{platform_fee:,.2f}</td>
+    </tr>
+    <tr>
+        <td class="label">Tax:</td>
+        <td class="value">Rs.{tax_amount:,.2f}</td>
+    </tr>
+    <tr>
+        <td class="label summary-total">Total Amount:</td>
+        <td class="value summary-total">Rs.{total_amount:,.2f}</td>
+    </tr>
+</table>
+
+<!-- FOOTER -->
+<div class="footer">
+    Thank you for your business!<br>
+    This is a computer-generated invoice.
+</div>
+
+</body>
+</html>
+"""
+    
+    # Generate PDF
+    try:
+        # Create a BytesIO buffer to receive PDF data
+        result = BytesIO()
+        
+        # Convert HTML to PDF
+        pdf = pisa.pisaDocument(BytesIO(html_content.encode("UTF-8")), result)
+        
+        if pdf.err:
+            return Response(
+                {'error': 'Failed to generate invoice PDF'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Create HTTP response with PDF
+        response = HttpResponse(result.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="invoice_{str(order.order_id)[:8]}.pdf"'
+        return response
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to generate invoice: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

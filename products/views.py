@@ -170,8 +170,8 @@ class ProductListView(generics.ListAPIView):
                                 },
                                 'size': variant.size,
                                 'pattern': variant.pattern,
-                                'price': float(variant.price) if variant.price else float(product.price),
-                                'old_price': float(variant.old_price) if variant.old_price else (float(product.old_price) if product.old_price else None),
+                                'price': float(variant.price) if variant.price else None,
+                                'old_price': float(variant.old_price) if variant.old_price else None,
                                 'stock_quantity': variant.stock_quantity,
                                 'is_in_stock': variant.is_in_stock,
                                 'image': variant.image if variant.image else product.main_image,
@@ -509,6 +509,77 @@ def get_bulk_order_page_content(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def get_faq_page_content(request):
+    """Get FAQ page content sections for public display"""
+    from admin_api.models import FAQPageContent
+    
+    section_key = request.query_params.get('section_key', None)
+    
+    if section_key:
+        try:
+            content = FAQPageContent.objects.get(section_key=section_key, is_active=True)
+            return Response({
+                'section_key': content.section_key,
+                'section_name': content.section_name,
+                'content': content.content,
+                'is_active': content.is_active
+            })
+        except FAQPageContent.DoesNotExist:
+            return Response(
+                {'error': 'Content section not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    else:
+        # Return all active sections
+        contents = FAQPageContent.objects.filter(is_active=True).order_by('order', 'section_name')
+        result = {}
+        for content in contents:
+            result[content.section_key] = {
+                'section_name': content.section_name,
+                'content': content.content,
+                'is_active': content.is_active
+            }
+        return Response(result)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_active_advertisements(request):
+    """Get active advertisements for product detail pages"""
+    from admin_api.models import Advertisement
+    from django.utils import timezone
+    
+    now = timezone.now()
+    
+    # Get all valid active advertisements
+    advertisements = Advertisement.objects.filter(
+        is_active=True
+    ).filter(
+        Q(valid_from__isnull=True) | Q(valid_from__lte=now),
+        Q(valid_until__isnull=True) | Q(valid_until__gte=now)
+    ).order_by('display_order', '-created_at')
+    
+    # Serialize advertisements
+    serialized_ads = []
+    for ad in advertisements:
+        serialized_ads.append({
+            'id': ad.id,
+            'title': ad.title,
+            'description': ad.description,
+            'image': ad.image,
+            'button_text': ad.button_text,
+            'button_link': ad.button_link,
+            'discount_percentage': ad.discount_percentage,
+        })
+    
+    return Response({
+        'count': len(serialized_ads),
+        'results': serialized_ads
+    })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def get_search_suggestions(request):
     """Get search suggestions based on query"""
     query = request.GET.get('q', '').strip()
@@ -643,7 +714,16 @@ def get_brands(request):
         is_verified=True
     ).values('id', 'brand_name', 'business_name').order_by('brand_name', 'business_name')
     
-    return Response(list(brands))
+    brands_list = list(brands)
+    
+    # Add Sixpine as a special brand option (vendor=None)
+    brands_list.insert(0, {
+        'id': 0,  # Use 0 as special ID for Sixpine
+        'brand_name': 'Sixpine',
+        'business_name': 'Sixpine'
+    })
+    
+    return Response(brands_list)
 
 
 @api_view(['GET'])
@@ -667,6 +747,11 @@ def get_active_offers(request):
     # Serialize offers with product data
     serialized_offers = []
     for offer in offers:
+        # Get price from first active variant
+        first_variant = offer.product.variants.filter(is_active=True).first()
+        price = float(first_variant.price) if first_variant and first_variant.price else None
+        old_price = float(first_variant.old_price) if first_variant and first_variant.old_price else None
+        
         serialized_offers.append({
             'id': offer.id,
             'title': offer.title,
@@ -680,8 +765,8 @@ def get_active_offers(request):
                 'title': offer.product.title,
                 'slug': offer.product.slug,
                 'main_image': offer.product.main_image,
-                'price': offer.product.price,
-                'old_price': offer.product.old_price,
+                'price': price,
+                'old_price': old_price,
                 'category': offer.product.category.name if offer.product.category else None
             }
         })

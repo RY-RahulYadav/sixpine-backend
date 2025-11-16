@@ -137,6 +137,11 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             product = Product.objects.get(id=item_data['product_id'])
             subtotal += product.price * item_data['quantity']
         
+        from .utils import calculate_order_totals
+        
+        # Calculate initial totals (before coupon discount)
+        initial_totals = calculate_order_totals(subtotal, payment_method)
+        
         # Handle coupon if provided
         coupon = None
         coupon_discount = Decimal('0.00')
@@ -145,24 +150,46 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 coupon = Coupon.objects.get(id=coupon_id)
                 can_use, message = coupon.can_be_used_by_user(user)
                 if can_use:
-                    # If coupon is vendor-specific, calculate discount only on vendor's products
-                    if coupon.vendor:
-                        vendor_subtotal = Decimal('0.00')
-                        for item_data in items_data:
-                            product = Product.objects.get(id=item_data['product_id'])
-                            if product.vendor and product.vendor.id == coupon.vendor.id:
-                                vendor_subtotal += product.price * item_data['quantity']
-                        
-                        if vendor_subtotal == 0:
-                            raise serializers.ValidationError({
-                                'coupon_id': f'This coupon applies only to products from {coupon.vendor.brand_name}. Please add products from this vendor to your cart.'
-                            })
-                        
-                        discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
+                    # Seller coupons: discount on platform fee and tax only
+                    if coupon.coupon_type == 'seller':
+                        discount_amount, discount_message = coupon.calculate_discount(
+                            subtotal, 
+                            platform_fee=initial_totals['platform_fee'],
+                            tax_amount=initial_totals['tax_amount']
+                        )
+                        coupon_discount = Decimal(str(discount_amount))
+                        # For seller coupons, discount is applied to total, not subtotal
+                        # The discount reduces platform fee and tax, so we adjust totals
+                        totals = {
+                            'subtotal': subtotal,  # Subtotal remains unchanged
+                            'platform_fee': initial_totals['platform_fee'],
+                            'tax_amount': initial_totals['tax_amount'],
+                            'shipping_cost': initial_totals['shipping_cost'],
+                            'total_amount': subtotal + initial_totals['platform_fee'] + initial_totals['tax_amount'] - coupon_discount
+                        }
                     else:
-                        discount_amount, _ = coupon.calculate_discount(subtotal)
+                        # Sixpine and common coupons: discount on product prices
+                        if coupon.vendor:
+                            vendor_subtotal = Decimal('0.00')
+                            for item_data in items_data:
+                                product = Product.objects.get(id=item_data['product_id'])
+                                if product.vendor and product.vendor.id == coupon.vendor.id:
+                                    vendor_subtotal += product.price * item_data['quantity']
+                            
+                            if vendor_subtotal == 0:
+                                raise serializers.ValidationError({
+                                    'coupon_id': f'This coupon applies only to products from {coupon.vendor.brand_name}. Please add products from this vendor to your cart.'
+                                })
+                            
+                            discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
+                        else:
+                            discount_amount, _ = coupon.calculate_discount(subtotal)
+                        
+                        coupon_discount = Decimal(str(discount_amount))
+                        # Calculate totals with platform fee (after coupon discount on subtotal)
+                        subtotal_after_discount = subtotal - coupon_discount
+                        totals = calculate_order_totals(subtotal_after_discount, payment_method)
                     
-                    coupon_discount = Decimal(str(discount_amount))
                     # Update coupon usage
                     coupon.used_count += 1
                     coupon.save()
@@ -170,12 +197,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({'coupon_id': message})
             except Coupon.DoesNotExist:
                 raise serializers.ValidationError({'coupon_id': 'Invalid coupon'})
-        
-        from .utils import calculate_order_totals
-        
-        # Calculate totals with platform fee (after coupon discount)
-        subtotal_after_discount = subtotal - coupon_discount
-        totals = calculate_order_totals(subtotal_after_discount, payment_method)
+        else:
+            # No coupon: use initial totals
+            totals = initial_totals
         
         # Create order with all required fields stored in database
         order = Order.objects.create(

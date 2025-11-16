@@ -16,7 +16,7 @@ django.setup()
 
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage, 
-    ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, ProductOffer,
+    ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature,
     ProductReview, ProductRecommendation
 )
 from accounts.models import User, Vendor
@@ -495,6 +495,177 @@ def create_products(vendors, colors, materials, categories):
                 {'rating': 5, 'title': 'Perfect', 'comment': 'Exactly what we needed. Great quality and plenty of storage space. Highly recommended!', 'user_name': 'Suresh Joshi'}
             ]
         },
+        {
+            'title': 'Sixpine Premium Executive Office Chair',
+            'short_description': 'Ergonomic executive office chair with premium leather upholstery and adjustable features',
+            'long_description': 'Experience ultimate comfort and style with our Sixpine Premium Executive Office Chair. Designed for professionals who spend long hours at their desk, this chair features premium leather upholstery, adjustable height, lumbar support, and 360-degree swivel. The ergonomic design promotes proper posture and reduces back strain, making it perfect for home offices and corporate environments.',
+            'category': 'Sofas',  # Using existing category
+            'subcategory': '3 Seater',  # Using existing subcategory
+            'price': Decimal('25000.00'),
+            'old_price': Decimal('32000.00'),
+            'material': 'Leather',
+            'brand': 'Sixpine',
+            'colors': ['Black', 'Brown'],
+            'sizes': ['Standard', 'Large'],
+            'patterns': ['Modern', 'Executive'],
+            'dimensions': '65cm x 65cm x 120cm',
+            'weight': '18kg',
+            'warranty': '3 years',
+            'is_featured': True,
+            'average_rating': Decimal('4.8'),
+            'review_count': 35,
+            'specifications': [
+                {'name': 'Brand', 'value': 'Sixpine'},
+                {'name': 'Material', 'value': 'Premium Leather'},
+                {'name': 'Frame', 'value': 'Metal Base'},
+                {'name': 'Adjustable Height', 'value': 'Yes'},
+                {'name': 'Lumbar Support', 'value': 'Yes'},
+                {'name': 'Swivel', 'value': '360 Degrees'},
+                {'name': 'Warranty', 'value': '3 Years'},
+                {'name': 'Weight Capacity', 'value': '150 kg'},
+                {'name': 'Color Options', 'value': 'Black, Brown'},
+                {'name': 'Style', 'value': 'Executive Modern'}
+            ],
+            'features': [
+                'Premium leather upholstery for durability and comfort',
+                'Ergonomic design with adjustable height',
+                'Built-in lumbar support for back comfort',
+                '360-degree swivel for easy movement',
+                'Heavy-duty metal base for stability',
+                'Smooth-rolling casters for mobility',
+                '3-year warranty on manufacturing defects',
+                'Free delivery and installation',
+                'Easy assembly with included tools',
+                'Perfect for home and office use'
+            ],
+            'images': [
+                'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800',
+                'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800',
+                'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800',
+                'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=800'
+            ],
+            'reviews': [
+                {'rating': 5, 'title': 'Excellent Chair', 'comment': 'Best office chair I have ever owned! Very comfortable and the leather quality is outstanding. Highly recommended!', 'user_name': 'Rajesh Kumar'},
+                {'rating': 5, 'title': 'Perfect for Long Hours', 'comment': 'I work from home and this chair is perfect. The lumbar support is excellent and I can sit comfortably for hours.', 'user_name': 'Priya Sharma'},
+                {'rating': 5, 'title': 'Great Quality', 'comment': 'Premium quality chair. The leather is soft and the build quality is excellent. Worth every rupee!', 'user_name': 'Amit Patel'},
+                {'rating': 4, 'title': 'Very Comfortable', 'comment': 'Very comfortable chair with good support. Assembly was easy and it looks great in my office.', 'user_name': 'Neha Reddy'},
+                {'rating': 5, 'title': 'Outstanding', 'comment': 'Excellent chair! The quality is top-notch and it is very comfortable. Delivery was fast too.', 'user_name': 'Vikram Singh'}
+            ]
+        },
+        {
+            'title': 'Sixpine Modern Dining Table Set',
+            'short_description': 'Elegant 6-seater dining table with matching chairs, perfect for family dining',
+            'long_description': 'Create memorable dining experiences with our Sixpine Modern Dining Table Set. This elegant set includes a spacious dining table and 6 comfortable chairs, all crafted from premium materials. The modern design complements contemporary interiors while providing ample space for family gatherings and dinner parties. The table features a scratch-resistant surface and the chairs are upholstered with premium fabric for comfort.',
+            'category': 'Centre Tables',
+            'subcategory': 'Coffee Tables Set',
+            'price': Decimal('55000.00'),
+            'old_price': Decimal('68000.00'),
+            'material': 'Solid Wood',
+            'brand': 'Sixpine',
+            'colors': ['Brown', 'White', 'Grey'],
+            'sizes': ['6 Seater', '8 Seater'],
+            'patterns': ['Modern', 'Contemporary'],
+            'dimensions': '180cm x 90cm x 75cm',
+            'weight': '85kg',
+            'warranty': '5 years',
+            'is_featured': True,
+            'average_rating': Decimal('4.7'),
+            'review_count': 28,
+            'specifications': [
+                {'name': 'Brand', 'value': 'Sixpine'},
+                {'name': 'Table Size', 'value': '180cm x 90cm'},
+                {'name': 'Seating Capacity', 'value': '6 People'},
+                {'name': 'Material', 'value': 'Solid Wood'},
+                {'name': 'Finish', 'value': 'Matte Finish'},
+                {'name': 'Chairs Included', 'value': '6 Chairs'},
+                {'name': 'Assembly', 'value': 'Required'},
+                {'name': 'Warranty', 'value': '5 Years'},
+                {'name': 'Weight Capacity', 'value': '400 kg'},
+                {'name': 'Style', 'value': 'Modern Contemporary'}
+            ],
+            'features': [
+                'Premium solid wood construction for durability',
+                'Scratch-resistant table surface',
+                'Comfortable upholstered chairs included',
+                'Modern design that complements any decor',
+                'Easy to clean and maintain',
+                '5-year warranty on manufacturing defects',
+                'Free delivery and installation',
+                'Spacious design for family gatherings',
+                'Anti-termite treatment',
+                'Eco-friendly materials'
+            ],
+            'images': [
+                'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800',
+                'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800',
+                'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800',
+                'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=800'
+            ],
+            'reviews': [
+                {'rating': 5, 'title': 'Beautiful Set', 'comment': 'Absolutely beautiful dining set! The quality is excellent and it looks stunning in our dining room. Family loves it!', 'user_name': 'Rohit Agarwal'},
+                {'rating': 5, 'title': 'Perfect for Family', 'comment': 'Perfect size for our family. The chairs are comfortable and the table is very sturdy. Great purchase!', 'user_name': 'Shilpa Reddy'},
+                {'rating': 4, 'title': 'Great Quality', 'comment': 'Good quality dining set. The wood finish is beautiful and the chairs are comfortable. Assembly was straightforward.', 'user_name': 'Nitin Joshi'},
+                {'rating': 5, 'title': 'Love It', 'comment': 'Excellent dining set! The design is modern and the quality is top-notch. Highly recommended for families!', 'user_name': 'Pooja Iyer'},
+                {'rating': 5, 'title': 'Outstanding', 'comment': 'Best dining set we have ever owned. The quality is outstanding and it looks great. Worth every penny!', 'user_name': 'Deepak Sharma'}
+            ]
+        },
+        {
+            'title': 'Sixpine Luxury Recliner Sofa',
+            'short_description': 'Premium 3-seater recliner sofa with power reclining mechanism and premium leather',
+            'long_description': 'Indulge in ultimate relaxation with our Sixpine Luxury Recliner Sofa. This premium 3-seater sofa features individual power reclining mechanisms for each seat, allowing you to adjust your position with the touch of a button. Upholstered in premium leather, this sofa combines luxury with functionality. Perfect for movie nights, reading, or simply unwinding after a long day.',
+            'category': 'Sofas',
+            'subcategory': '3 Seater',
+            'price': Decimal('75000.00'),
+            'old_price': Decimal('95000.00'),
+            'material': 'Leather',
+            'brand': 'Sixpine',
+            'colors': ['Brown', 'Black'],
+            'sizes': ['Standard', 'Large'],
+            'patterns': ['Luxury', 'Modern'],
+            'dimensions': '240cm x 100cm x 95cm',
+            'weight': '120kg',
+            'warranty': '5 years',
+            'is_featured': True,
+            'average_rating': Decimal('4.9'),
+            'review_count': 42,
+            'specifications': [
+                {'name': 'Brand', 'value': 'Sixpine'},
+                {'name': 'Seating Capacity', 'value': '3 People'},
+                {'name': 'Reclining Mechanism', 'value': 'Power Reclining'},
+                {'name': 'Upholstery', 'value': 'Premium Leather'},
+                {'name': 'Frame Material', 'value': 'Solid Wood + Metal'},
+                {'name': 'Cushion Type', 'value': 'Memory Foam'},
+                {'name': 'USB Charging', 'value': 'Yes'},
+                {'name': 'Cup Holders', 'value': 'Yes'},
+                {'name': 'Warranty', 'value': '5 Years'},
+                {'name': 'Style', 'value': 'Luxury Modern'}
+            ],
+            'features': [
+                'Power reclining mechanism for each seat',
+                'Premium leather upholstery',
+                'Memory foam cushions for superior comfort',
+                'Built-in USB charging ports',
+                'Cup holders for convenience',
+                'Solid wood and metal frame construction',
+                '5-year warranty on manufacturing defects',
+                'Free delivery and installation',
+                'Professional assembly service',
+                'Perfect for home theater rooms'
+            ],
+            'images': [
+                'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800',
+                'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800',
+                'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800',
+                'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=800'
+            ],
+            'reviews': [
+                {'rating': 5, 'title': 'Amazing Recliner', 'comment': 'Best sofa purchase ever! The power reclining is smooth and the leather quality is outstanding. Perfect for our home theater!', 'user_name': 'Suresh Kumar'},
+                {'rating': 5, 'title': 'Ultimate Comfort', 'comment': 'Most comfortable sofa I have ever sat on! The memory foam cushions are amazing and the reclining feature is perfect.', 'user_name': 'Anita Gupta'},
+                {'rating': 5, 'title': 'Luxury at Home', 'comment': 'This sofa is pure luxury! The leather is soft, the reclining is smooth, and it looks absolutely stunning. Worth every rupee!', 'user_name': 'Vikram Joshi'},
+                {'rating': 5, 'title': 'Perfect for Movies', 'comment': 'Perfect for our home theater room! The power reclining is amazing and the USB charging is very convenient. Highly recommended!', 'user_name': 'Meera Iyer'},
+                {'rating': 5, 'title': 'Outstanding Quality', 'comment': 'Outstanding quality and comfort! This is the best furniture purchase we have made. The whole family loves it!', 'user_name': 'Arjun Nair'}
+            ]
+        },
     ]
     
     created_products = []
@@ -502,14 +673,16 @@ def create_products(vendors, colors, materials, categories):
     
     for idx, prod_data in enumerate(products_data):
         # Assign vendor based on brand
+        # Sixpine products have no vendor (vendor=None)
         vendor = None
-        for v in vendors:
-            if v.brand_name == prod_data['brand']:
-                vendor = v
-                break
-        
-        if not vendor:
-            vendor = vendors[idx % len(vendors)]  # Fallback to round-robin
+        if prod_data['brand'] != 'Sixpine':
+            for v in vendors:
+                if v.brand_name == prod_data['brand']:
+                    vendor = v
+                    break
+            
+            if not vendor:
+                vendor = vendors[idx % len(vendors)]  # Fallback to round-robin
         
         category = categories[prod_data['category']]
         subcategory = Subcategory.objects.filter(
@@ -523,7 +696,7 @@ def create_products(vendors, colors, materials, categories):
         from django.utils.text import slugify
         slug = slugify(prod_data['title'])
         
-        # Create product
+        # Create product (no price/old_price - only in variants)
         product, created = Product.objects.get_or_create(
             title=prod_data['title'],
             defaults={
@@ -532,8 +705,6 @@ def create_products(vendors, colors, materials, categories):
                 'long_description': prod_data['long_description'],
                 'category': category,
                 'subcategory': subcategory,
-                'price': prod_data['price'],
-                'old_price': prod_data['old_price'],
                 'material': material,
                 'brand': prod_data['brand'],
                 'vendor': vendor,
@@ -552,14 +723,8 @@ def create_products(vendors, colors, materials, categories):
         )
         
         if created:
-            # Add product images
-            for i, img_url in enumerate(prod_data['images']):
-                ProductImage.objects.create(
-                    product=product,
-                    image=img_url,
-                    alt_text=f"{prod_data['title']} - View {i+1}",
-                    sort_order=i
-                )
+            # Note: Product images are now managed through variants only
+            # Images will be added to variants below
             
             # Add specifications
             for spec in prod_data['specifications']:
@@ -580,7 +745,8 @@ def create_products(vendors, colors, materials, categories):
             
             # Create variants with all combinations
             variant_count = 0
-            base_price = float(product.price)
+            base_price = float(prod_data['price'])
+            base_old_price = float(prod_data['old_price']) if prod_data.get('old_price') else None
             
             for color_name in prod_data['colors']:
                 color = colors.get(color_name)
@@ -603,8 +769,8 @@ def create_products(vendors, colors, materials, categories):
                         elif 'Large' in size or 'Queen' in size:
                             price_multiplier *= 1.1
                         
-                        variant_price = round(base_price * price_multiplier, 2)
-                        variant_old_price = round(base_price * price_multiplier * 1.15, 2) if product.old_price else None
+                        variant_price = Decimal(str(round(base_price * price_multiplier, 2)))
+                        variant_old_price = Decimal(str(round(base_old_price * price_multiplier * 1.15, 2))) if base_old_price else None
                         
                         variant = ProductVariant.objects.create(
                             product=product,
@@ -614,18 +780,16 @@ def create_products(vendors, colors, materials, categories):
                             title=variant_title,
                             price=variant_price,
                             old_price=variant_old_price,
-                            image=product.main_image,
+                            image=prod_data['images'][0] if prod_data['images'] else product.main_image,
                             stock_quantity=10,
                             is_in_stock=True,
                             is_active=True
                         )
                         
-                        # Add variant images
-                        variant_images = [
-                            product.main_image,
-                            product.images.first().image if product.images.exists() else product.main_image,
-                            product.main_image
-                        ]
+                        # Add variant images from product images
+                        variant_images = prod_data['images'][:3]  # Use first 3 product images
+                        if not variant_images:
+                            variant_images = [prod_data['images'][0]] if prod_data['images'] else [product.main_image]
                         
                         for idx, img_url in enumerate(variant_images):
                             if img_url:
@@ -639,22 +803,6 @@ def create_products(vendors, colors, materials, categories):
                         variant_count += 1
             
             print(f"  Created {variant_count} variants for {product.title}")
-            
-            # Add offers
-            ProductOffer.objects.create(
-                product=product,
-                title='Early Bird Special',
-                description='Get 15% off on your first purchase',
-                discount_percentage=15,
-                is_active=True
-            )
-            
-            ProductOffer.objects.create(
-                product=product,
-                title='Free Delivery',
-                description='Free delivery on orders above ₹20,000',
-                is_active=True
-            )
         
         created_products.append(product)
         # Store product with its review data
@@ -662,7 +810,8 @@ def create_products(vendors, colors, materials, categories):
             'product': product,
             'reviews': prod_data.get('reviews', [])
         })
-        print(f"✓ Created product: {product.title} (Vendor: {vendor.brand_name})")
+        vendor_name = vendor.brand_name if vendor else 'Sixpine (No Vendor)'
+        print(f"✓ Created product: {product.title} (Vendor: {vendor_name})")
     
     return created_products, products_with_reviews
 
@@ -759,14 +908,18 @@ def main():
     print("\nProduct Details:")
     for i, product in enumerate(products, 1):
         print(f"\n{i}. {product.title}")
-        print(f"   Vendor: {product.vendor.brand_name}")
-        print(f"   Price: ₹{product.price}")
+        vendor_name = product.vendor.brand_name if product.vendor else 'Sixpine (No Vendor)'
+        print(f"   Vendor: {vendor_name}")
+        first_variant = product.variants.filter(is_active=True).first()
+        if first_variant:
+            print(f"   Price: ₹{first_variant.price}")
+            if first_variant.old_price:
+                print(f"   Old Price: ₹{first_variant.old_price}")
+            print(f"   Discount: {first_variant.discount_percentage}%")
         print(f"   Category: {product.category.name}")
-        print(f"   Images: {product.images.count()}")
         print(f"   Variants: {product.variants.count()}")
         print(f"   Specifications: {product.specifications.count()}")
         print(f"   Features: {product.features.count()}")
-        print(f"   Offers: {product.offers.count()}")
         print(f"   Reviews: {product.reviews.count()}")
         print(f"   Recommendations: {product.recommendations.count()}")
     
