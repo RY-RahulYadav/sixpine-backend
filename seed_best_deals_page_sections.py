@@ -43,6 +43,12 @@ def get_first_8_products():
             sale_price = float(first_variant.price)
             discount = int(((original_price - sale_price) / original_price) * 100)
         
+        # Get variant count
+        variant_count = product.variants.filter(is_active=True).count()
+        
+        # Get description (prefer short_description, fallback to empty string)
+        description = product.short_description if product.short_description else ''
+        
         fallback_image = default_images[idx % len(default_images)]
         product_image = product.main_image if product.main_image and product.main_image.strip() else fallback_image
         
@@ -59,6 +65,8 @@ def get_first_8_products():
             'reviewCount': product.review_count or 0,
             'soldCount': 0,
             'navigateUrl': f'/products-details/{product_slug}',
+            'description': description,
+            'variantCount': variant_count,
         }
         product_list.append(product_data)
     
@@ -79,6 +87,8 @@ def get_first_8_products():
             'reviewCount': 100,
             'soldCount': 50,
             'navigateUrl': f'/products-details/{placeholder_slug}',
+            'description': f'Premium quality sample product {idx} with modern design and excellent craftsmanship.',
+            'variantCount': 3,
         })
     
     return product_list[:8]

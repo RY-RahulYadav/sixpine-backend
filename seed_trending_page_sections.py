@@ -35,6 +35,12 @@ def get_first_4_products():
         if first_variant and first_variant.old_price and first_variant.price:
             discount = int(((float(first_variant.old_price) - float(first_variant.price)) / float(first_variant.old_price)) * 100)
         
+        # Get variant count
+        variant_count = product.variants.filter(is_active=True).count()
+        
+        # Get description (prefer short_description, fallback to empty string)
+        description = product.short_description if product.short_description else ''
+        
         fallback_image = default_images[idx % len(default_images)]
         product_image = product.main_image if product.main_image and product.main_image.strip() else fallback_image
         
@@ -51,6 +57,8 @@ def get_first_4_products():
             'tag': 'Trending',
             'discount': f"{discount}% OFF" if discount > 0 else None,
             'navigateUrl': f'/products-details/{product_slug}',
+            'description': description,
+            'variantCount': variant_count,
         }
         product_list.append(product_data)
     
@@ -71,6 +79,8 @@ def get_first_4_products():
             'tag': 'Trending',
             'discount': '15% OFF',
             'navigateUrl': f'/products-details/{placeholder_slug}',
+            'description': f'Premium quality trending product {idx} with modern design and excellent craftsmanship.',
+            'variantCount': 2,
         })
     
     return product_list[:4]
