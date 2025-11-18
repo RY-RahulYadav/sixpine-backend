@@ -98,6 +98,9 @@ jobs:
 
             echo "📁 Collecting static files..."
             python manage.py collectstatic --noinput
+            python seed_trending_page_sections.py
+            python  seed_homepage_all_sections.py 
+            python seed_best_deals_page_sections.py
 
             echo "🔄 Restarting Gunicorn..."
             systemctl restart gunicorn-sixpine

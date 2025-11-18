@@ -34,11 +34,9 @@ class ProductListView(generics.ListAPIView):
     """Product listing with advanced filtering and sorting"""
     serializer_class = ProductListSerializer
     pagination_class = StandardResultsSetPagination
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_class = ProductFilter
     search_fields = ['title', 'short_description', 'category__name', 'subcategory__name', 'brand', 'material']
-    ordering_fields = ['price', 'created_at', 'average_rating', 'review_count']
-    ordering = ['-created_at']
     
     def get_queryset(self):
         """Get products with optimized queries"""
@@ -87,10 +85,23 @@ class ProductListView(generics.ListAPIView):
         
         # Prioritize products from interest categories if applicable
         if user_interest_category_ids and not category_filter and not search_query:
-            from django.db.models import Case, When, IntegerField
+            from django.db.models import Case, When, IntegerField, Min, Q
             # Get the current sort option to preserve it within priority groups
             sort_option = request.query_params.get('sort', 'relevance')
-            sort_field = ProductSortFilter.SORT_OPTIONS.get(sort_option, '-created_at')
+            
+            # For price sorting, ensure annotation is present (it should be from get_queryset, but ensure it)
+            if sort_option in ['price_low_to_high', 'price_high_to_low']:
+                # Check if annotation already exists in queryset annotations
+                if 'min_variant_price' not in queryset.query.annotations:
+                    queryset = queryset.annotate(
+                        min_variant_price=Min('variants__price', filter=Q(variants__is_active=True))
+                    )
+                if sort_option == 'price_low_to_high':
+                    sort_field = 'min_variant_price'
+                else:
+                    sort_field = '-min_variant_price'
+            else:
+                sort_field = ProductSortFilter.SORT_OPTIONS.get(sort_option, '-created_at')
             
             # Create a case statement to prioritize products from interest categories
             when_conditions = [When(category_id=cat_id, then=0) for cat_id in user_interest_category_ids]
