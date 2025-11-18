@@ -46,6 +46,9 @@ def get_first_8_products():
         # Get variant count
         variant_count = product.variants.filter(is_active=True).count()
         
+        # Get distinct color count from active variants
+        color_count = product.variants.filter(is_active=True).values('color').distinct().count()
+        
         # Get description (prefer short_description, fallback to empty string)
         description = product.short_description if product.short_description else ''
         
@@ -67,6 +70,8 @@ def get_first_8_products():
             'navigateUrl': f'/products-details/{product_slug}',
             'description': description,
             'variantCount': variant_count,
+            'colorCount': color_count,
+            'color_count': color_count,
         }
         product_list.append(product_data)
     

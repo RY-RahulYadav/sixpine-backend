@@ -58,6 +58,9 @@ def get_first_6_products():
         # Get variant count
         variant_count = product.variants.filter(is_active=True).count()
         
+        # Get distinct color count from active variants
+        color_count = product.variants.filter(is_active=True).values('color').distinct().count()
+        
         product_slug = product.slug or f'product-{product.id}'
         product_data = {
             'id': product.id,
@@ -77,6 +80,8 @@ def get_first_6_products():
             'discount': f"{discount}% off" if discount > 0 else None,
             'variant_count': variant_count,
             'variantCount': variant_count,
+            'color_count': color_count,
+            'colorCount': color_count,
         }
         product_list.append(product_data)
     
@@ -379,7 +384,9 @@ def seed_all_homepage_sections():
             'slug': product_slug,  # Add slug field for ProductCard component
             'navigateUrl': f"/products-details/{product_slug}" if product_slug and product_slug != '#' else '/best-deals',
             'variant_count': product.get('variant_count', product.get('variantCount', 0)),
-            'variantCount': product.get('variant_count', product.get('variantCount', 0))
+            'variantCount': product.get('variant_count', product.get('variantCount', 0)),
+            'color_count': product.get('color_count', product.get('colorCount', 0)),
+            'colorCount': product.get('color_count', product.get('colorCount', 0))
         }
         discover_products.append(formatted_product)
         top_rated_products.append(formatted_product)

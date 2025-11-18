@@ -93,6 +93,9 @@ class ProductListSerializer(serializers.ModelSerializer):
     # Variant count for frontend
     variant_count = serializers.SerializerMethodField()
     
+    # Color count for frontend
+    color_count = serializers.SerializerMethodField()
+    
     # Real review data
     review_count = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
@@ -113,7 +116,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'average_rating', 'review_count', 'category', 'subcategory',
             'brand', 'material', 'images', 'variants', 'available_colors',
-            'variant_count', 'is_featured', 'created_at'
+            'variant_count', 'color_count', 'is_featured', 'created_at'
         ]
     
     def get_main_image(self, obj):
@@ -160,6 +163,10 @@ class ProductListSerializer(serializers.ModelSerializer):
     def get_variant_count(self, obj):
         """Get count of active variants for this product"""
         return obj.variants.filter(is_active=True).count()
+    
+    def get_color_count(self, obj):
+        """Get distinct color count from active variants"""
+        return obj.variants.filter(is_active=True).values('color').distinct().count()
     
     def get_review_count(self, obj):
         """Get actual review count from database"""
