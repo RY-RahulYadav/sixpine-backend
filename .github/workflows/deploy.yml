@@ -57,9 +57,10 @@ jobs:
 
             # Email Configuration
             EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
-            BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-            BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
-            BREVO_SENDER_NAME: ${{ secrets.BREVO_SENDER_NAME }}
+            
+            BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}
+            BREVO_SENDER_EMAIL=${{ secrets.BREVO_SENDER_EMAIL }}
+            BREVO_SENDER_NAME=${{ secrets.BREVO_SENDER_NAME }}
 
             # Google OAuth2 Configuration
             # GOOGLE_OAUTH2_CLIENT_ID=${{ secrets.GOOGLE_OAUTH2_CLIENT_ID }}

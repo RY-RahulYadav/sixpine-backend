@@ -13,6 +13,7 @@ class BrevoEmailService:
         self.api_url = 'https://api.brevo.com/v3/smtp/email'
         self.sender_email = getattr(settings, 'BREVO_SENDER_EMAIL', 'noreply@sixpine.in')
         self.sender_name = getattr(settings, 'BREVO_SENDER_NAME', 'Sixpine')
+        self.last_error = None  # Store last error message for debugging
 
     def send_email(self, to_email, subject, body, html_content=None):
         """
@@ -28,8 +29,10 @@ class BrevoEmailService:
             bool: True if email sent successfully, False otherwise
         """
         try:
+            self.last_error = None  # Reset error
             if not self.api_key:
-                logger.error("Brevo API key not configured. Please set BREVO_API_KEY environment variable.")
+                self.last_error = "Brevo API key not configured. Please set BREVO_API_KEY environment variable."
+                logger.error(self.last_error)
                 return False
             
             # Check if API key looks valid (should start with 'xkeysib-')
@@ -37,7 +40,8 @@ class BrevoEmailService:
                 logger.warning(f"Brevo API key format may be incorrect. Expected format: xkeysib-... (got: {self.api_key[:20]}...)")
             
             if not self.sender_email:
-                logger.error("Brevo sender email not configured. Please set BREVO_SENDER_EMAIL environment variable.")
+                self.last_error = "Brevo sender email not configured. Please set BREVO_SENDER_EMAIL environment variable."
+                logger.error(self.last_error)
                 return False
 
             headers = {
@@ -65,21 +69,35 @@ class BrevoEmailService:
             else:
                 error_msg = f"Error sending email: {response.status_code} - {response.text}"
                 logger.error(error_msg)
-                # Log response details for debugging
+                # Try to parse error details for better error message
                 try:
                     error_data = response.json()
                     logger.error(f"Brevo API error details: {error_data}")
+                    # Extract meaningful error message
+                    if isinstance(error_data, dict):
+                        if 'message' in error_data:
+                            self.last_error = f"Brevo API error: {error_data['message']}"
+                        elif 'error' in error_data:
+                            self.last_error = f"Brevo API error: {error_data['error']}"
+                        else:
+                            self.last_error = f"Brevo API error (Status {response.status_code}): {str(error_data)}"
+                    else:
+                        self.last_error = f"Brevo API error (Status {response.status_code}): {str(error_data)}"
                 except:
+                    self.last_error = f"Brevo API error (Status {response.status_code}): {response.text[:200]}"
                     logger.error(f"Brevo API raw response: {response.text}")
                 return False
 
         except requests.exceptions.Timeout:
+            self.last_error = "Timeout while connecting to Brevo API. Please try again later."
             logger.error(f"Timeout while sending email to {to_email}")
             return False
         except requests.exceptions.RequestException as e:
+            self.last_error = f"Network error connecting to Brevo API: {str(e)}"
             logger.error(f"Request error sending email via Brevo: {e}")
             return False
         except Exception as e:
+            self.last_error = f"Unexpected error: {str(e)}"
             logger.error(f"Unexpected error sending email via Brevo: {e}", exc_info=True)
             return False
 

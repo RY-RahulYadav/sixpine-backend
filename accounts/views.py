@@ -300,9 +300,10 @@ def resend_otp_view(request):
             brevo_service = BrevoEmailService()
             email_sent = brevo_service.send_otp_email(email, otp_code)
             if not email_sent:
+                error_details = brevo_service.last_error or 'Unknown error occurred'
                 return Response({
                     'success': False,
-                    'error': 'Failed to resend OTP email. Please try again or contact support.',
+                    'error': f'Failed to resend OTP email. {error_details}',
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         elif otp_method == 'whatsapp':
             # Send WhatsApp OTP using WhatsApp service
@@ -401,13 +402,11 @@ Sixpine Team"""
         if not email_sent:
             import logging
             logger = logging.getLogger('accounts')
-            logger.error(f'Failed to send password reset email to {email}. Check Brevo API configuration and server logs.')
-            error_message = 'Failed to send password reset email. Please try again or contact support.'
-            if settings.DEBUG:
-                error_message += ' Check server logs for details.'
+            error_details = brevo_service.last_error or 'Unknown error occurred'
+            logger.error(f'Failed to send password reset email to {email}. Error: {error_details}')
             return Response({
                 'success': False,
-                'error': error_message,
+                'error': f'Failed to send password reset email. {error_details}',
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({
