@@ -216,12 +216,12 @@ BREVO_API_KEY = config('BREVO_API_KEY', default='')
 BREVO_SENDER_EMAIL = config('BREVO_SENDER_EMAIL', default='noreply@sixpine.in')
 BREVO_SENDER_NAME = config('BREVO_SENDER_NAME', default='Sixpine')
 DEFAULT_FROM_EMAIL = BREVO_SENDER_EMAIL
+EMAIL_BACKEND = 'django.core.mail.backends.base.EmailBackend'
 
 # Legacy SMTP settings (kept for backward compatibility, but not used)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
 # EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='your-email@gmail.com')
 # EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')
 
