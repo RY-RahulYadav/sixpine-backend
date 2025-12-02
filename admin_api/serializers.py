@@ -441,6 +441,8 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         return 0
     
     def create(self, validated_data):
+        from django.db import transaction
+        
         images_data = validated_data.pop('images', [])
         variants_data = validated_data.pop('variants', [])
         specifications_data = validated_data.pop('specifications', [])
@@ -462,61 +464,94 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         subcategory_id = validated_data.pop('subcategory_id', None)
         material_id = validated_data.pop('material_id', None)
         
-        product = Product.objects.create(
-            category_id=category_id,
-            subcategory_id=subcategory_id,
-            material_id=material_id,
-            **validated_data
-        )
-        
-        # Create images
-        for image_data in images_data:
-            ProductImage.objects.create(product=product, **image_data)
-        
-        # Create variants with images
-        for variant_data in variants_data:
-            variant_images = variant_data.pop('images', [])
-            color_id = variant_data.pop('color_id')
-            variant = ProductVariant.objects.create(
-                product=product,
-                color_id=color_id,
-                **variant_data
+        # Use atomic transaction for all database operations
+        with transaction.atomic():
+            # Create product
+            product = Product.objects.create(
+                category_id=category_id,
+                subcategory_id=subcategory_id,
+                material_id=material_id,
+                **validated_data
             )
-            for variant_img_data in variant_images:
-                ProductVariantImage.objects.create(variant=variant, **variant_img_data)
-        
-        # Create specifications
-        for spec_data in specifications_data:
-            ProductSpecification.objects.create(product=product, **spec_data)
-        
-        # Create recommendations
-        for rec_data in recommendations_data:
-            recommended_product_id = rec_data.pop('recommended_product_id')
-            recommendation_type = rec_data.get('recommendation_type', 'buy_with')
-            # Use get_or_create to avoid duplicate errors
-            rec, created = ProductRecommendation.objects.get_or_create(
-                product=product,
-                recommended_product_id=recommended_product_id,
-                recommendation_type=recommendation_type,
-                defaults=rec_data
-            )
-            if not created:
-                # Update existing recommendation
-                for attr, value in rec_data.items():
-                    setattr(rec, attr, value)
-                rec.save()
-        
-        # Create features
-        for feature_data in features_data:
-            ProductFeature.objects.create(product=product, **feature_data)
-        
-        # Create offers
-        for offer_data in offers_data:
-            ProductOffer.objects.create(product=product, **offer_data)
+            
+            # Bulk create images for better performance
+            if images_data:
+                image_objects = [
+                    ProductImage(product=product, **image_data)
+                    for image_data in images_data
+                ]
+                ProductImage.objects.bulk_create(image_objects)
+            
+            # Create variants with images
+            # Create variants individually to get IDs, but batch variant images
+            variant_image_objects = []
+            for variant_data in variants_data:
+                variant_images = variant_data.pop('images', [])
+                color_id = variant_data.pop('color_id')
+                variant = ProductVariant.objects.create(
+                    product=product,
+                    color_id=color_id,
+                    **variant_data
+                )
+                # Collect variant images for bulk creation
+                if variant_images:
+                    for variant_img_data in variant_images:
+                        variant_image_objects.append(
+                            ProductVariantImage(variant=variant, **variant_img_data)
+                        )
+            
+            # Bulk create variant images for better performance
+            if variant_image_objects:
+                ProductVariantImage.objects.bulk_create(variant_image_objects)
+            
+            # Bulk create specifications
+            if specifications_data:
+                spec_objects = [
+                    ProductSpecification(product=product, **spec_data)
+                    for spec_data in specifications_data
+                ]
+                ProductSpecification.objects.bulk_create(spec_objects)
+            
+            # Bulk create features
+            if features_data:
+                feature_objects = [
+                    ProductFeature(product=product, **feature_data)
+                    for feature_data in features_data
+                ]
+                ProductFeature.objects.bulk_create(feature_objects)
+            
+            # Bulk create offers
+            if offers_data:
+                offer_objects = [
+                    ProductOffer(product=product, **offer_data)
+                    for offer_data in offers_data
+                ]
+                ProductOffer.objects.bulk_create(offer_objects)
+            
+            # Create recommendations (need individual handling due to get_or_create logic)
+            if recommendations_data:
+                recommendation_objects = []
+                for rec_data in recommendations_data:
+                    recommended_product_id = rec_data.pop('recommended_product_id')
+                    recommendation_type = rec_data.get('recommendation_type', 'buy_with')
+                    # Use get_or_create to avoid duplicate errors
+                    rec, created = ProductRecommendation.objects.get_or_create(
+                        product=product,
+                        recommended_product_id=recommended_product_id,
+                        recommendation_type=recommendation_type,
+                        defaults=rec_data
+                    )
+                    if not created:
+                        # Update existing recommendation
+                        for attr, value in rec_data.items():
+                            setattr(rec, attr, value)
+                        rec.save()
         
         return product
     
     def update(self, instance, validated_data):
+        from django.db import transaction
+        
         images_data = validated_data.pop('images', None)
         variants_data = validated_data.pop('variants', None)
         specifications_data = validated_data.pop('specifications', None)
@@ -528,23 +563,29 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         subcategory_id = validated_data.pop('subcategory_id', None)
         material_id = validated_data.pop('material_id', None)
         
-        if category_id:
-            instance.category_id = category_id
-        if subcategory_id is not None:
-            instance.subcategory_id = subcategory_id
-        if material_id is not None:
-            instance.material_id = material_id
-        
-        # Update product fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        # Update images if provided
-        if images_data is not None:
-            instance.images.all().delete()
-            for image_data in images_data:
-                ProductImage.objects.create(product=instance, **image_data)
+        # Use atomic transaction for all database operations
+        with transaction.atomic():
+            if category_id:
+                instance.category_id = category_id
+            if subcategory_id is not None:
+                instance.subcategory_id = subcategory_id
+            if material_id is not None:
+                instance.material_id = material_id
+            
+            # Update product fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+            
+            # Update images if provided - use bulk_create for better performance
+            if images_data is not None:
+                instance.images.all().delete()
+                if images_data:
+                    image_objects = [
+                        ProductImage(product=instance, **image_data)
+                        for image_data in images_data
+                    ]
+                    ProductImage.objects.bulk_create(image_objects)
         
         # Update variants if provided
         if variants_data is not None:
@@ -574,10 +615,13 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         # Update variant images only if provided (empty list means delete all)
                         if variant_images is not None:
                             variant.images.all().delete()
-                            # Only create images if list is not empty
+                            # Only create images if list is not empty - use bulk_create
                             if variant_images:
-                                for variant_img_data in variant_images:
-                                    ProductVariantImage.objects.create(variant=variant, **variant_img_data)
+                                variant_image_objects = [
+                                    ProductVariantImage(variant=variant, **variant_img_data)
+                                    for variant_img_data in variant_images
+                                ]
+                                ProductVariantImage.objects.bulk_create(variant_image_objects)
                     except ProductVariant.DoesNotExist:
                         # If variant doesn't exist, create new one
                         if color_id is None:
@@ -588,8 +632,11 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                             **variant_data
                         )
                         if variant_images:
-                            for variant_img_data in variant_images:
-                                ProductVariantImage.objects.create(variant=variant, **variant_img_data)
+                            variant_image_objects = [
+                                ProductVariantImage(variant=variant, **variant_img_data)
+                                for variant_img_data in variant_images
+                            ]
+                            ProductVariantImage.objects.bulk_create(variant_image_objects)
                 else:
                     # New variant without ID
                     if color_id is None:
@@ -600,26 +647,41 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         **variant_data
                     )
                     if variant_images:
-                        for variant_img_data in variant_images:
-                            ProductVariantImage.objects.create(variant=variant, **variant_img_data)
+                        variant_image_objects = [
+                            ProductVariantImage(variant=variant, **variant_img_data)
+                            for variant_img_data in variant_images
+                        ]
+                        ProductVariantImage.objects.bulk_create(variant_image_objects)
         
-        # Update specifications if provided
-        if specifications_data is not None:
-            instance.specifications.all().delete()
-            for spec_data in specifications_data:
-                ProductSpecification.objects.create(product=instance, **spec_data)
-        
-        # Update features if provided
-        if features_data is not None:
-            instance.features.all().delete()
-            for feature_data in features_data:
-                ProductFeature.objects.create(product=instance, **feature_data)
-        
-        # Update offers if provided
-        if offers_data is not None:
-            instance.offers.all().delete()
-            for offer_data in offers_data:
-                ProductOffer.objects.create(product=instance, **offer_data)
+            # Update specifications if provided - use bulk_create for better performance
+            if specifications_data is not None:
+                instance.specifications.all().delete()
+                if specifications_data:
+                    spec_objects = [
+                        ProductSpecification(product=instance, **spec_data)
+                        for spec_data in specifications_data
+                    ]
+                    ProductSpecification.objects.bulk_create(spec_objects)
+            
+            # Update features if provided - use bulk_create for better performance
+            if features_data is not None:
+                instance.features.all().delete()
+                if features_data:
+                    feature_objects = [
+                        ProductFeature(product=instance, **feature_data)
+                        for feature_data in features_data
+                    ]
+                    ProductFeature.objects.bulk_create(feature_objects)
+            
+            # Update offers if provided - use bulk_create for better performance
+            if offers_data is not None:
+                instance.offers.all().delete()
+                if offers_data:
+                    offer_objects = [
+                        ProductOffer(product=instance, **offer_data)
+                        for offer_data in offers_data
+                    ]
+                    ProductOffer.objects.bulk_create(offer_objects)
         
         # Update recommendations if provided
         if recommendations_data is not None:
