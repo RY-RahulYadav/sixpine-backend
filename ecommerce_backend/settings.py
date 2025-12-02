@@ -212,7 +212,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email Configuration - Using Brevo (formerly Sendinblue)
-BREVO_API_KEY = config('BREVO_API_KEY', default='xkeysib-a1b3ab14')
+BREVO_API_KEY = config('BREVO_API_KEY', default='')
 BREVO_SENDER_EMAIL = config('BREVO_SENDER_EMAIL', default='noreply@sixpine.in')
 BREVO_SENDER_NAME = config('BREVO_SENDER_NAME', default='Sixpine')
 DEFAULT_FROM_EMAIL = BREVO_SENDER_EMAIL
