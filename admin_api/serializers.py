@@ -412,7 +412,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             'main_image', 'category', 'category_id', 'subcategory', 'subcategory_id',
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'brand', 'material', 'material_id', 'dimensions', 'weight', 'warranty',
-            'assembly_required', 'estimated_delivery_days', 'screen_offer', 'style_description', 'user_guide', 'care_instructions',
+            'assembly_required', 'estimated_delivery_days', 'screen_offer', 'style_description', 'user_guide', 'care_instructions', 'what_in_box',
             'meta_title', 'meta_description',
             'is_featured', 'is_active', 'images', 'variants',
             'features', 'about_items', 'offers', 'recommendations', 'average_rating', 'review_count',

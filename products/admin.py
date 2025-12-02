@@ -132,7 +132,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ()
         }),
         ('Product Details', {
-            'fields': ('main_image', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required', 'style_description')
+            'fields': ('main_image', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required', 'style_description', 'what_in_box')
         }),
         ('SEO & Display', {
             'fields': ('meta_title', 'meta_description', 'is_featured', 'is_active')

@@ -120,6 +120,7 @@ class Product(models.Model):
     style_description = models.TextField(blank=True, null=True, help_text="Detailed style description for the Style section")
     user_guide = models.TextField(blank=True, null=True, help_text="User guide instructions")
     care_instructions = models.TextField(blank=True, null=True, help_text="Care and maintenance instructions")
+    what_in_box = models.TextField(blank=True, null=True, help_text="What is included in the box")
     
     # SEO and Display
     meta_title = models.CharField(max_length=200, blank=True)

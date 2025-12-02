@@ -230,7 +230,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'main_image', 'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'average_rating', 'review_count', 'review_percentages', 'category', 'subcategory',
             'brand', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required', 'estimated_delivery_days',
-            'screen_offer', 'style_description', 'user_guide', 'care_instructions',
+            'screen_offer', 'style_description', 'user_guide', 'care_instructions', 'what_in_box',
             'images', 'variants', 'features', 'about_items', 'offers',
             'buy_with_products', 'inspired_products', 'frequently_viewed_products',
             'similar_products', 'recommended_products',
