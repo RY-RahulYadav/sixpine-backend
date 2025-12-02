@@ -850,7 +850,11 @@ def create_reviews_and_recommendations(products_with_reviews):
     
     # Create recommendations
     recommendation_types = [
-        ('buy_with', 'Buy with it'),
+        ('buy_with', 'Buy it with
+
+
+
+'),
         ('inspired_by', 'Inspired by browsing history'),
         ('frequently_viewed', 'Frequently viewed'),
         ('similar', 'Similar products'),

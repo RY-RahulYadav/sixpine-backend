@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.models import User, Vendor
-from accounts.gmail_oauth_service import GmailOAuth2Service
+from accounts.brevo_email_service import BrevoEmailService
 from .permissions import IsAdminUser
 
 
@@ -87,7 +87,7 @@ def admin_send_email(request):
                 'error': 'Missing required fields: recipient_type, recipient_id, subject, and message are required'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        gmail_service = GmailOAuth2Service()
+        brevo_service = BrevoEmailService()
         
         if recipient_type == 'customer':
             try:
@@ -128,7 +128,7 @@ Email: {request.user.email}
 """
         
         # Send email
-        success = gmail_service.send_email(recipient_email, subject, email_body)
+        success = brevo_service.send_email(recipient_email, subject, email_body)
         
         if success:
             return Response({

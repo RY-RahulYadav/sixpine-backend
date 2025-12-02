@@ -307,7 +307,11 @@ class Command(BaseCommand):
         
         # Create some recommendations between products
         if len(created_products) >= 2:
-            # Sofa -> Recliner (buy with it)
+            # Sofa -> Recliner (Buy it with
+
+
+
+)
             ProductRecommendation.objects.get_or_create(
                 product=created_products[0],  # Sofa
                 recommended_product=created_products[1],  # Recliner
@@ -315,7 +319,11 @@ class Command(BaseCommand):
                 defaults={'sort_order': 1}
             )
             
-            # Recliner -> Sofa (buy with it)
+            # Recliner -> Sofa (Buy it with
+
+
+
+)
             ProductRecommendation.objects.get_or_create(
                 product=created_products[1],  # Recliner
                 recommended_product=created_products[0],  # Sofa

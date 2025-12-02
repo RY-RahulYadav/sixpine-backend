@@ -37,6 +37,12 @@ cloudinary>=1.36.0,<2.0.0
 python-decouple>=3.8,<4.0.0
 
 # ============================================
+# HTTP Requests
+# ============================================
+# requests for API calls (Brevo email service, etc.)
+requests>=2.31.0,<3.0.0
+
+# ============================================
 # Google APIs (Gmail OAuth2)
 # ============================================
 # Google Authentication and OAuth2

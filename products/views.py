@@ -181,6 +181,7 @@ class ProductListView(generics.ListAPIView):
                                 },
                                 'size': variant.size,
                                 'pattern': variant.pattern,
+                                'quality': variant.quality,
                                 'price': float(variant.price) if variant.price else None,
                                 'old_price': float(variant.old_price) if variant.old_price else None,
                                 'stock_quantity': variant.stock_quantity,
@@ -382,10 +383,39 @@ class ProductReviewListView(generics.ListCreateAPIView):
             is_approved=True
         ).select_related('user').order_by('-created_at')
     
+    def create(self, request, *args, **kwargs):
+        """Override create to handle duplicate reviews"""
+        product_slug = self.kwargs.get('slug')
+        product = get_object_or_404(Product, slug=product_slug)
+        
+        # Check if user already has a review for this product
+        existing_review = ProductReview.objects.filter(
+            product=product,
+            user=request.user
+        ).first()
+        
+        if existing_review:
+            # Update existing review instead of creating a new one
+            serializer = self.get_serializer(existing_review, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            existing_review.rating = serializer.validated_data.get('rating', existing_review.rating)
+            existing_review.title = serializer.validated_data.get('title', existing_review.title)
+            existing_review.comment = serializer.validated_data.get('comment', existing_review.comment)
+            existing_review.is_verified_purchase = serializer.validated_data.get('is_verified_purchase', existing_review.is_verified_purchase)
+            existing_review.is_approved = False  # Require re-approval when updated
+            existing_review.save()
+            
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK, headers=headers)
+        else:
+            # Create new review - requires approval
+            return super().create(request, *args, **kwargs)
+    
     def perform_create(self, serializer):
         product_slug = self.kwargs.get('slug')
         product = get_object_or_404(Product, slug=product_slug)
-        serializer.save(product=product, user=self.request.user)
+        # New reviews require approval - set is_approved=False
+        serializer.save(product=product, user=self.request.user, is_approved=False)
 
 
 @api_view(['GET'])
@@ -562,13 +592,32 @@ def get_active_advertisements(request):
     
     now = timezone.now()
     
+    # Get all advertisements (for debugging)
+    all_ads = Advertisement.objects.all()
+    
     # Get all valid active advertisements
+    # Filter: is_active=True AND (valid_from is null or <= now) AND (valid_until is null or >= now)
     advertisements = Advertisement.objects.filter(
         is_active=True
     ).filter(
         Q(valid_from__isnull=True) | Q(valid_from__lte=now),
         Q(valid_until__isnull=True) | Q(valid_until__gte=now)
     ).order_by('display_order', '-created_at')
+    
+    # Debug: Log total ads and filtered ads
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Total advertisements in DB: {all_ads.count()}")
+    logger.info(f"Active advertisements after filter: {advertisements.count()}")
+    
+    # If no ads found with strict filter, try showing ads that are just marked active
+    # (ignore date constraints if they're causing issues)
+    if advertisements.count() == 0:
+        # Fallback: show ads that are just marked as active, regardless of dates
+        advertisements = Advertisement.objects.filter(
+            is_active=True
+        ).order_by('display_order', '-created_at')
+        logger.info(f"Fallback: Found {advertisements.count()} active ads (ignoring date constraints)")
     
     # Serialize advertisements
     serialized_ads = []
@@ -577,7 +626,7 @@ def get_active_advertisements(request):
             'id': ad.id,
             'title': ad.title,
             'description': ad.description,
-            'image': ad.image,
+            'image': str(ad.image) if ad.image else '',
             'button_text': ad.button_text,
             'button_link': ad.button_link,
             'discount_percentage': ad.discount_percentage,

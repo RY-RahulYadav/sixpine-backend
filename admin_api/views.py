@@ -28,7 +28,7 @@ from accounts.data_export_utils import export_orders_to_excel, export_addresses_
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage,
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature,
-    ProductOffer, Discount, Coupon
+    ProductOffer, Discount, Coupon, ProductReview
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from .models import AdminLog
@@ -2111,3 +2111,265 @@ class AdminPackagingFeedbackViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         
         serializer = self.get_serializer(feedback)
         return Response(serializer.data)
+
+
+# ==================== Product Review Management ====================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_review_list(request):
+    """Get all product reviews (pending and approved) for admin"""
+    from products.serializers import ProductReviewSerializer
+    from admin_api.serializers import AdminProductReviewSerializer
+    
+    # Get filter parameters
+    status_filter = request.query_params.get('status', 'all')  # 'all', 'pending', 'approved'
+    product_id = request.query_params.get('product_id')
+    vendor_id = request.query_params.get('vendor_id')
+    
+    queryset = ProductReview.objects.select_related('user', 'product', 'product__vendor').order_by('-created_at')
+    
+    # Apply filters
+    if status_filter == 'pending':
+        queryset = queryset.filter(is_approved=False)
+    elif status_filter == 'approved':
+        queryset = queryset.filter(is_approved=True)
+    
+    if product_id:
+        queryset = queryset.filter(product_id=product_id)
+    
+    if vendor_id:
+        queryset = queryset.filter(product__vendor_id=vendor_id)
+    
+    serializer = AdminProductReviewSerializer(queryset, many=True)
+    return Response({
+        'count': queryset.count(),
+        'results': serializer.data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_review_approve(request, review_id):
+    """Approve a product review (admin can approve any review)"""
+    try:
+        review = ProductReview.objects.select_related('product', 'user').get(id=review_id)
+        
+        if review.is_approved:
+            return Response({
+                'success': False,
+                'message': 'Review is already approved'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        review.is_approved = True
+        review.save()
+        
+        # Update product rating statistics
+        product = review.product
+        approved_reviews = ProductReview.objects.filter(product=product, is_approved=True)
+        if approved_reviews.exists():
+            product.average_rating = approved_reviews.aggregate(
+                avg_rating=Avg('rating')
+            )['avg_rating'] or 0
+            product.review_count = approved_reviews.count()
+        else:
+            product.average_rating = 0
+            product.review_count = 0
+        product.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='approve_review',
+            model_name='ProductReview',
+            object_id=review.id,
+            object_repr=f"Review for {product.title} by {review.user.email}",
+            details={
+                'product_id': product.id,
+                'product_title': product.title,
+                'user_email': review.user.email,
+                'rating': review.rating
+            }
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'Review approved successfully'
+        })
+        
+    except ProductReview.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Review not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_review_reject(request, review_id):
+    """Reject a product review (admin can reject any review)"""
+    try:
+        review = ProductReview.objects.select_related('product', 'user').get(id=review_id)
+        
+        if not review.is_approved:
+            return Response({
+                'success': False,
+                'message': 'Review is already rejected'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        review.is_approved = False
+        review.save()
+        
+        # Update product rating statistics
+        product = review.product
+        approved_reviews = ProductReview.objects.filter(product=product, is_approved=True)
+        if approved_reviews.exists():
+            product.average_rating = approved_reviews.aggregate(
+                avg_rating=Avg('rating')
+            )['avg_rating'] or 0
+            product.review_count = approved_reviews.count()
+        else:
+            product.average_rating = 0
+            product.review_count = 0
+        product.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='reject_review',
+            model_name='ProductReview',
+            object_id=review.id,
+            object_repr=f"Review for {product.title} by {review.user.email}",
+            details={
+                'product_id': product.id,
+                'product_title': product.title,
+                'user_email': review.user.email,
+                'rating': review.rating
+            }
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'Review rejected successfully'
+        })
+        
+    except ProductReview.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Review not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_review_delete(request, review_id):
+    """Delete a product review (admin can delete any review)"""
+    try:
+        review = ProductReview.objects.select_related('product', 'user').get(id=review_id)
+        product = review.product
+        user_email = review.user.email
+        rating = review.rating
+        
+        # Delete the review
+        review.delete()
+        
+        # Update product rating statistics
+        approved_reviews = ProductReview.objects.filter(product=product, is_approved=True)
+        if approved_reviews.exists():
+            product.average_rating = approved_reviews.aggregate(
+                avg_rating=Avg('rating')
+            )['avg_rating'] or 0
+            product.review_count = approved_reviews.count()
+        else:
+            product.average_rating = 0
+            product.review_count = 0
+        product.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='delete_review',
+            model_name='ProductReview',
+            object_id=review_id,
+            object_repr=f"Review for {product.title} by {user_email}",
+            details={
+                'product_id': product.id,
+                'product_title': product.title,
+                'user_email': user_email,
+                'rating': rating
+            }
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'Review deleted successfully'
+        })
+        
+    except ProductReview.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Review not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_review_delete_all(request):
+    """Delete all reviews (admin only)"""
+    try:
+        # Get filter parameters
+        status_filter = request.data.get('status', 'all')
+        
+        # Build query
+        queryset = ProductReview.objects.all()
+        
+        if status_filter == 'pending':
+            queryset = queryset.filter(is_approved=False)
+        elif status_filter == 'approved':
+            queryset = queryset.filter(is_approved=True)
+        
+        # Get count before deletion
+        count = queryset.count()
+        
+        # Get product IDs that will be affected
+        affected_products = set(queryset.values_list('product_id', flat=True))
+        
+        # Delete reviews
+        queryset.delete()
+        
+        # Update product rating statistics for affected products
+        from products.models import Product
+        for product_id in affected_products:
+            product = Product.objects.get(id=product_id)
+            approved_reviews = ProductReview.objects.filter(product=product, is_approved=True)
+            if approved_reviews.exists():
+                product.average_rating = approved_reviews.aggregate(
+                    avg_rating=Avg('rating')
+                )['avg_rating'] or 0
+                product.review_count = approved_reviews.count()
+            else:
+                product.average_rating = 0
+                product.review_count = 0
+            product.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='delete_all_reviews',
+            model_name='ProductReview',
+            object_repr=f"Deleted {count} reviews",
+            details={
+                'count': count,
+                'status_filter': status_filter
+            }
+        )
+        
+        return Response({
+            'success': True,
+            'message': f'{count} review(s) deleted successfully'
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Failed to delete reviews: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -4,7 +4,8 @@ from .views import (
     seller_dashboard_stats, seller_brand_analytics, seller_shipment_settings,
     seller_settings, seller_change_password,
     SellerProductViewSet, SellerOrderViewSet,
-    SellerCouponViewSet, SellerMediaViewSet
+    SellerCouponViewSet, SellerMediaViewSet,
+    vendor_review_list, vendor_review_approve, vendor_review_reject
 )
 from .communication import get_customers_list, get_admin_email, seller_send_email
 from .payment import seller_payment_dashboard
@@ -25,6 +26,9 @@ urlpatterns = [
     path('communication/admin-email/', get_admin_email, name='seller-admin-email'),
     path('communication/send-email/', seller_send_email, name='seller-send-email'),
     path('payment/dashboard/', seller_payment_dashboard, name='seller-payment-dashboard'),
+    path('reviews/', vendor_review_list, name='vendor-review-list'),
+    path('reviews/<int:review_id>/approve/', vendor_review_approve, name='vendor-review-approve'),
+    path('reviews/<int:review_id>/reject/', vendor_review_reject, name='vendor-review-reject'),
     path('', include(router.urls)),
 ]
 

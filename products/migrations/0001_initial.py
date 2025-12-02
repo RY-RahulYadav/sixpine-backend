@@ -169,7 +169,7 @@ class Migration(migrations.Migration):
             name='ProductRecommendation',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('recommendation_type', models.CharField(choices=[('buy_with', 'Buy with it'), ('inspired_by', 'Inspired by browsing history'), ('frequently_viewed', 'Frequently viewed'), ('similar', 'Similar products'), ('recommended', 'Recommended for you')], max_length=20)),
+                ('recommendation_type', models.CharField(choices=[('buy_with', 'Buy it with'), ('inspired_by', 'Inspired by browsing history'), ('frequently_viewed', 'Frequently viewed'), ('similar', 'Similar products'), ('recommended', 'Recommended for you')], max_length=20)),
                 ('sort_order', models.PositiveIntegerField(default=0)),
                 ('is_active', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),

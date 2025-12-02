@@ -211,22 +211,32 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# Email Configuration
+# Email Configuration - Using Brevo (formerly Sendinblue)
+BREVO_API_KEY = config('BREVO_API_KEY', default='xkeysib-a1b3ab14')
+BREVO_SENDER_EMAIL = config('BREVO_SENDER_EMAIL', default='noreply@sixpine.in')
+BREVO_SENDER_NAME = config('BREVO_SENDER_NAME', default='Sixpine')
+DEFAULT_FROM_EMAIL = BREVO_SENDER_EMAIL
+
+# Legacy SMTP settings (kept for backward compatibility, but not used)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='your-email@gmail.com')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='your-email@gmail.com')
+# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='your-app-password')
 
-# Google OAuth2 Configuration for Gmail API
-GOOGLE_OAUTH2_CLIENT_ID = config('GOOGLE_OAUTH2_CLIENT_ID', default='')
-GOOGLE_OAUTH2_CLIENT_SECRET = config('GOOGLE_OAUTH2_CLIENT_SECRET', default='')
-GOOGLE_OAUTH2_REFRESH_TOKEN = config('GOOGLE_OAUTH2_REFRESH_TOKEN', default='')
+# Google OAuth2 Configuration for Gmail API (deprecated - using Brevo now)
+# GOOGLE_OAUTH2_CLIENT_ID = config('GOOGLE_OAUTH2_CLIENT_ID', default='')
+# GOOGLE_OAUTH2_CLIENT_SECRET = config('GOOGLE_OAUTH2_CLIENT_SECRET', default='')
+# GOOGLE_OAUTH2_REFRESH_TOKEN = config('GOOGLE_OAUTH2_REFRESH_TOKEN', default='')
 
 # Frontend URL for password reset links
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+# Use production URL when not in DEBUG mode, otherwise use localhost
+if DEBUG:
+    FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+else:
+    # Production: Use environment variable or default to production domain
+    FRONTEND_URL = config('FRONTEND_URL', default='https://sixpine.in')
 
 # Twilio Configuration for WhatsApp
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')

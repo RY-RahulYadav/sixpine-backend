@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.conf import settings
 from accounts.models import User, Vendor
-from accounts.gmail_oauth_service import GmailOAuth2Service
+from accounts.brevo_email_service import BrevoEmailService
 from admin_api.models import GlobalSettings
 from .permissions import IsVendorUser
 
@@ -92,7 +92,7 @@ def seller_send_email(request):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         vendor = request.user.vendor_profile
-        gmail_service = GmailOAuth2Service()
+        brevo_service = BrevoEmailService()
         
         if recipient_type == 'customer':
             if not recipient_id:
@@ -158,7 +158,7 @@ Email: {request.user.email}
 """
         
         # Send email
-        success = gmail_service.send_email(recipient_email, subject, email_body)
+        success = brevo_service.send_email(recipient_email, subject, email_body)
         
         if success:
             return Response({

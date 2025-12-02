@@ -113,9 +113,10 @@ class Product(models.Model):
     weight = models.CharField(max_length=50, blank=True)
     warranty = models.CharField(max_length=100, blank=True)
     assembly_required = models.BooleanField(default=False)
+    estimated_delivery_days = models.PositiveIntegerField(default=4, help_text='Estimated delivery time in days (e.g., 4 for 4 days)')
     
     # Additional Product Information
-    screen_offer = models.JSONField(default=list, blank=True, help_text="Array of screen offer texts to display on product page")
+    screen_offer = models.JSONField(default=list, blank=True, help_text="Array of screen offer objects with 'title' and 'description' fields, or strings for backward compatibility")
     user_guide = models.TextField(blank=True, null=True, help_text="User guide instructions")
     care_instructions = models.TextField(blank=True, null=True, help_text="Care and maintenance instructions")
     
@@ -181,6 +182,7 @@ class ProductVariant(models.Model):
     color = models.ForeignKey(Color, on_delete=models.CASCADE, related_name='variants')
     size = models.CharField(max_length=50, blank=True)  # e.g., "S", "M", "L" or "3-Seater", "2-Seater"
     pattern = models.CharField(max_length=100, blank=True)  # e.g., "Classic", "Modern"
+    quality = models.CharField(max_length=100, blank=True)  # e.g., "Premium", "Standard", "Luxury"
     
     # Variant title for display (e.g., "White 4-Door Modern")
     title = models.CharField(max_length=200, blank=True)
@@ -204,8 +206,8 @@ class ProductVariant(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['product', 'color', 'size', 'pattern']
-        ordering = ['color__name', 'size', 'pattern']
+        unique_together = ['product', 'color', 'size', 'pattern', 'quality']
+        ordering = ['color__name', 'size', 'pattern', 'quality']
 
     def save(self, *args, **kwargs):
         # Generate title if not set
@@ -217,6 +219,8 @@ class ProductVariant(models.Model):
                 variant_parts.append(self.size)
             if self.pattern:
                 variant_parts.append(self.pattern)
+            if self.quality:
+                variant_parts.append(self.quality)
             self.title = ' '.join(variant_parts) if variant_parts else ''
         
         # Price is required - variants are the actual products
@@ -245,7 +249,7 @@ class ProductReview(models.Model):
     title = models.CharField(max_length=200, blank=True)
     comment = models.TextField(blank=True)
     is_verified_purchase = models.BooleanField(default=False)
-    is_approved = models.BooleanField(default=True)
+    is_approved = models.BooleanField(default=False, help_text='Review must be approved by admin or vendor before appearing on product page')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -258,9 +262,9 @@ class ProductReview(models.Model):
 
 
 class ProductRecommendation(models.Model):
-    """Product recommendations for 'Buy with it' and 'Inspired by' sections"""
+    """Product recommendations for 'Buy it with' and 'Inspired by' sections"""
     RECOMMENDATION_TYPES = [
-        ('buy_with', 'Buy with it'),
+        ('buy_with', 'Buy it with'),
         ('inspired_by', 'Inspired by browsing history'),
         ('frequently_viewed', 'Frequently viewed'),
         ('similar', 'Similar products'),

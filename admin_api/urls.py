@@ -7,7 +7,8 @@ from .views import (
     AdminCouponViewSet, payment_charges_settings, global_settings,
     AdminContactQueryViewSet, AdminBulkOrderViewSet, AdminLogViewSet,
     AdminHomePageContentViewSet, AdminBulkOrderPageContentViewSet, AdminFAQPageContentViewSet, AdminAdvertisementViewSet, AdminDataRequestViewSet,
-    AdminBrandViewSet, AdminMediaViewSet, AdminPackagingFeedbackViewSet
+    AdminBrandViewSet, AdminMediaViewSet, AdminPackagingFeedbackViewSet,
+    admin_review_list, admin_review_approve, admin_review_reject, admin_review_delete, admin_review_delete_all
 )
 from .communication import get_customers_list, get_vendors_list, admin_send_email
 from .auth import admin_login_view
@@ -43,6 +44,11 @@ urlpatterns = [
     path('communication/customers/', get_customers_list, name='admin-customers-list'),
     path('communication/vendors/', get_vendors_list, name='admin-vendors-list'),
     path('communication/send-email/', admin_send_email, name='admin-send-email'),
+    path('reviews/', admin_review_list, name='admin-review-list'),
+    path('reviews/<int:review_id>/approve/', admin_review_approve, name='admin-review-approve'),
+    path('reviews/<int:review_id>/reject/', admin_review_reject, name='admin-review-reject'),
+    path('reviews/<int:review_id>/delete/', admin_review_delete, name='admin-review-delete'),
+    path('reviews/delete-all/', admin_review_delete_all, name='admin-review-delete-all'),
     path('', include(router.urls)),
 ]
 

@@ -23,7 +23,7 @@ from .serializers import (
     VendorRegistrationSerializer, VendorSerializer, VendorLoginSerializer
 )
 from .data_export_utils import export_orders_to_excel, export_addresses_to_excel, export_payment_options_to_excel
-from .gmail_oauth_service import GmailOAuth2Service
+from .brevo_email_service import BrevoEmailService
 from .whatsapp_service import WhatsAppService
 
 
@@ -132,9 +132,9 @@ def request_otp_view(request):
     # Send OTP
     try:
         if otp_method == 'email':
-            # Send email OTP using Gmail OAuth service
-            gmail_service = GmailOAuth2Service()
-            gmail_service.send_otp_email(email, otp_code)
+            # Send email OTP using Brevo service
+            brevo_service = BrevoEmailService()
+            brevo_service.send_otp_email(email, otp_code)
         elif otp_method == 'whatsapp':
             # Send WhatsApp OTP using WhatsApp service
             whatsapp_service = WhatsAppService()
@@ -282,9 +282,9 @@ def resend_otp_view(request):
         
         # Send OTP
         if otp_method == 'email':
-            # Send email OTP using Gmail OAuth service
-            gmail_service = GmailOAuth2Service()
-            gmail_service.send_otp_email(email, otp_code)
+            # Send email OTP using Brevo service
+            brevo_service = BrevoEmailService()
+            brevo_service.send_otp_email(email, otp_code)
         elif otp_method == 'whatsapp':
             # Send WhatsApp OTP using WhatsApp service
             whatsapp_service = WhatsAppService()
@@ -335,7 +335,7 @@ def password_reset_request_view(request):
         
         # Send reset email using Gmail OAuth service
         reset_url = f"{settings.FRONTEND_URL}/forgot-password?token={token}"
-        gmail_service = GmailOAuth2Service()
+        brevo_service = BrevoEmailService()
         subject = 'Sixpine - Password Reset'
         message = f"""Dear User,
 
@@ -349,7 +349,7 @@ If you did not request this password reset, please ignore this email.
 
 Best regards,
 Sixpine Team"""
-        gmail_service.send_email(email, subject, message)
+        brevo_service.send_email(email, subject, message)
         
         return Response({
             'success': True,

@@ -53,7 +53,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariant
         fields = [
-            'id', 'title', 'color', 'color_id', 'size', 'pattern', 'price', 'old_price',
+            'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality', 'price', 'old_price',
             'discount_percentage', 'stock_quantity', 'is_in_stock', 'image', 'images'
         ]
 
@@ -203,6 +203,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     available_colors = serializers.SerializerMethodField()
     available_sizes = serializers.SerializerMethodField()
     available_patterns = serializers.SerializerMethodField()
+    available_qualities = serializers.SerializerMethodField()
     
     # Real review data
     review_count = serializers.SerializerMethodField()
@@ -221,12 +222,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'id', 'title', 'slug', 'short_description', 'long_description',
             'main_image', 'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'average_rating', 'review_count', 'review_percentages', 'category', 'subcategory',
-            'brand', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required',
+            'brand', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required', 'estimated_delivery_days',
             'screen_offer', 'user_guide', 'care_instructions',
             'images', 'variants', 'specifications', 'features', 'offers',
             'buy_with_products', 'inspired_products', 'frequently_viewed_products',
             'similar_products', 'recommended_products',
-            'available_colors', 'available_sizes', 'available_patterns',
+            'available_colors', 'available_sizes', 'available_patterns', 'available_qualities',
             'meta_title', 'meta_description', 'is_featured', 'created_at', 'updated_at'
         ]
     
@@ -259,7 +260,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return 0
     
     def get_buy_with_products(self, obj):
-        """Get 'Buy with it' recommended products"""
+        """Get 'Buy it with
+
+
+
+' recommended products"""
         recommendations = ProductRecommendation.objects.filter(
             product=obj,
             recommendation_type='buy_with',
@@ -322,6 +327,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         """Get available patterns for this product"""
         patterns = obj.variants.filter(is_active=True).values_list('pattern', flat=True).distinct()
         return [pattern for pattern in patterns if pattern]
+    
+    def get_available_qualities(self, obj):
+        """Get available qualities for this product"""
+        qualities = obj.variants.filter(is_active=True).values_list('quality', flat=True).distinct()
+        return [quality for quality in qualities if quality]
     
     def get_review_count(self, obj):
         """Get actual review count from database"""

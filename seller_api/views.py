@@ -16,8 +16,9 @@ from admin_api.serializers import (
 )
 from products.models import (
     Product, ProductImage,
-    ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, Coupon
+    ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, Coupon, ProductReview
 )
+from django.db.models import Avg
 from orders.models import Order, OrderItem
 from accounts.models import Vendor, User, Media
 
@@ -1195,4 +1196,138 @@ class SellerMediaViewSet(viewsets.ModelViewSet):
                 {'error': f'Deletion failed: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+# ==================== Product Review Management (Vendor) ====================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsVendorUser])
+def vendor_review_list(request):
+    """Get all product reviews for vendor's products (pending and approved)"""
+    from admin_api.serializers import AdminProductReviewSerializer
+    
+    vendor = request.user.vendor_profile
+    
+    # Get filter parameters
+    status_filter = request.query_params.get('status', 'all')  # 'all', 'pending', 'approved'
+    product_id = request.query_params.get('product_id')
+    
+    # Only get reviews for vendor's products
+    queryset = ProductReview.objects.filter(
+        product__vendor=vendor
+    ).select_related('user', 'product', 'product__vendor').order_by('-created_at')
+    
+    # Apply filters
+    if status_filter == 'pending':
+        queryset = queryset.filter(is_approved=False)
+    elif status_filter == 'approved':
+        queryset = queryset.filter(is_approved=True)
+    
+    if product_id:
+        queryset = queryset.filter(product_id=product_id, product__vendor=vendor)
+    
+    serializer = AdminProductReviewSerializer(queryset, many=True)
+    return Response({
+        'count': queryset.count(),
+        'results': serializer.data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsVendorUser])
+def vendor_review_approve(request, review_id):
+    """Approve a product review (vendor can only approve reviews for their products)"""
+    vendor = request.user.vendor_profile
+    
+    try:
+        review = ProductReview.objects.select_related('product', 'user', 'product__vendor').get(id=review_id)
+        
+        # Check if review belongs to vendor's product
+        if review.product.vendor != vendor:
+            return Response({
+                'success': False,
+                'message': 'You can only approve reviews for your own products'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        if review.is_approved:
+            return Response({
+                'success': False,
+                'message': 'Review is already approved'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        review.is_approved = True
+        review.save()
+        
+        # Update product rating statistics
+        product = review.product
+        approved_reviews = ProductReview.objects.filter(product=product, is_approved=True)
+        if approved_reviews.exists():
+            product.average_rating = approved_reviews.aggregate(
+                avg_rating=Avg('rating')
+            )['avg_rating'] or 0
+            product.review_count = approved_reviews.count()
+        else:
+            product.average_rating = 0
+            product.review_count = 0
+        product.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Review approved successfully'
+        })
+        
+    except ProductReview.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Review not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsVendorUser])
+def vendor_review_reject(request, review_id):
+    """Reject a product review (vendor can only reject reviews for their products)"""
+    vendor = request.user.vendor_profile
+    
+    try:
+        review = ProductReview.objects.select_related('product', 'user', 'product__vendor').get(id=review_id)
+        
+        # Check if review belongs to vendor's product
+        if review.product.vendor != vendor:
+            return Response({
+                'success': False,
+                'message': 'You can only reject reviews for your own products'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        if not review.is_approved:
+            return Response({
+                'success': False,
+                'message': 'Review is already rejected'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        review.is_approved = False
+        review.save()
+        
+        # Update product rating statistics
+        product = review.product
+        approved_reviews = ProductReview.objects.filter(product=product, is_approved=True)
+        if approved_reviews.exists():
+            product.average_rating = approved_reviews.aggregate(
+                avg_rating=Avg('rating')
+            )['avg_rating'] or 0
+            product.review_count = approved_reviews.count()
+        else:
+            product.average_rating = 0
+            product.review_count = 0
+        product.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Review rejected successfully'
+        })
+        
+    except ProductReview.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Review not found'
+        }, status=status.HTTP_404_NOT_FOUND)
 

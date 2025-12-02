@@ -1504,8 +1504,8 @@ def download_invoice(request, order_id):
     tax_amount = float(order.tax_amount)
     total_amount = float(order.total_amount)
     
-    # Generate invoice number
-    invoice_number = f"INV-{str(order.order_id).upper()[:8]}"
+    # Generate quotation number
+    quotation_number = f"QUO-{str(order.order_id).upper()[:8]}"
     
     # HTML template
     html_content = f"""
@@ -1513,7 +1513,7 @@ def download_invoice(request, order_id):
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Invoice</title>
+<title>Quotation</title>
 <style>
 /* ---------- PAGE SETTINGS ---------- */
 @page {{
@@ -1629,7 +1629,7 @@ h1, h2, h3 {{
             <div>Premium Furniture & Home Decor</div>
         </td>
         <td style="text-align:right;">
-            <div class="invoice-title">INVOICE</div>
+            <div class="invoice-title">QUOTATION</div>
         </td>
     </tr>
 </table>
@@ -1640,7 +1640,7 @@ h1, h2, h3 {{
     <tr>
         <td><b>Order ID:</b> {str(order.order_id).upper()[:8]}</td>
         <td><b>Date:</b> {order_date}</td>
-        <td><b>Invoice #:</b> {invoice_number}</td>
+        <td><b>Quotation #:</b> {quotation_number}</td>
     </tr>
 </table>
 
@@ -1690,14 +1690,27 @@ h1, h2, h3 {{
         <td class="label">Subtotal:</td>
         <td class="value">Rs.{subtotal:,.2f}</td>
     </tr>
+"""
+    
+    # Only show platform fee if it's greater than 0
+    if platform_fee > 0:
+        html_content += f"""
     <tr>
         <td class="label">Platform Fee:</td>
         <td class="value">Rs.{platform_fee:,.2f}</td>
     </tr>
+"""
+    
+    # Only show tax if it's greater than 0
+    if tax_amount > 0:
+        html_content += f"""
     <tr>
         <td class="label">Tax:</td>
         <td class="value">Rs.{tax_amount:,.2f}</td>
     </tr>
+"""
+    
+    html_content += f"""
     <tr>
         <td class="label summary-total">Total Amount:</td>
         <td class="value summary-total">Rs.{total_amount:,.2f}</td>
@@ -1707,7 +1720,7 @@ h1, h2, h3 {{
 <!-- FOOTER -->
 <div class="footer">
     Thank you for your business!<br>
-    This is a computer-generated invoice.
+    This is a computer-generated quotation.
 </div>
 
 </body>
@@ -1724,16 +1737,16 @@ h1, h2, h3 {{
         
         if pdf.err:
             return Response(
-                {'error': 'Failed to generate invoice PDF'},
+                {'error': 'Failed to generate quotation PDF'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
         # Create HTTP response with PDF
         response = HttpResponse(result.getvalue(), content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="invoice_{str(order.order_id)[:8]}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="quotation_{str(order.order_id)[:8]}.pdf"'
         return response
     except Exception as e:
         return Response(
-            {'error': f'Failed to generate invoice: {str(e)}'},
+            {'error': f'Failed to generate quotation: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

@@ -4,7 +4,7 @@ from accounts.models import User, Vendor, Media, PackagingFeedback
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage, 
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, 
-    ProductOffer, Discount, ProductRecommendation, Coupon
+    ProductOffer, Discount, ProductRecommendation, Coupon, ProductReview
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from accounts.models import ContactQuery, BulkOrder, DataRequest
@@ -236,7 +236,7 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariant
         fields = [
-            'id', 'title', 'color', 'color_id', 'size', 'pattern',
+            'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality',
             'price', 'old_price', 'discount_percentage', 'stock_quantity', 'is_in_stock',
             'image', 'images', 'is_active', 'created_at', 'updated_at'
         ]
@@ -369,6 +369,7 @@ class AdminProductListSerializer(serializers.ModelSerializer):
             },
             'size': v.size,
             'pattern': v.pattern,
+            'quality': v.quality,
             'price': float(v.price) if v.price else None,
             'stock_quantity': v.stock_quantity,
             'is_in_stock': v.is_in_stock,
@@ -404,7 +405,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             'main_image', 'category', 'category_id', 'subcategory', 'subcategory_id',
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'brand', 'material', 'material_id', 'dimensions', 'weight', 'warranty',
-            'assembly_required', 'screen_offer', 'user_guide', 'care_instructions',
+            'assembly_required', 'estimated_delivery_days', 'screen_offer', 'user_guide', 'care_instructions',
             'meta_title', 'meta_description',
             'is_featured', 'is_active', 'images', 'variants', 'specifications',
             'features', 'offers', 'recommendations', 'average_rating', 'review_count',
@@ -491,11 +492,19 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         # Create recommendations
         for rec_data in recommendations_data:
             recommended_product_id = rec_data.pop('recommended_product_id')
-            ProductRecommendation.objects.create(
+            recommendation_type = rec_data.get('recommendation_type', 'buy_with')
+            # Use get_or_create to avoid duplicate errors
+            rec, created = ProductRecommendation.objects.get_or_create(
                 product=product,
                 recommended_product_id=recommended_product_id,
-                **rec_data
+                recommendation_type=recommendation_type,
+                defaults=rec_data
             )
+            if not created:
+                # Update existing recommendation
+                for attr, value in rec_data.items():
+                    setattr(rec, attr, value)
+                rec.save()
         
         # Create features
         for feature_data in features_data:
@@ -625,6 +634,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             for rec_data in recommendations_data:
                 recommended_product_id = rec_data.pop('recommended_product_id')
                 rec_id = rec_data.pop('id', None)
+                recommendation_type = rec_data.get('recommendation_type', 'buy_with')
                 
                 if rec_id:
                     try:
@@ -634,19 +644,31 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         rec.recommended_product_id = recommended_product_id
                         rec.save()
                     except ProductRecommendation.DoesNotExist:
-                        # If recommendation doesn't exist, create new one
-                        ProductRecommendation.objects.create(
+                        # If recommendation doesn't exist, use get_or_create to avoid duplicates
+                        rec, created = ProductRecommendation.objects.get_or_create(
                             product=instance,
                             recommended_product_id=recommended_product_id,
-                            **rec_data
+                            recommendation_type=recommendation_type,
+                            defaults=rec_data
                         )
+                        if not created:
+                            # Update existing recommendation
+                            for attr, value in rec_data.items():
+                                setattr(rec, attr, value)
+                            rec.save()
                 else:
-                    # New recommendation without ID
-                    ProductRecommendation.objects.create(
+                    # New recommendation without ID - use get_or_create to avoid duplicates
+                    rec, created = ProductRecommendation.objects.get_or_create(
                         product=instance,
                         recommended_product_id=recommended_product_id,
-                        **rec_data
+                        recommendation_type=recommendation_type,
+                        defaults=rec_data
                     )
+                    if not created:
+                        # Update existing recommendation
+                        for attr, value in rec_data.items():
+                            setattr(rec, attr, value)
+                        rec.save()
         
         return instance
 
@@ -695,7 +717,8 @@ class AdminOrderItemSerializer(serializers.ModelSerializer):
             color = obj.variant.color.name if obj.variant.color else ''
             size = obj.variant.size or ''
             pattern = obj.variant.pattern or ''
-            parts = [p for p in [color, size, pattern] if p]
+            quality = obj.variant.quality or ''
+            parts = [p for p in [color, size, pattern, quality] if p]
             return ' - '.join(parts) if parts else ''
         parts = [p for p in [obj.variant_color, obj.variant_size, obj.variant_pattern] if p]
         return ' - '.join(parts) if parts else ''
@@ -1465,4 +1488,33 @@ class AdminPackagingFeedbackSerializer(serializers.ModelSerializer):
         if obj.user:
             return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
         return obj.name or 'Anonymous'
+
+
+# ==================== Product Review Serializers ====================
+class AdminProductReviewSerializer(serializers.ModelSerializer):
+    """Serializer for product reviews in admin panel"""
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    product_title = serializers.CharField(source='product.title', read_only=True)
+    product_slug = serializers.CharField(source='product.slug', read_only=True)
+    vendor_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ProductReview
+        fields = [
+            'id', 'product', 'product_title', 'product_slug', 'user', 'user_name', 
+            'user_email', 'rating', 'title', 'comment', 'is_verified_purchase', 
+            'is_approved', 'created_at', 'updated_at', 'vendor_name'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_user_name(self, obj):
+        if obj.user:
+            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+        return 'Anonymous'
+    
+    def get_vendor_name(self, obj):
+        if obj.product and obj.product.vendor:
+            return obj.product.vendor.business_name or obj.product.vendor.brand_name or 'N/A'
+        return 'N/A'
 
