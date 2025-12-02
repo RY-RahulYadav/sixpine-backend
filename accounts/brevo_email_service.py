@@ -1,5 +1,8 @@
 import requests
+import logging
 from django.conf import settings
+
+logger = logging.getLogger('accounts')
 
 
 class BrevoEmailService:
@@ -26,7 +29,7 @@ class BrevoEmailService:
         """
         try:
             if not self.api_key:
-                print("❌ Brevo API key not configured")
+                logger.error("Brevo API key not configured")
                 return False
 
             headers = {
@@ -46,17 +49,30 @@ class BrevoEmailService:
                 "textContent": body
             }
 
-            response = requests.post(self.api_url, json=payload, headers=headers)
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
 
             if response.status_code == 201:
-                print(f"✅ Email sent to {to_email}")
+                logger.info(f"Email sent successfully to {to_email}")
                 return True
             else:
-                print(f"❌ Error sending email: {response.status_code} - {response.text}")
+                error_msg = f"Error sending email: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                # Log response details for debugging
+                try:
+                    error_data = response.json()
+                    logger.error(f"Brevo API error details: {error_data}")
+                except:
+                    logger.error(f"Brevo API raw response: {response.text}")
                 return False
 
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout while sending email to {to_email}")
+            return False
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error sending email via Brevo: {e}")
+            return False
         except Exception as e:
-            print(f"❌ Error sending email via Brevo: {e}")
+            logger.error(f"Unexpected error sending email via Brevo: {e}", exc_info=True)
             return False
 
     def send_otp_email(self, to_email, otp_code):

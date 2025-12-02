@@ -131,21 +131,35 @@ def request_otp_view(request):
     
     # Send OTP
     try:
+        email_sent = False
         if otp_method == 'email':
             # Send email OTP using Brevo service
             brevo_service = BrevoEmailService()
-            brevo_service.send_otp_email(email, otp_code)
+            email_sent = brevo_service.send_otp_email(email, otp_code)
+            if not email_sent:
+                return Response({
+                    'success': False,
+                    'error': 'Failed to send OTP email. Please try again or contact support.',
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         elif otp_method == 'whatsapp':
             # Send WhatsApp OTP using WhatsApp service
             whatsapp_service = WhatsAppService()
-            whatsapp_service.send_otp_message(data['mobile'], otp_code)
+            whatsapp_sent = whatsapp_service.send_otp_message(data['mobile'], otp_code)
+            if not whatsapp_sent:
+                return Response({
+                    'success': False,
+                    'error': 'Failed to send OTP via WhatsApp. Please try again or contact support.',
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({
             'success': True,
-            'message': f'OTP sent to your {otp_method}',
+            'message': f'OTP sent successfully to your {otp_method}',
         }, status=status.HTTP_200_OK)
         
     except Exception as e:
+        import logging
+        logger = logging.getLogger('accounts')
+        logger.error(f'Error sending OTP: {str(e)}', exc_info=True)
         return Response({
             'success': False,
             'error': f'Failed to send OTP: {str(e)}',
@@ -284,18 +298,31 @@ def resend_otp_view(request):
         if otp_method == 'email':
             # Send email OTP using Brevo service
             brevo_service = BrevoEmailService()
-            brevo_service.send_otp_email(email, otp_code)
+            email_sent = brevo_service.send_otp_email(email, otp_code)
+            if not email_sent:
+                return Response({
+                    'success': False,
+                    'error': 'Failed to resend OTP email. Please try again or contact support.',
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         elif otp_method == 'whatsapp':
             # Send WhatsApp OTP using WhatsApp service
             whatsapp_service = WhatsAppService()
-            whatsapp_service.send_otp_message(otp_obj.mobile, otp_code)
+            whatsapp_sent = whatsapp_service.send_otp_message(otp_obj.mobile, otp_code)
+            if not whatsapp_sent:
+                return Response({
+                    'success': False,
+                    'error': 'Failed to resend OTP via WhatsApp. Please try again or contact support.',
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({
             'success': True,
-            'message': f'OTP resent to your {otp_method}',
+            'message': f'OTP resent successfully to your {otp_method}',
         }, status=status.HTTP_200_OK)
         
     except Exception as e:
+        import logging
+        logger = logging.getLogger('accounts')
+        logger.error(f'Error resending OTP: {str(e)}', exc_info=True)
         return Response({
             'success': False,
             'error': f'Failed to resend OTP: {str(e)}',
@@ -333,7 +360,7 @@ def password_reset_request_view(request):
             }
         )
         
-        # Send reset email using Gmail OAuth service
+        # Send reset email using Brevo service
         reset_url = f"{settings.FRONTEND_URL}/forgot-password?token={token}"
         brevo_service = BrevoEmailService()
         subject = 'Sixpine - Password Reset'
@@ -349,12 +376,41 @@ If you did not request this password reset, please ignore this email.
 
 Best regards,
 Sixpine Team"""
-        brevo_service.send_email(email, subject, message)
+        
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #ff7a00;">Sixpine - Password Reset</h2>
+                <p>Dear User,</p>
+                <p>Click the link below to reset your password:</p>
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="{reset_url}" style="background-color: #ff7a00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+                </div>
+                <p>Or copy and paste this link in your browser:</p>
+                <p style="word-break: break-all; color: #666;">{reset_url}</p>
+                <p>This link will expire in 1 hour.</p>
+                <p>If you did not request this password reset, please ignore this email.</p>
+                <p>Best regards,<br>Sixpine Team</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        email_sent = brevo_service.send_email(email, subject, message, html_content)
+        if not email_sent:
+            import logging
+            logger = logging.getLogger('accounts')
+            logger.error(f'Failed to send password reset email to {email}')
+            return Response({
+                'success': False,
+                'error': 'Failed to send password reset email. Please try again or contact support.',
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({
             'success': True,
-            'message': 'Password reset link sent to your email',
-            'debug_token': token  # Only for development
+            'message': 'Password reset link sent successfully to your email',
+            'debug_token': token if settings.DEBUG else None  # Only for development
         }, status=status.HTTP_200_OK)
         
     except User.DoesNotExist:
