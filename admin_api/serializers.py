@@ -1579,4 +1579,3 @@ class AdminProductReviewSerializer(serializers.ModelSerializer):
         if obj.product and obj.product.vendor:
             return obj.product.vendor.business_name or obj.product.vendor.brand_name or 'N/A'
         return 'N/A'
-
