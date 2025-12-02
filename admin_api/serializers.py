@@ -693,7 +693,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         variant_spec_objects = [
                             ProductSpecification(variant=variant, **spec_data)
                             for spec_data in variant_specifications
-                        ]
+                    ]
                         ProductSpecification.objects.bulk_create(variant_spec_objects)
             
             # Update features if provided - use bulk_create for better performance
