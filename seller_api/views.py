@@ -731,6 +731,42 @@ class SellerOrderViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
+    def update_tracking(self, request, pk=None):
+        """Update order tracking information (vendor can update tracking for their orders)"""
+        from orders.models import OrderNote
+        
+        order = self.get_object()
+        vendor = request.user.vendor_profile
+        
+        # Verify order contains vendor's products
+        if not order.items.filter(vendor=vendor).exists():
+            return Response(
+                {'error': 'Order does not contain your products'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        tracking_number = request.data.get('tracking_number')
+        estimated_delivery = request.data.get('estimated_delivery')
+        notes = request.data.get('notes', '')
+        
+        if tracking_number:
+            order.tracking_number = tracking_number
+        if estimated_delivery:
+            order.estimated_delivery = estimated_delivery
+        order.save()
+        
+        # Create order note if provided
+        if notes:
+            OrderNote.objects.create(
+                order=order,
+                content=notes,
+                created_by=request.user
+            )
+        
+        serializer = self.get_serializer(order)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
     def update_payment_status(self, request, pk=None):
         """Update order payment status (vendor can update payment status)"""
         from orders.models import OrderNote
@@ -770,9 +806,9 @@ class SellerOrderViewSet(viewsets.ModelViewSet):
         if notes:
             OrderNote.objects.create(
                 order=order,
-                note=notes,
-            created_by=request.user
-        )
+                content=notes,
+                created_by=request.user
+            )
         
         serializer = self.get_serializer(order)
         return Response(serializer.data)

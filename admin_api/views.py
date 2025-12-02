@@ -972,7 +972,7 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
         if notes:
             OrderNote.objects.create(
                 order=order,
-                note=notes,
+                content=notes,
                 created_by=request.user
             )
         
@@ -1006,7 +1006,7 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
         if notes:
             OrderNote.objects.create(
                 order=order,
-                note=notes,
+                content=notes,
                 created_by=request.user
             )
         
@@ -1049,7 +1049,7 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
         
         note = OrderNote.objects.create(
             order=order,
-            note=note_text,
+            content=note_text,
             created_by=request.user
         )
         
