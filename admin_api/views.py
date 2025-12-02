@@ -740,7 +740,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
     """Admin viewset for product management"""
     permission_classes = [IsAuthenticated, IsAdminUser]
     queryset = Product.objects.all().select_related('category', 'subcategory').prefetch_related(
-        'images', 'variants', 'specifications', 'features'
+        'images', 'variants', 'variants__specifications', 'features', 'about_items'
     ).order_by('-created_at')
     serializer_class = AdminProductListSerializer
     

@@ -3,7 +3,7 @@ from django.db.models import Q
 from .models import (
     Category, Subcategory, Color, Material, Product, ProductImage, ProductVariant,
     ProductVariantImage, ProductReview, ProductRecommendation, ProductSpecification, 
-    ProductFeature, ProductOffer, BrowsingHistory, Wishlist
+    ProductFeature, ProductAboutItem, ProductOffer, BrowsingHistory, Wishlist
 )
 
 
@@ -45,29 +45,36 @@ class ProductVariantImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'alt_text', 'sort_order']
 
 
-class ProductVariantSerializer(serializers.ModelSerializer):
-    color = ColorSerializer(read_only=True)
-    color_id = serializers.IntegerField(write_only=True)
-    images = ProductVariantImageSerializer(many=True, read_only=True)
-    
-    class Meta:
-        model = ProductVariant
-        fields = [
-            'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality', 'price', 'old_price',
-            'discount_percentage', 'stock_quantity', 'is_in_stock', 'image', 'images'
-        ]
-
-
 class ProductSpecificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSpecification
         fields = ['id', 'name', 'value', 'sort_order']
 
 
+class ProductVariantSerializer(serializers.ModelSerializer):
+    color = ColorSerializer(read_only=True)
+    color_id = serializers.IntegerField(write_only=True)
+    images = ProductVariantImageSerializer(many=True, read_only=True)
+    specifications = ProductSpecificationSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = ProductVariant
+        fields = [
+            'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality', 'price', 'old_price',
+            'discount_percentage', 'stock_quantity', 'is_in_stock', 'image', 'images', 'specifications'
+        ]
+
+
 class ProductFeatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductFeature
         fields = ['id', 'feature', 'sort_order']
+
+
+class ProductAboutItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAboutItem
+        fields = ['id', 'item', 'sort_order']
 
 
 class ProductOfferSerializer(serializers.ModelSerializer):
@@ -188,8 +195,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     material = MaterialSerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     variants = ProductVariantSerializer(many=True, read_only=True)
-    specifications = ProductSpecificationSerializer(many=True, read_only=True)
     features = ProductFeatureSerializer(many=True, read_only=True)
+    about_items = ProductAboutItemSerializer(many=True, read_only=True)
     offers = ProductOfferSerializer(many=True, read_only=True)
     
     # Recommendation arrays
@@ -223,8 +230,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'main_image', 'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'average_rating', 'review_count', 'review_percentages', 'category', 'subcategory',
             'brand', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required', 'estimated_delivery_days',
-            'screen_offer', 'user_guide', 'care_instructions',
-            'images', 'variants', 'specifications', 'features', 'offers',
+            'screen_offer', 'style_description', 'user_guide', 'care_instructions',
+            'images', 'variants', 'features', 'about_items', 'offers',
             'buy_with_products', 'inspired_products', 'frequently_viewed_products',
             'similar_products', 'recommended_products',
             'available_colors', 'available_sizes', 'available_patterns', 'available_qualities',

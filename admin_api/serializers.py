@@ -4,7 +4,7 @@ from accounts.models import User, Vendor, Media, PackagingFeedback
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage, 
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, 
-    ProductOffer, Discount, ProductRecommendation, Coupon, ProductReview
+    ProductAboutItem, ProductOffer, Discount, ProductRecommendation, Coupon, ProductReview
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from accounts.models import ContactQuery, BulkOrder, DataRequest
@@ -228,30 +228,37 @@ class AdminProductVariantImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'alt_text', 'sort_order', 'is_active']
 
 
-class AdminProductVariantSerializer(serializers.ModelSerializer):
-    color = AdminColorSerializer(read_only=True)
-    color_id = serializers.IntegerField()
-    images = AdminProductVariantImageSerializer(many=True, required=False)
-    
-    class Meta:
-        model = ProductVariant
-        fields = [
-            'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality',
-            'price', 'old_price', 'discount_percentage', 'stock_quantity', 'is_in_stock',
-            'image', 'images', 'is_active', 'created_at', 'updated_at'
-        ]
-
-
 class AdminProductSpecificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSpecification
         fields = ['id', 'name', 'value', 'sort_order', 'is_active']
 
 
+class AdminProductVariantSerializer(serializers.ModelSerializer):
+    color = AdminColorSerializer(read_only=True)
+    color_id = serializers.IntegerField()
+    images = AdminProductVariantImageSerializer(many=True, required=False)
+    specifications = AdminProductSpecificationSerializer(many=True, required=False)
+    
+    class Meta:
+        model = ProductVariant
+        fields = [
+            'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality',
+            'price', 'old_price', 'discount_percentage', 'stock_quantity', 'is_in_stock',
+            'image', 'images', 'specifications', 'is_active', 'created_at', 'updated_at'
+        ]
+
+
 class AdminProductFeatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductFeature
         fields = ['id', 'feature', 'sort_order', 'is_active']
+
+
+class AdminProductAboutItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAboutItem
+        fields = ['id', 'item', 'sort_order', 'is_active']
 
 
 class AdminProductOfferSerializer(serializers.ModelSerializer):
@@ -386,8 +393,8 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
     material_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     images = AdminProductImageSerializer(many=True, required=False)
     variants = AdminProductVariantSerializer(many=True, required=False)
-    specifications = AdminProductSpecificationSerializer(many=True, required=False)
     features = AdminProductFeatureSerializer(many=True, required=False)
+    about_items = AdminProductAboutItemSerializer(many=True, required=False)
     offers = AdminProductOfferSerializer(many=True, required=False)
     recommendations = AdminProductRecommendationSerializer(many=True, required=False)
     
@@ -405,10 +412,10 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             'main_image', 'category', 'category_id', 'subcategory', 'subcategory_id',
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'brand', 'material', 'material_id', 'dimensions', 'weight', 'warranty',
-            'assembly_required', 'estimated_delivery_days', 'screen_offer', 'user_guide', 'care_instructions',
+            'assembly_required', 'estimated_delivery_days', 'screen_offer', 'style_description', 'user_guide', 'care_instructions',
             'meta_title', 'meta_description',
-            'is_featured', 'is_active', 'images', 'variants', 'specifications',
-            'features', 'offers', 'recommendations', 'average_rating', 'review_count',
+            'is_featured', 'is_active', 'images', 'variants',
+            'features', 'about_items', 'offers', 'recommendations', 'average_rating', 'review_count',
             'created_at', 'updated_at'
         ]
     
@@ -445,8 +452,8 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         
         images_data = validated_data.pop('images', [])
         variants_data = validated_data.pop('variants', [])
-        specifications_data = validated_data.pop('specifications', [])
         features_data = validated_data.pop('features', [])
+        about_items_data = validated_data.pop('about_items', [])
         offers_data = validated_data.pop('offers', [])
         recommendations_data = validated_data.pop('recommendations', [])
         
@@ -482,11 +489,13 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                 ]
                 ProductImage.objects.bulk_create(image_objects)
             
-            # Create variants with images
-            # Create variants individually to get IDs, but batch variant images
+            # Create variants with images and specifications
+            # Create variants individually to get IDs, but batch variant images and specifications
             variant_image_objects = []
+            variant_spec_objects = []
             for variant_data in variants_data:
                 variant_images = variant_data.pop('images', [])
+                variant_specifications = variant_data.pop('specifications', [])
                 color_id = variant_data.pop('color_id')
                 variant = ProductVariant.objects.create(
                     product=product,
@@ -499,18 +508,20 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         variant_image_objects.append(
                             ProductVariantImage(variant=variant, **variant_img_data)
                         )
+                # Collect variant specifications for bulk creation
+                if variant_specifications:
+                    for spec_data in variant_specifications:
+                        variant_spec_objects.append(
+                            ProductSpecification(variant=variant, **spec_data)
+                        )
             
             # Bulk create variant images for better performance
             if variant_image_objects:
                 ProductVariantImage.objects.bulk_create(variant_image_objects)
             
-            # Bulk create specifications
-            if specifications_data:
-                spec_objects = [
-                    ProductSpecification(product=product, **spec_data)
-                    for spec_data in specifications_data
-                ]
-                ProductSpecification.objects.bulk_create(spec_objects)
+            # Bulk create variant specifications for better performance
+            if variant_spec_objects:
+                ProductSpecification.objects.bulk_create(variant_spec_objects)
             
             # Bulk create features
             if features_data:
@@ -519,6 +530,14 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                     for feature_data in features_data
                 ]
                 ProductFeature.objects.bulk_create(feature_objects)
+            
+            # Bulk create about items
+            if about_items_data:
+                about_item_objects = [
+                    ProductAboutItem(product=product, **about_item_data)
+                    for about_item_data in about_items_data
+                ]
+                ProductAboutItem.objects.bulk_create(about_item_objects)
             
             # Bulk create offers
             if offers_data:
@@ -554,8 +573,8 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         
         images_data = validated_data.pop('images', None)
         variants_data = validated_data.pop('variants', None)
-        specifications_data = validated_data.pop('specifications', None)
         features_data = validated_data.pop('features', None)
+        about_items_data = validated_data.pop('about_items', None)
         offers_data = validated_data.pop('offers', None)
         recommendations_data = validated_data.pop('recommendations', None)
         
@@ -598,8 +617,9 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                 instance.variants.all().delete()
             
             for variant_data in variants_data:
-                # Check if images key exists (not just pop default)
+                # Check if images and specifications keys exist (not just pop default)
                 variant_images = variant_data.pop('images') if 'images' in variant_data else None
+                variant_specifications = variant_data.pop('specifications') if 'specifications' in variant_data else None
                 variant_id = variant_data.pop('id', None)
                 color_id = variant_data.pop('color_id', None)
                 
@@ -622,6 +642,17 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                                     for variant_img_data in variant_images
                                 ]
                                 ProductVariantImage.objects.bulk_create(variant_image_objects)
+                        
+                        # Update variant specifications only if provided (empty list means delete all)
+                        if variant_specifications is not None:
+                            variant.specifications.all().delete()
+                            # Only create specifications if list is not empty - use bulk_create
+                            if variant_specifications:
+                                variant_spec_objects = [
+                                    ProductSpecification(variant=variant, **spec_data)
+                                    for spec_data in variant_specifications
+                                ]
+                                ProductSpecification.objects.bulk_create(variant_spec_objects)
                     except ProductVariant.DoesNotExist:
                         # If variant doesn't exist, create new one
                         if color_id is None:
@@ -637,6 +668,12 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                                 for variant_img_data in variant_images
                             ]
                             ProductVariantImage.objects.bulk_create(variant_image_objects)
+                        if variant_specifications:
+                            variant_spec_objects = [
+                                ProductSpecification(variant=variant, **spec_data)
+                                for spec_data in variant_specifications
+                            ]
+                            ProductSpecification.objects.bulk_create(variant_spec_objects)
                 else:
                     # New variant without ID
                     if color_id is None:
@@ -652,16 +689,12 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                             for variant_img_data in variant_images
                         ]
                         ProductVariantImage.objects.bulk_create(variant_image_objects)
-        
-            # Update specifications if provided - use bulk_create for better performance
-            if specifications_data is not None:
-                instance.specifications.all().delete()
-                if specifications_data:
-                    spec_objects = [
-                        ProductSpecification(product=instance, **spec_data)
-                        for spec_data in specifications_data
-                    ]
-                    ProductSpecification.objects.bulk_create(spec_objects)
+                    if variant_specifications:
+                        variant_spec_objects = [
+                            ProductSpecification(variant=variant, **spec_data)
+                            for spec_data in variant_specifications
+                        ]
+                        ProductSpecification.objects.bulk_create(variant_spec_objects)
             
             # Update features if provided - use bulk_create for better performance
             if features_data is not None:
@@ -672,6 +705,16 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         for feature_data in features_data
                     ]
                     ProductFeature.objects.bulk_create(feature_objects)
+            
+            # Update about items if provided - use bulk_create for better performance
+            if about_items_data is not None:
+                instance.about_items.all().delete()
+                if about_items_data:
+                    about_item_objects = [
+                        ProductAboutItem(product=instance, **about_item_data)
+                        for about_item_data in about_items_data
+                    ]
+                    ProductAboutItem.objects.bulk_create(about_item_objects)
             
             # Update offers if provided - use bulk_create for better performance
             if offers_data is not None:

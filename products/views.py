@@ -267,11 +267,10 @@ class ProductDetailView(generics.RetrieveAPIView):
             'category', 'subcategory'
         ).prefetch_related(
             'images',
-            'specifications',
             'features',
             'offers',
             'reviews',
-            Prefetch('variants', queryset=ProductVariant.objects.filter(is_active=True).select_related('color').prefetch_related('images')),
+            Prefetch('variants', queryset=ProductVariant.objects.filter(is_active=True).select_related('color').prefetch_related('images', 'specifications')),
             Prefetch('recommendations__recommended_product', 
                     queryset=Product.objects.filter(is_active=True))
         )

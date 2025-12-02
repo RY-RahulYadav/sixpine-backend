@@ -5,7 +5,7 @@ from django.utils.safestring import mark_safe
 from .models import (
     Category, Subcategory, Color, Material, Product, ProductImage, ProductVariant,
     ProductReview, ProductRecommendation, ProductSpecification,
-    ProductFeature, ProductOffer 
+    ProductFeature, ProductAboutItem, ProductOffer 
 )
 
 
@@ -74,22 +74,29 @@ class ProductImageInline(admin.TabularInline):
     fields = ['image', 'alt_text', 'sort_order', 'is_active']
 
 
-class ProductVariantInline(admin.TabularInline):
-    model = ProductVariant
-    extra = 1
-    fields = ['color', 'size', 'pattern', 'price', 'old_price', 'stock_quantity', 'is_in_stock', 'is_active']
-
-
 class ProductSpecificationInline(admin.TabularInline):
     model = ProductSpecification
     extra = 1
     fields = ['name', 'value', 'sort_order', 'is_active']
 
 
+class ProductVariantInline(admin.TabularInline):
+    model = ProductVariant
+    extra = 1
+    fields = ['color', 'size', 'pattern', 'price', 'old_price', 'stock_quantity', 'is_in_stock', 'is_active']
+    inlines = [ProductSpecificationInline]
+
+
 class ProductFeatureInline(admin.TabularInline):
     model = ProductFeature
     extra = 1
     fields = ['feature', 'sort_order', 'is_active']
+
+
+class ProductAboutItemInline(admin.TabularInline):
+    model = ProductAboutItem
+    extra = 1
+    fields = ['item', 'sort_order', 'is_active']
 
 
 class ProductOfferInline(admin.TabularInline):
@@ -125,7 +132,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ()
         }),
         ('Product Details', {
-            'fields': ('main_image', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required')
+            'fields': ('main_image', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required', 'style_description')
         }),
         ('SEO & Display', {
             'fields': ('meta_title', 'meta_description', 'is_featured', 'is_active')
@@ -139,8 +146,8 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = [
         ProductImageInline,
         ProductVariantInline,
-        ProductSpecificationInline,
         ProductFeatureInline,
+        ProductAboutItemInline,
         ProductOfferInline,
     ]
     
@@ -201,10 +208,10 @@ class ProductRecommendationAdmin(admin.ModelAdmin):
 
 @admin.register(ProductSpecification)
 class ProductSpecificationAdmin(admin.ModelAdmin):
-    list_display = ['product', 'name', 'value', 'sort_order', 'is_active', 'created_at']
+    list_display = ['variant', 'name', 'value', 'sort_order', 'is_active', 'created_at']
     list_filter = ['is_active', 'created_at']
-    search_fields = ['product__title', 'name', 'value']
-    ordering = ['product', 'sort_order']
+    search_fields = ['variant__product__title', 'variant__title', 'name', 'value']
+    ordering = ['variant__product', 'variant', 'sort_order']
 
 
 @admin.register(ProductFeature)
@@ -217,6 +224,18 @@ class ProductFeatureAdmin(admin.ModelAdmin):
     def feature_preview(self, obj):
         return obj.feature[:50] + '...' if len(obj.feature) > 50 else obj.feature
     feature_preview.short_description = 'Feature'
+
+
+@admin.register(ProductAboutItem)
+class ProductAboutItemAdmin(admin.ModelAdmin):
+    list_display = ['product', 'item_preview', 'sort_order', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['product__title', 'item']
+    ordering = ['product', 'sort_order']
+    
+    def item_preview(self, obj):
+        return obj.item[:50] + '...' if len(obj.item) > 50 else obj.item
+    item_preview.short_description = 'Item'
 
 
 @admin.register(ProductOffer)

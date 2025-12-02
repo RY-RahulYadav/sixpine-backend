@@ -517,7 +517,7 @@ class SellerProductViewSet(viewsets.ModelViewSet):
         queryset = Product.objects.filter(vendor=vendor).select_related(
             'category', 'subcategory', 'vendor'
         ).prefetch_related(
-            'images', 'variants', 'specifications', 'features'
+            'images', 'variants', 'variants__specifications', 'features', 'about_items'
         ).order_by('-created_at')
         
         search = self.request.query_params.get('search', None)

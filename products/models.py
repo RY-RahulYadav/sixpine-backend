@@ -117,6 +117,7 @@ class Product(models.Model):
     
     # Additional Product Information
     screen_offer = models.JSONField(default=list, blank=True, help_text="Array of screen offer objects with 'title' and 'description' fields, or strings for backward compatibility")
+    style_description = models.TextField(blank=True, null=True, help_text="Detailed style description for the Style section")
     user_guide = models.TextField(blank=True, null=True, help_text="User guide instructions")
     care_instructions = models.TextField(blank=True, null=True, help_text="Care and maintenance instructions")
     
@@ -287,8 +288,8 @@ class ProductRecommendation(models.Model):
 
 
 class ProductSpecification(models.Model):
-    """Product specifications and key details"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='specifications')
+    """Product specifications and key details - linked to variants"""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='specifications')
     name = models.CharField(max_length=100)  # e.g., "Brand", "Depth", "Style"
     value = models.CharField(max_length=200)  # e.g., "Atomberg", "12 inch", "Modern"
     sort_order = models.PositiveIntegerField(default=0)
@@ -299,11 +300,11 @@ class ProductSpecification(models.Model):
         ordering = ['sort_order', 'name']
 
     def __str__(self):
-        return f"{self.product.title} - {self.name}: {self.value}"
+        return f"{self.variant.product.title} - {self.variant.title} - {self.name}: {self.value}"
 
 
 class ProductFeature(models.Model):
-    """Product features for 'About This Item' section"""
+    """Product features for Features box"""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='features')
     feature = models.TextField()
     sort_order = models.PositiveIntegerField(default=0)
@@ -316,6 +317,23 @@ class ProductFeature(models.Model):
 
     def __str__(self):
         return f"{self.product.title} - {self.feature[:50]}..."
+
+
+class ProductAboutItem(models.Model):
+    """Product 'About This Item' bullet points - separate from features"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='about_items')
+    item = models.TextField(help_text="Bullet point for 'About This Item' section")
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'created_at']
+        verbose_name = "About This Item"
+        verbose_name_plural = "About This Item"
+
+    def __str__(self):
+        return f"{self.product.title} - {self.item[:50]}..."
 
 
 class ProductOffer(models.Model):
