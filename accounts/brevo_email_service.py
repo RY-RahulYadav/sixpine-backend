@@ -29,7 +29,15 @@ class BrevoEmailService:
         """
         try:
             if not self.api_key:
-                logger.error("Brevo API key not configured")
+                logger.error("Brevo API key not configured. Please set BREVO_API_KEY environment variable.")
+                return False
+            
+            # Check if API key looks valid (should start with 'xkeysib-')
+            if not self.api_key.startswith('xkeysib-'):
+                logger.warning(f"Brevo API key format may be incorrect. Expected format: xkeysib-... (got: {self.api_key[:20]}...)")
+            
+            if not self.sender_email:
+                logger.error("Brevo sender email not configured. Please set BREVO_SENDER_EMAIL environment variable.")
                 return False
 
             headers = {
@@ -108,4 +116,3 @@ Sixpine Team"""
         """
         
         return self.send_email(to_email, subject, body, html_content)
-
