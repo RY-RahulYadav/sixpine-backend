@@ -182,7 +182,7 @@ def approve_admin_sixpine_return_request(request, return_request_id):
     OrderStatusHistory.objects.create(
         order=return_request.order,
         status='returned' if approval_status else return_request.order.status,
-        notes=f'Return request {"approved" if approval_status else "rejected"} by admin (Sixpine)',
+        notes=f'Return request {"approved" if approval_status else "rejected"} by Sixpine',
         created_by=request.user
     )
     

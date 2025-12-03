@@ -31,12 +31,15 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class OrderStatusHistorySerializer(serializers.ModelSerializer):
-    created_by = serializers.StringRelatedField(read_only=True)
+    created_by = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderStatusHistory
         fields = ['id', 'status', 'notes', 'created_at', 'created_by']
         read_only_fields = ['created_at', 'created_by']
+    
+    def get_created_by(self, obj):
+        return 'Sixpine'  # Hardcoded as requested (frontend adds " by " prefix)
 
 
 class OrderNoteSerializer(serializers.ModelSerializer):
@@ -48,12 +51,7 @@ class OrderNoteSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'created_by']
     
     def get_created_by(self, obj):
-        if obj.created_by:
-            return {
-                'id': obj.created_by.id,
-                'username': obj.created_by.username
-            }
-        return None
+        return 'Sixpine'  # Hardcoded as requested (frontend may add " by " prefix)
 
 
 class OrderListSerializer(serializers.ModelSerializer):

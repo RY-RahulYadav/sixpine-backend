@@ -1030,7 +1030,7 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
         notes_data = [{
             'id': note.id,
             'note': note.note,
-            'created_by': note.created_by.username if note.created_by else 'System',
+            'created_by': 'by Sixpine',  # Hardcoded as requested
             'created_at': note.created_at
         } for note in notes]
         return Response(notes_data)
@@ -1065,7 +1065,7 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
         return Response({
             'id': note.id,
             'note': note.note,
-            'created_by': note.created_by.username,
+            'created_by': 'by Sixpine',  # Hardcoded as requested
             'created_at': note.created_at
         })
 

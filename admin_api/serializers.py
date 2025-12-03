@@ -1117,7 +1117,7 @@ class AdminOrderDetailSerializer(serializers.ModelSerializer):
             'status': h.status,
             'notes': h.notes,
             'created_at': h.created_at,
-            'created_by': h.created_by.username if h.created_by else None
+            'created_by': 'Sixpine'  # Hardcoded as requested (frontend adds " by " prefix)
         } for h in obj.status_history.all()]
     
     def get_notes(self, obj):
@@ -1125,7 +1125,7 @@ class AdminOrderDetailSerializer(serializers.ModelSerializer):
             'id': n.id,
             'content': n.content,
             'created_at': n.created_at,
-            'created_by': n.created_by.username if n.created_by else None
+            'created_by': 'Sixpine'  # Hardcoded as requested
         } for n in obj.notes.all()]
 
 
