@@ -267,6 +267,8 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source='order.user.email', read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     approved_by_name = serializers.CharField(source='approved_by.get_full_name', read_only=True)
+    order_item_price = serializers.DecimalField(source='order_item.price', max_digits=10, decimal_places=2, read_only=True)
+    order_item_quantity = serializers.IntegerField(source='order_item.quantity', read_only=True)
     
     def get_product_image(self, obj):
         """Get image from first variant of product, then variant from order item, then product main_image"""
@@ -294,7 +296,7 @@ class ReturnRequestSerializer(serializers.ModelSerializer):
             'id', 'order', 'order_id', 'order_item', 'order_item_id', 'product_title', 'product_image',
             'reason', 'reason_description', 'pickup_date', 'status', 'seller_approval', 'seller_notes',
             'refund_amount', 'customer_name', 'customer_email', 'created_by_name', 'approved_by_name',
-            'created_at', 'updated_at'
+            'order_item_price', 'order_item_quantity', 'created_at', 'updated_at'
         ]
         read_only_fields = ['status', 'seller_approval', 'refund_amount', 'created_at', 'updated_at', 'created_by', 'approved_by']
 
