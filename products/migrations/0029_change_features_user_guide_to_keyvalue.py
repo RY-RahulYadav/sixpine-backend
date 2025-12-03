@@ -9,11 +9,25 @@ def convert_features_to_dict(apps, schema_editor):
     db_alias = schema_editor.connection.alias
     from django.db import connections
     connection = connections[db_alias]
+    table_name = 'products_productvariant'
+    
+    # Use Django's introspection API (database-agnostic)
+    introspection = connection.introspection
+    columns = []
     
     with connection.cursor() as cursor:
-        # Check if features column exists
-        cursor.execute("PRAGMA table_info(products_productvariant)")
-        columns = [col[1] for col in cursor.fetchall()]
+        try:
+            # Get table description (database-agnostic)
+            table_description = introspection.get_table_description(cursor, table_name)
+            columns = [col.name for col in table_description]
+        except Exception:
+            # If introspection fails, try to query the table directly
+            try:
+                cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
+                columns = [col[0] for col in cursor.description] if cursor.description else []
+            except Exception:
+                # If table doesn't exist or query fails, skip conversion
+                return
         
         if 'features' not in columns:
             # Column doesn't exist, skip conversion
@@ -58,11 +72,25 @@ def convert_user_guide_to_dict(apps, schema_editor):
     db_alias = schema_editor.connection.alias
     from django.db import connections
     connection = connections[db_alias]
+    table_name = 'products_productvariant'
+    
+    # Use Django's introspection API (database-agnostic)
+    introspection = connection.introspection
+    columns = []
     
     with connection.cursor() as cursor:
-        # Check if user_guide column exists
-        cursor.execute("PRAGMA table_info(products_productvariant)")
-        columns = [col[1] for col in cursor.fetchall()]
+        try:
+            # Get table description (database-agnostic)
+            table_description = introspection.get_table_description(cursor, table_name)
+            columns = [col.name for col in table_description]
+        except Exception:
+            # If introspection fails, try to query the table directly
+            try:
+                cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
+                columns = [col[0] for col in cursor.description] if cursor.description else []
+            except Exception:
+                # If table doesn't exist or query fails, skip conversion
+                return
         
         if 'user_guide' not in columns:
             # Column doesn't exist, skip conversion
@@ -128,18 +156,45 @@ def ensure_fields_exist(apps, schema_editor):
     db_alias = schema_editor.connection.alias
     from django.db import connections
     connection = connections[db_alias]
+    table_name = 'products_productvariant'
+    
+    # Use Django's introspection API (database-agnostic)
+    introspection = connection.introspection
+    columns = []
     
     with connection.cursor() as cursor:
-        cursor.execute("PRAGMA table_info(products_productvariant)")
-        columns = [col[1] for col in cursor.fetchall()]
+        try:
+            # Get table description (database-agnostic)
+            table_description = introspection.get_table_description(cursor, table_name)
+            columns = [col.name for col in table_description]
+        except Exception:
+            # If introspection fails, try to query the table directly
+            try:
+                cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
+                columns = [col[0] for col in cursor.description] if cursor.description else []
+            except Exception:
+                # If table doesn't exist, columns will be empty
+                columns = []
         
         # Add features field if it doesn't exist
         if 'features' not in columns:
-            cursor.execute("ALTER TABLE products_productvariant ADD COLUMN features TEXT DEFAULT '[]'")
+            # Use database-agnostic ALTER TABLE
+            if connection.vendor == 'postgresql':
+                cursor.execute("ALTER TABLE products_productvariant ADD COLUMN features JSONB DEFAULT '{}'")
+            elif connection.vendor == 'sqlite':
+                cursor.execute("ALTER TABLE products_productvariant ADD COLUMN features TEXT DEFAULT '[]'")
+            else:
+                cursor.execute("ALTER TABLE products_productvariant ADD COLUMN features TEXT DEFAULT '[]'")
         
         # Add user_guide field if it doesn't exist
         if 'user_guide' not in columns:
-            cursor.execute("ALTER TABLE products_productvariant ADD COLUMN user_guide TEXT DEFAULT ''")
+            # Use database-agnostic ALTER TABLE
+            if connection.vendor == 'postgresql':
+                cursor.execute("ALTER TABLE products_productvariant ADD COLUMN user_guide JSONB DEFAULT '{}'")
+            elif connection.vendor == 'sqlite':
+                cursor.execute("ALTER TABLE products_productvariant ADD COLUMN user_guide TEXT DEFAULT ''")
+            else:
+                cursor.execute("ALTER TABLE products_productvariant ADD COLUMN user_guide TEXT DEFAULT ''")
 
 
 def validate_all_json_fields(apps, schema_editor):
@@ -147,13 +202,26 @@ def validate_all_json_fields(apps, schema_editor):
     db_alias = schema_editor.connection.alias
     from django.db import connections
     connection = connections[db_alias]
+    table_name = 'products_productvariant'
+    
+    # Use Django's introspection API (database-agnostic)
+    introspection = connection.introspection
+    columns = []
+    json_fields = ['measurement_specs', 'style_specs', 'features', 'user_guide']
     
     with connection.cursor() as cursor:
-        cursor.execute("PRAGMA table_info(products_productvariant)")
-        columns = [col[1] for col in cursor.fetchall()]
-        
-        json_fields = ['measurement_specs', 'style_specs', 'features', 'user_guide']
-        
+        try:
+            # Get table description (database-agnostic)
+            table_description = introspection.get_table_description(cursor, table_name)
+            columns = [col.name for col in table_description]
+        except Exception:
+            # If introspection fails, try to query the table directly
+            try:
+                cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
+                columns = [col[0] for col in cursor.description] if cursor.description else []
+            except Exception:
+                # If table doesn't exist, columns will be empty
+                columns = []
         for field_name in json_fields:
             if field_name not in columns:
                 continue
