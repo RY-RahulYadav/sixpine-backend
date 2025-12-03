@@ -66,8 +66,8 @@ def convert_features_to_dict(apps, schema_editor):
                     f"UPDATE products_productvariant SET features = '{{}}' WHERE id = {variant_id}"
                 )
         
-        # Set NULL or empty features to empty dict
-        cursor.execute("UPDATE products_productvariant SET features = '{}' WHERE features IS NULL OR features = ''")
+        # Set NULL features to empty dict (avoid comparing JSON/JSONB to empty string)
+        cursor.execute("UPDATE products_productvariant SET features = '{}' WHERE features IS NULL")
 
 
 def convert_user_guide_to_dict(apps, schema_editor):
@@ -130,8 +130,8 @@ def convert_user_guide_to_dict(apps, schema_editor):
                     f"UPDATE products_productvariant SET user_guide = '{{}}' WHERE id = {variant_id}"
                 )
         
-        # Set NULL or empty user_guide to empty dict
-        cursor.execute("UPDATE products_productvariant SET user_guide = '{}' WHERE user_guide IS NULL OR user_guide = ''")
+        # Set NULL user_guide to empty dict (avoid comparing JSON/JSONB to empty string)
+        cursor.execute("UPDATE products_productvariant SET user_guide = '{}' WHERE user_guide IS NULL")
 
 
 def reverse_features_to_list(apps, schema_editor):
