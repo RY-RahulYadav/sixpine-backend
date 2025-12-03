@@ -8,41 +8,75 @@ def add_missing_columns(apps, schema_editor):
     db_alias = schema_editor.connection.alias
     from django.db import connections
     connection = connections[db_alias]
+    table_name = 'products_productvariant'
+    
+    # Use Django's introspection API (database-agnostic)
+    introspection = connection.introspection
+    columns = []
     
     with connection.cursor() as cursor:
-        # Check existing columns
-        cursor.execute("PRAGMA table_info(products_productvariant)")
-        columns = [col[1] for col in cursor.fetchall()]
+        try:
+            # Get table description (database-agnostic)
+            table_description = introspection.get_table_description(cursor, table_name)
+            columns = [col.name for col in table_description]
+        except Exception:
+            # If introspection fails, try to query the table directly
+            try:
+                cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
+                columns = [col[0] for col in cursor.description] if cursor.description else []
+            except Exception:
+                # If table doesn't exist, skip
+                return
         
         # Add measurement_specs if missing
         if 'measurement_specs' not in columns:
-            cursor.execute(
-                "ALTER TABLE products_productvariant ADD COLUMN measurement_specs TEXT DEFAULT '{}'"
-            )
+            if connection.vendor == 'postgresql':
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN measurement_specs JSONB DEFAULT '{}'"
+                )
+            else:
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN measurement_specs TEXT DEFAULT '{}'"
+                )
         
         # Add style_specs if missing
         if 'style_specs' not in columns:
-            cursor.execute(
-                "ALTER TABLE products_productvariant ADD COLUMN style_specs TEXT DEFAULT '{}'"
-            )
+            if connection.vendor == 'postgresql':
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN style_specs JSONB DEFAULT '{}'"
+                )
+            else:
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN style_specs TEXT DEFAULT '{}'"
+                )
         
         # Add features if missing (as JSONField with dict default)
         if 'features' not in columns:
-            cursor.execute(
-                "ALTER TABLE products_productvariant ADD COLUMN features TEXT DEFAULT '{}'"
-            )
+            if connection.vendor == 'postgresql':
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN features JSONB DEFAULT '{}'"
+                )
+            else:
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN features TEXT DEFAULT '{}'"
+                )
         
         # Add user_guide if missing (as JSONField with dict default)
         if 'user_guide' not in columns:
-            cursor.execute(
-                "ALTER TABLE products_productvariant ADD COLUMN user_guide TEXT DEFAULT '{}'"
-            )
+            if connection.vendor == 'postgresql':
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN user_guide JSONB DEFAULT '{}'"
+                )
+            else:
+                cursor.execute(
+                    "ALTER TABLE products_productvariant ADD COLUMN user_guide TEXT DEFAULT '{}'"
+                )
         
-        # Update all NULL or empty values to empty dict JSON
-        cursor.execute("UPDATE products_productvariant SET measurement_specs = '{}' WHERE measurement_specs IS NULL OR measurement_specs = ''")
-        cursor.execute("UPDATE products_productvariant SET style_specs = '{}' WHERE style_specs IS NULL OR style_specs = ''")
-        cursor.execute("UPDATE products_productvariant SET features = '{}' WHERE features IS NULL OR features = ''")
-        cursor.execute("UPDATE products_productvariant SET user_guide = '{}' WHERE user_guide IS NULL OR user_guide = ''")
+        # Update all NULL values to empty dict JSON (avoid comparing JSONB to empty string)
+        cursor.execute("UPDATE products_productvariant SET measurement_specs = '{}' WHERE measurement_specs IS NULL")
+        cursor.execute("UPDATE products_productvariant SET style_specs = '{}' WHERE style_specs IS NULL")
+        cursor.execute("UPDATE products_productvariant SET features = '{}' WHERE features IS NULL")
+        cursor.execute("UPDATE products_productvariant SET user_guide = '{}' WHERE user_guide IS NULL")
 
 
 class Migration(migrations.Migration):
