@@ -267,6 +267,10 @@ def validate_all_json_fields(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
+    # Make migration non-atomic to prevent "pending trigger events" error
+    # This allows raw SQL updates to commit before ALTER TABLE operations
+    atomic = False
+
     dependencies = [
         ('products', '0028_add_variant_specific_info'),
     ]
