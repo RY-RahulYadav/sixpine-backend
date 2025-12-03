@@ -936,7 +936,7 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
             order=order,
             status=new_status,
             notes=notes,
-            changed_by=request.user
+            created_by=request.user
         )
         
         create_admin_log(

@@ -22,4 +22,6 @@ urlpatterns = [
     path('returns/', return_views.get_return_requests, name='get-return-requests'),
     path('returns/seller/', return_views.get_seller_return_requests, name='get-seller-return-requests'),
     path('returns/<int:return_request_id>/approve/', return_views.approve_return_request, name='approve-return-request'),
+    path('returns/admin/sixpine/', return_views.get_admin_sixpine_return_requests, name='get-admin-sixpine-return-requests'),
+    path('returns/admin/sixpine/<int:return_request_id>/approve/', return_views.approve_admin_sixpine_return_request, name='approve-admin-sixpine-return-request'),
 ]

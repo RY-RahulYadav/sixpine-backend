@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from admin_api.permissions import IsAdminUser
 from .models import ReturnRequest, OrderStatusHistory
 from .serializers import ReturnRequestSerializer, ReturnRequestCreateSerializer
 
@@ -111,6 +112,77 @@ def approve_return_request(request, return_request_id):
         order=return_request.order,
         status='returned' if approval_status else return_request.order.status,
         notes=f'Return request {"approved" if approval_status else "rejected"} by seller',
+        created_by=request.user
+    )
+    
+    return Response(
+        ReturnRequestSerializer(return_request).data,
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated, IsAdminUser])
+def get_admin_sixpine_return_requests(request):
+    """Get return requests for Sixpine products only (admin only)"""
+    from django.db.models import Q
+    
+    # Get return requests for Sixpine products only
+    # Sixpine products have vendor=None or brand='Sixpine'
+    return_requests = ReturnRequest.objects.filter(
+        Q(order_item__product__vendor__isnull=True) | Q(order_item__product__brand__iexact='Sixpine')
+    ).select_related(
+        'order', 'order_item__product', 'order_item__variant', 'order__user', 'created_by'
+    ).prefetch_related(
+        'order_item__product__variants'
+    ).order_by('-created_at')
+    
+    serializer = ReturnRequestSerializer(return_requests, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated, IsAdminUser])
+def approve_admin_sixpine_return_request(request, return_request_id):
+    """Approve or reject a return request for Sixpine products (admin only)"""
+    from django.db.models import Q
+    
+    # Get return request for Sixpine products only
+    return_request = get_object_or_404(
+        ReturnRequest.objects.filter(
+            Q(order_item__product__vendor__isnull=True) | Q(order_item__product__brand__iexact='Sixpine')
+        ),
+        id=return_request_id
+    )
+    
+    approval_status = request.data.get('approval', None)
+    seller_notes = request.data.get('seller_notes', '')
+    
+    if approval_status is None:
+        return Response(
+            {'error': 'approval field is required (true for approve, false for reject)'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    return_request.seller_approval = approval_status
+    return_request.seller_notes = seller_notes
+    return_request.approved_by = request.user
+    
+    if approval_status:
+        return_request.status = 'approved'
+        # Calculate refund amount (item price * quantity)
+        refund_amount = return_request.order_item.price * return_request.order_item.quantity
+        return_request.refund_amount = refund_amount
+    else:
+        return_request.status = 'rejected'
+    
+    return_request.save()
+    
+    # Create order status history
+    OrderStatusHistory.objects.create(
+        order=return_request.order,
+        status='returned' if approval_status else return_request.order.status,
+        notes=f'Return request {"approved" if approval_status else "rejected"} by admin (Sixpine)',
         created_by=request.user
     )
     
