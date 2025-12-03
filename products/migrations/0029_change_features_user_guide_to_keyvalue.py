@@ -33,8 +33,11 @@ def convert_features_to_dict(apps, schema_editor):
             # Column doesn't exist, skip conversion
             return
         
-        # Get all variants with features
-        cursor.execute("SELECT id, features FROM products_productvariant WHERE features IS NOT NULL AND features != ''")
+        # Get all variants with features (avoid comparing JSON/JSONB to empty string)
+        # Comparing a JSON/JSONB column to an empty string causes Postgres to attempt
+        # to parse the RHS as JSON which fails for invalid input like ''. Use
+        # IS NOT NULL only and handle empty-string cases in Python below.
+        cursor.execute("SELECT id, features FROM products_productvariant WHERE features IS NOT NULL")
         rows = cursor.fetchall()
         
         for variant_id, features_json in rows:
@@ -96,8 +99,8 @@ def convert_user_guide_to_dict(apps, schema_editor):
             # Column doesn't exist, skip conversion
             return
         
-        # Get all variants with user_guide
-        cursor.execute("SELECT id, user_guide FROM products_productvariant WHERE user_guide IS NOT NULL AND user_guide != ''")
+        # Get all variants with user_guide (avoid comparing JSON/JSONB to empty string)
+        cursor.execute("SELECT id, user_guide FROM products_productvariant WHERE user_guide IS NOT NULL")
         rows = cursor.fetchall()
         
         for variant_id, user_guide_text in rows:
