@@ -202,6 +202,19 @@ class ProductVariant(models.Model):
     # store an external or CDN URL to the variant image
     image = models.URLField(max_length=500, blank=True, null=True)
     
+    # Variant-specific information (like specifications but for Measurement, Style, Features, User Guide)
+    # Measurement specifications as key-value pairs (JSONField)
+    measurement_specs = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for measurement details (e.g., {'Dimensions': '64 x 29 x 36 inch', 'Weight': '45 kg'})")
+    
+    # Style specifications as key-value pairs (JSONField)
+    style_specs = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for style details (e.g., {'Colour': 'Grey & Beige', 'Style': 'Modern', 'Shape': 'Rectangular'})")
+    
+    # Features as key-value pairs (JSONField)
+    features = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for features (e.g., {'Weight Capacity Maximum': '450 Kilograms', 'Seating Capacity': '3.0'})")
+    
+    # User guide as key-value pairs (JSONField)
+    user_guide = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for user guide (e.g., {'Assembly': 'Required', 'Care Instructions': 'Wipe with dry cloth'})")
+    
     # Display
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

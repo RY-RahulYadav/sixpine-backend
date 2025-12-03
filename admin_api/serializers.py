@@ -245,7 +245,8 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality',
             'price', 'old_price', 'discount_percentage', 'stock_quantity', 'is_in_stock',
-            'image', 'images', 'specifications', 'is_active', 'created_at', 'updated_at'
+            'image', 'images', 'specifications', 'is_active', 'created_at', 'updated_at',
+            'measurement_specs', 'style_specs', 'features', 'user_guide'
         ]
 
 
@@ -471,6 +472,34 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         subcategory_id = validated_data.pop('subcategory_id', None)
         material_id = validated_data.pop('material_id', None)
         
+        # Validate subcategory if provided
+        if subcategory_id:
+            from products.models import Subcategory
+            try:
+                Subcategory.objects.get(id=subcategory_id)
+            except Subcategory.DoesNotExist:
+                raise serializers.ValidationError({'subcategory_id': 'Invalid subcategory selected'})
+        
+        # Validate material if provided
+        if material_id:
+            from products.models import Material
+            try:
+                Material.objects.get(id=material_id)
+            except Material.DoesNotExist:
+                raise serializers.ValidationError({'material_id': 'Invalid material selected'})
+        
+        # Validate variants before creating product
+        from products.models import Color
+        if variants_data:
+            for idx, variant_data in enumerate(variants_data):
+                color_id = variant_data.get('color_id')
+                if not color_id or color_id == 0:
+                    raise serializers.ValidationError({'variants': f'Variant {idx + 1} must have a valid color_id'})
+                try:
+                    Color.objects.get(id=color_id)
+                except Color.DoesNotExist:
+                    raise serializers.ValidationError({'variants': f'Variant {idx + 1}: Color with id {color_id} does not exist'})
+        
         # Use atomic transaction for all database operations
         with transaction.atomic():
             # Create product
@@ -497,6 +526,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                 variant_images = variant_data.pop('images', [])
                 variant_specifications = variant_data.pop('specifications', [])
                 color_id = variant_data.pop('color_id')
+                # Color_id is already validated above, so it's safe to use
                 variant = ProductVariant.objects.create(
                     product=product,
                     color_id=color_id,
@@ -552,6 +582,13 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                 recommendation_objects = []
                 for rec_data in recommendations_data:
                     recommended_product_id = rec_data.pop('recommended_product_id')
+                    # Validate that recommended product exists
+                    if recommended_product_id:
+                        try:
+                            Product.objects.get(id=recommended_product_id)
+                        except Product.DoesNotExist:
+                            # Skip invalid recommendations instead of failing
+                            continue
                     recommendation_type = rec_data.get('recommendation_type', 'buy_with')
                     # Use get_or_create to avoid duplicate errors
                     rec, created = ProductRecommendation.objects.get_or_create(
