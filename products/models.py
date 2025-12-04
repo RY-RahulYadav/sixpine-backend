@@ -93,7 +93,8 @@ class Product(models.Model):
     
     # Categorization
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
-    subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
+    subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, related_name='products', null=True, blank=True)  # Keep for backward compatibility
+    subcategories = models.ManyToManyField(Subcategory, related_name='product_set', blank=True, help_text='Multiple subcategories this product belongs to (e.g., 1 Seater, 2 Seater, 3 Seater)')
     
     # Note: Pricing is now only in ProductVariant model, not in Product
     
@@ -185,6 +186,7 @@ class ProductVariant(models.Model):
     size = models.CharField(max_length=50, blank=True)  # e.g., "S", "M", "L" or "3-Seater", "2-Seater"
     pattern = models.CharField(max_length=100, blank=True)  # e.g., "Classic", "Modern"
     quality = models.CharField(max_length=100, blank=True)  # e.g., "Premium", "Standard", "Luxury"
+    subcategories = models.ManyToManyField(Subcategory, related_name='variants', blank=True, help_text='Subcategories this variant belongs to (e.g., 1 Seater, 2 Seater)')
     
     # Variant title for display (e.g., "White 4-Door Modern")
     title = models.CharField(max_length=200, blank=True)

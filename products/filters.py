@@ -8,7 +8,7 @@ class ProductFilter(django_filters.FilterSet):
     
     # Category filters
     category = django_filters.CharFilter(field_name='category__slug', lookup_expr='iexact')
-    subcategory = django_filters.CharFilter(field_name='subcategory__slug', lookup_expr='iexact')
+    subcategory = django_filters.CharFilter(method='filter_by_subcategory')
     
     # Price range filters - now filter by variant prices
     min_price = django_filters.NumberFilter(field_name='variants__price', lookup_expr='gte')
@@ -58,17 +58,49 @@ class ProductFilter(django_filters.FilterSet):
             return queryset.filter(variants__color__name__icontains=value, variants__is_active=True).distinct()
         return queryset
     
-    def filter_search(self, queryset, name, value):
-        """Search across multiple fields"""
+    def filter_by_subcategory(self, queryset, name, value):
+        """Filter products by subcategory - filter products that have variants with this subcategory"""
         if value:
+            # First try to find subcategory by slug
+            from .models import Subcategory
+            try:
+                subcategory = Subcategory.objects.get(slug=value, is_active=True)
+                subcategory_id = subcategory.id
+            except Subcategory.DoesNotExist:
+                # If not found by slug, try to find by name
+                try:
+                    subcategory = Subcategory.objects.filter(name__iexact=value.replace('-', ' '), is_active=True).first()
+                    if subcategory:
+                        subcategory_id = subcategory.id
+                    else:
+                        # If still not found, return empty queryset
+                        return queryset.none()
+                except:
+                    return queryset.none()
+            
+            # Filter products that have variants with this subcategory in their subcategories ManyToMany
+            # This ensures we only get products that have at least one variant with the selected subcategory
             return queryset.filter(
-                Q(title__icontains=value) |
+                variants__subcategories__id=subcategory_id,
+                variants__is_active=True
+            ).distinct()
+        return queryset
+    
+    def filter_search(self, queryset, name, value):
+        """Search across multiple fields with regex matching for title and variant titles"""
+        if value:
+            # Use regex for title field (case-insensitive), icontains for other fields
+            # Also search in variant titles since we're expanding variants
+            # This allows flexible pattern matching on product titles and variant titles
+            return queryset.filter(
+                Q(title__iregex=value) |
+                Q(variants__title__iregex=value, variants__is_active=True) |
                 Q(short_description__icontains=value) |
                 Q(long_description__icontains=value) |
                 Q(category__name__icontains=value) |
                 Q(subcategory__name__icontains=value) |
                 Q(brand__icontains=value) |
-                Q(material__icontains=value)
+                Q(material__name__icontains=value)
             ).distinct()
         return queryset
     

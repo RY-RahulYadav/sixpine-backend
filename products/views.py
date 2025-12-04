@@ -114,21 +114,63 @@ class ProductListView(generics.ListAPIView):
                     )
                 ).order_by('priority', sort_field)
         
-        # Check if we should expand variants into separate items
-        expand_variants = request.query_params.get('expand_variants', 'false').lower() == 'true'
+        # Always expand variants into separate items by default
+        # Allow disabling with expand_variants=false if needed
+        expand_variants = request.query_params.get('expand_variants', 'true').lower() != 'false'
         
         # Get filter options for the current queryset
         filter_options = ProductAggregationFilter.get_filter_options(queryset)
         
         # If expand_variants, we need to handle pagination differently
         if expand_variants:
+            # Get subcategory filter if present
+            subcategory_param = request.query_params.get('subcategory')
+            subcategory_name = None
+            subcategory_id = None
+            if subcategory_param:
+                # Try to get subcategory by slug to get the name and ID
+                try:
+                    subcategory = Subcategory.objects.get(slug=subcategory_param, is_active=True)
+                    subcategory_name = subcategory.name
+                    subcategory_id = subcategory.id
+                except Subcategory.DoesNotExist:
+                    # If not found, use the param as-is (might be a name)
+                    subcategory_name = subcategory_param.replace('-', ' ')
+            
             # Expand variants: create a list where each variant is a separate item
             expanded_results = []
             for product in queryset:
-                variants = product.variants.filter(is_active=True).prefetch_related('images').all()
+                # Prefetch variants with their subcategories and images for better performance
+                # Use Prefetch to ensure subcategories are loaded correctly
+                variants = product.variants.filter(is_active=True).prefetch_related(
+                    'images',
+                    Prefetch('subcategories', queryset=Subcategory.objects.filter(is_active=True))
+                ).all()
                 if variants.exists():
                     # If product has variants, add each variant as a separate item
                     for variant in variants:
+                        # Filter variants by subcategory: if subcategory filter is set, only include variants that have this subcategory
+                        # If subcategory is "Sofa Set" or similar, show all variants
+                        if subcategory_name and subcategory_name.lower() not in ['sofa set', 'sofa sets', 'set']:
+                            # Check if variant has this subcategory in its subcategories ManyToMany
+                            variant_has_subcategory = False
+                            if subcategory_id:
+                                # Use subcategory ID (most reliable method)
+                                # Get all subcategory IDs for this variant
+                                variant_subcategory_ids = list(variant.subcategories.values_list('id', flat=True))
+                                if subcategory_id in variant_subcategory_ids:
+                                    variant_has_subcategory = True
+                            else:
+                                # Fallback: check by name (case-insensitive)
+                                if hasattr(variant, 'subcategories') and variant.subcategories.exists():
+                                    variant_subcategory_names = [sub.name.lower() for sub in variant.subcategories.all()]
+                                    if subcategory_name.lower() in variant_subcategory_names:
+                                        variant_has_subcategory = True
+                            
+                            # If variant doesn't have this subcategory, skip it
+                            if not variant_has_subcategory:
+                                continue
+                        # If no subcategory filter or it's a "set", include all variants
                         # Get variant images
                         variant_images = [
                             {
@@ -152,8 +194,12 @@ class ProductListView(generics.ListAPIView):
                             'images': variant_images if variant_images else [{'image': variant.image if variant.image else product.main_image}] if variant.image or product.main_image else [],
                             'price': float(variant.price) if variant.price else float(product.price),
                             'old_price': float(variant.old_price) if variant.old_price else (float(product.old_price) if product.old_price else None),
-                            'is_on_sale': product.is_on_sale,
-                            'discount_percentage': product.discount_percentage,
+                            'is_on_sale': bool(variant.old_price and variant.price and float(variant.old_price) > float(variant.price)),
+                            'discount_percentage': variant.discount_percentage if variant.discount_percentage else (
+                                int(((float(variant.old_price) - float(variant.price)) / float(variant.old_price) * 100)) 
+                                if variant.old_price and variant.price and float(variant.old_price) > float(variant.price) 
+                                else 0
+                            ),
                             'average_rating': self._get_average_rating(product),
                             'review_count': product.reviews.filter(is_approved=True).count(),
                             'category': {
@@ -166,6 +212,11 @@ class ProductListView(generics.ListAPIView):
                                 'name': product.subcategory.name,
                                 'slug': product.subcategory.slug
                             } if product.subcategory else None,
+                            'subcategories': [{
+                                'id': sub.id,
+                                'name': sub.name,
+                                'slug': sub.slug
+                            } for sub in product.subcategories.filter(is_active=True)] if hasattr(product, 'subcategories') else [],
                             'brand': product.brand,
                             'material': {
                                 'id': product.material.id,
@@ -198,9 +249,61 @@ class ProductListView(generics.ListAPIView):
                     serializer = self.get_serializer(product)
                     expanded_results.append(serializer.data)
             
+            # Filter expanded results by search query if present (to match variant titles)
+            search_query = request.query_params.get('q') or request.query_params.get('search')
+            if search_query:
+                import re
+                # Filter expanded results to only include variants that match the search
+                # Check if search matches product title, variant title, or other fields
+                filtered_results = []
+                for item in expanded_results:
+                    # Check if search matches in any of these fields
+                    matches = False
+                    try:
+                        # Try regex matching on title (product + variant title combined)
+                        if re.search(search_query, item.get('title', ''), re.IGNORECASE):
+                            matches = True
+                        # Also check variant title separately
+                        elif item.get('variant') and item['variant'].get('title'):
+                            if re.search(search_query, item['variant']['title'], re.IGNORECASE):
+                                matches = True
+                        # Check product title
+                        elif item.get('product_title'):
+                            if re.search(search_query, item['product_title'], re.IGNORECASE):
+                                matches = True
+                        # Check other fields (case-insensitive contains)
+                        elif search_query.lower() in (item.get('short_description', '') or '').lower():
+                            matches = True
+                        elif item.get('brand') and search_query.lower() in item['brand'].lower():
+                            matches = True
+                    except re.error:
+                        # If regex is invalid, fall back to simple contains
+                        search_lower = search_query.lower()
+                        if search_lower in (item.get('title', '') or '').lower():
+                            matches = True
+                        elif item.get('variant') and item['variant'].get('title'):
+                            if search_lower in item['variant']['title'].lower():
+                                matches = True
+                        elif item.get('product_title'):
+                            if search_lower in item['product_title'].lower():
+                                matches = True
+                        elif search_lower in (item.get('short_description', '') or '').lower():
+                            matches = True
+                        elif item.get('brand') and search_lower in item['brand'].lower():
+                            matches = True
+                    
+                    if matches:
+                        filtered_results.append(item)
+                expanded_results = filtered_results
+            
             # Apply sorting to expanded results
             sort_option = request.query_params.get('sort', 'relevance')
             expanded_results = self._sort_expanded_results(expanded_results, sort_option)
+            
+            # Shuffle results for variety (only if sort is relevance)
+            if sort_option == 'relevance':
+                import random
+                random.shuffle(expanded_results)
             
             # Manual pagination for expanded results
             page_size = int(request.query_params.get('page_size', self.pagination_class.page_size))

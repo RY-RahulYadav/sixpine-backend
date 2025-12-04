@@ -150,7 +150,7 @@ def approve_admin_sixpine_return_request(request, return_request_id):
     # Get return request for Sixpine products only
     return_request = get_object_or_404(
         ReturnRequest.objects.filter(
-            Q(order_item__product__vendor__isnull=True) | Q(order_item__product__brand__iexact='Sixpine')
+        Q(order_item__product__vendor__isnull=True) | Q(order_item__product__brand__iexact='Sixpine')
         ),
         id=return_request_id
     )

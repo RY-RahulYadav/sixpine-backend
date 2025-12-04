@@ -239,6 +239,14 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
     color_id = serializers.IntegerField()
     images = AdminProductVariantImageSerializer(many=True, required=False)
     specifications = AdminProductSpecificationSerializer(many=True, required=False)
+    subcategories = AdminSubcategorySerializer(many=True, read_only=True)
+    subcategory_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+        help_text='Array of subcategory IDs for this variant (e.g., [1, 2] for 1 Seater, 2 Seater)'
+    )
     
     class Meta:
         model = ProductVariant
@@ -246,7 +254,8 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
             'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality',
             'price', 'old_price', 'discount_percentage', 'stock_quantity', 'is_in_stock',
             'image', 'images', 'specifications', 'is_active', 'created_at', 'updated_at',
-            'measurement_specs', 'style_specs', 'features', 'user_guide'
+            'measurement_specs', 'style_specs', 'features', 'user_guide',
+            'subcategories', 'subcategory_ids'
         ]
 
 
@@ -389,7 +398,15 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
     category = AdminCategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True, required=True, allow_null=False)
     subcategory = AdminSubcategorySerializer(read_only=True, allow_null=True)
-    subcategory_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    subcategory_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)  # Keep for backward compatibility
+    subcategories = AdminSubcategorySerializer(many=True, read_only=True)
+    subcategory_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+        help_text='Array of subcategory IDs (e.g., [1, 2, 3] for 1 Seater, 2 Seater, 3 Seater)'
+    )
     material = AdminMaterialSerializer(read_only=True, allow_null=True)
     material_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     images = AdminProductImageSerializer(many=True, required=False)
@@ -411,6 +428,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'slug', 'sku', 'short_description', 'long_description',
             'main_image', 'category', 'category_id', 'subcategory', 'subcategory_id',
+            'subcategories', 'subcategory_ids',
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'brand', 'material', 'material_id', 'dimensions', 'weight', 'warranty',
             'assembly_required', 'estimated_delivery_days', 'screen_offer', 'style_description', 'user_guide', 'care_instructions', 'what_in_box',
@@ -470,9 +488,19 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'category_id': 'Invalid category selected'})
         
         subcategory_id = validated_data.pop('subcategory_id', None)
+        subcategory_ids = validated_data.pop('subcategory_ids', [])
         material_id = validated_data.pop('material_id', None)
         
-        # Validate subcategory if provided
+        # Validate subcategories if provided
+        if subcategory_ids:
+            from products.models import Subcategory
+            # Validate all subcategory IDs exist
+            existing_subcategories = Subcategory.objects.filter(id__in=subcategory_ids, is_active=True)
+            if existing_subcategories.count() != len(subcategory_ids):
+                invalid_ids = set(subcategory_ids) - set(existing_subcategories.values_list('id', flat=True))
+                raise serializers.ValidationError({'subcategory_ids': f'Invalid subcategory IDs: {list(invalid_ids)}'})
+        
+        # Validate single subcategory if provided (backward compatibility)
         if subcategory_id:
             from products.models import Subcategory
             try:
@@ -505,10 +533,14 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             # Create product
             product = Product.objects.create(
                 category_id=category_id,
-                subcategory_id=subcategory_id,
+                subcategory_id=subcategory_id,  # Keep for backward compatibility
                 material_id=material_id,
                 **validated_data
             )
+            
+            # Set multiple subcategories if provided
+            if subcategory_ids:
+                product.subcategories.set(subcategory_ids)
             
             # Bulk create images for better performance
             if images_data:
@@ -525,6 +557,12 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             for variant_data in variants_data:
                 variant_images = variant_data.pop('images', [])
                 variant_specifications = variant_data.pop('specifications', [])
+                # Get subcategory_ids - ensure it's always a list
+                subcategory_ids = variant_data.pop('subcategory_ids', [])
+                if subcategory_ids is None:
+                    subcategory_ids = []
+                if not isinstance(subcategory_ids, list):
+                    subcategory_ids = []
                 color_id = variant_data.pop('color_id')
                 # Color_id is already validated above, so it's safe to use
                 variant = ProductVariant.objects.create(
@@ -532,6 +570,8 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                     color_id=color_id,
                     **variant_data
                 )
+                # Set subcategories for this variant (always set, even if empty array)
+                variant.subcategories.set(subcategory_ids)
                 # Collect variant images for bulk creation
                 if variant_images:
                     for variant_img_data in variant_images:
@@ -617,6 +657,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         
         category_id = validated_data.pop('category_id', None)
         subcategory_id = validated_data.pop('subcategory_id', None)
+        subcategory_ids = validated_data.pop('subcategory_ids', None)
         material_id = validated_data.pop('material_id', None)
         
         # Use atomic transaction for all database operations
@@ -625,6 +666,9 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                 instance.category_id = category_id
             if subcategory_id is not None:
                 instance.subcategory_id = subcategory_id
+            if subcategory_ids is not None:
+                # Update multiple subcategories
+                instance.subcategories.set(subcategory_ids)
             if material_id is not None:
                 instance.material_id = material_id
             
@@ -657,6 +701,8 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                 # Check if images and specifications keys exist (not just pop default)
                 variant_images = variant_data.pop('images') if 'images' in variant_data else None
                 variant_specifications = variant_data.pop('specifications') if 'specifications' in variant_data else None
+                # Always get subcategory_ids, default to empty array if not provided
+                subcategory_ids = variant_data.pop('subcategory_ids', [])
                 variant_id = variant_data.pop('id', None)
                 color_id = variant_data.pop('color_id', None)
                 
@@ -668,6 +714,13 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         if color_id is not None:
                             variant.color_id = color_id
                         variant.save()
+                        # Always update subcategories (even if empty array to clear them)
+                        # Ensure subcategory_ids is a list
+                        if subcategory_ids is None:
+                            subcategory_ids = []
+                        if not isinstance(subcategory_ids, list):
+                            subcategory_ids = []
+                        variant.subcategories.set(subcategory_ids)
                         
                         # Update variant images only if provided (empty list means delete all)
                         if variant_images is not None:
@@ -694,11 +747,19 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         # If variant doesn't exist, create new one
                         if color_id is None:
                             raise serializers.ValidationError({'variants': 'color_id is required for new variants'})
+                        variant_subcategory_ids = variant_data.pop('subcategory_ids', [])
+                        # Ensure variant_subcategory_ids is a list
+                        if variant_subcategory_ids is None:
+                            variant_subcategory_ids = []
+                        if not isinstance(variant_subcategory_ids, list):
+                            variant_subcategory_ids = []
                         variant = ProductVariant.objects.create(
                             product=instance,
                             color_id=color_id,
                             **variant_data
                         )
+                        # Set subcategories for new variant (always set, even if empty array)
+                        variant.subcategories.set(variant_subcategory_ids)
                         if variant_images:
                             variant_image_objects = [
                                 ProductVariantImage(variant=variant, **variant_img_data)
@@ -715,11 +776,19 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                     # New variant without ID
                     if color_id is None:
                         raise serializers.ValidationError({'variants': 'color_id is required for new variants'})
+                    # Get subcategory_ids for new variant
+                    new_variant_subcategory_ids = variant_data.pop('subcategory_ids', [])
+                    if new_variant_subcategory_ids is None:
+                        new_variant_subcategory_ids = []
+                    if not isinstance(new_variant_subcategory_ids, list):
+                        new_variant_subcategory_ids = []
                     variant = ProductVariant.objects.create(
                         product=instance,
                         color_id=color_id,
                         **variant_data
                     )
+                    # Set subcategories for new variant
+                    variant.subcategories.set(new_variant_subcategory_ids)
                     if variant_images:
                         variant_image_objects = [
                             ProductVariantImage(variant=variant, **variant_img_data)
