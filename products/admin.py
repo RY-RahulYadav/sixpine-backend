@@ -5,7 +5,8 @@ from django.utils.safestring import mark_safe
 from .models import (
     Category, Subcategory, Color, Material, Product, ProductImage, ProductVariant,
     ProductReview, ProductRecommendation, ProductSpecification,
-    ProductFeature, ProductAboutItem, ProductOffer 
+    ProductFeature, ProductAboutItem, ProductOffer,
+    VariantMeasurementSpec, VariantStyleSpec, VariantFeature, VariantUserGuide, VariantItemDetail
 )
 
 
@@ -246,4 +247,44 @@ class ProductOfferAdmin(admin.ModelAdmin):
     ]
     list_filter = ['is_active', 'valid_from', 'valid_until', 'created_at']
     search_fields = ['product__title', 'title', 'description']
+
+
+@admin.register(VariantMeasurementSpec)
+class VariantMeasurementSpecAdmin(admin.ModelAdmin):
+    list_display = ['variant', 'name', 'value', 'sort_order', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['variant__product__title', 'variant__title', 'name', 'value']
+    ordering = ['variant', 'sort_order', 'name']
+
+
+@admin.register(VariantStyleSpec)
+class VariantStyleSpecAdmin(admin.ModelAdmin):
+    list_display = ['variant', 'name', 'value', 'sort_order', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['variant__product__title', 'variant__title', 'name', 'value']
+    ordering = ['variant', 'sort_order', 'name']
+
+
+@admin.register(VariantFeature)
+class VariantFeatureAdmin(admin.ModelAdmin):
+    list_display = ['variant', 'name', 'value', 'sort_order', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['variant__product__title', 'variant__title', 'name', 'value']
+    ordering = ['variant', 'sort_order', 'name']
+
+
+@admin.register(VariantUserGuide)
+class VariantUserGuideAdmin(admin.ModelAdmin):
+    list_display = ['variant', 'name', 'value', 'sort_order', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['variant__product__title', 'variant__title', 'name', 'value']
+    ordering = ['variant', 'sort_order', 'name']
+
+
+@admin.register(VariantItemDetail)
+class VariantItemDetailAdmin(admin.ModelAdmin):
+    list_display = ['variant', 'name', 'value', 'sort_order', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['variant__product__title', 'variant__title', 'name', 'value']
+    ordering = ['variant', 'sort_order', 'name']
     ordering = ['-created_at']

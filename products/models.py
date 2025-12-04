@@ -204,21 +204,12 @@ class ProductVariant(models.Model):
     # store an external or CDN URL to the variant image
     image = models.URLField(max_length=500, blank=True, null=True)
     
-    # Variant-specific information (like specifications but for Measurement, Style, Features, User Guide)
-    # Measurement specifications as key-value pairs (JSONField)
-    measurement_specs = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for measurement details (e.g., {'Dimensions': '64 x 29 x 36 inch', 'Weight': '45 kg'})")
-    
-    # Style specifications as key-value pairs (JSONField)
-    style_specs = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for style details (e.g., {'Colour': 'Grey & Beige', 'Style': 'Modern', 'Shape': 'Rectangular'})")
-    
-    # Features as key-value pairs (JSONField)
-    features = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for features (e.g., {'Weight Capacity Maximum': '450 Kilograms', 'Seating Capacity': '3.0'})")
-    
-    # User guide as key-value pairs (JSONField)
-    user_guide = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for user guide (e.g., {'Assembly': 'Required', 'Care Instructions': 'Wipe with dry cloth'})")
-    
-    # Item details as key-value pairs (JSONField) - for Item Details box
-    item_details = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for item details (e.g., {'Assembly': 'Required', 'Warranty': '1 Year', 'Weight': '45 kg'})")
+    # Note: Variant-specific information moved to separate models with name-value pattern:
+    # - VariantMeasurementSpec (measurement specifications)
+    # - VariantStyleSpec (style specifications)
+    # - VariantFeature (features)
+    # - VariantUserGuide (user guide)
+    # - VariantItemDetail (item details)
     
     # Display
     is_active = models.BooleanField(default=True)
@@ -317,6 +308,96 @@ class ProductSpecification(models.Model):
 
     class Meta:
         ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.variant.product.title} - {self.variant.title} - {self.name}: {self.value}"
+
+
+class VariantMeasurementSpec(models.Model):
+    """Variant measurement specifications - using name-value pattern"""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='measurement_specs')
+    name = models.CharField(max_length=100)  # e.g., "Dimensions", "Weight"
+    value = models.CharField(max_length=200)  # e.g., "64 x 29 x 36 inch", "45 kg"
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        verbose_name = "Variant Measurement Specification"
+        verbose_name_plural = "Variant Measurement Specifications"
+
+    def __str__(self):
+        return f"{self.variant.product.title} - {self.variant.title} - {self.name}: {self.value}"
+
+
+class VariantStyleSpec(models.Model):
+    """Variant style specifications - using name-value pattern"""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='style_specs')
+    name = models.CharField(max_length=100)  # e.g., "Colour", "Style", "Shape"
+    value = models.CharField(max_length=200)  # e.g., "Grey & Beige", "Modern", "Rectangular"
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        verbose_name = "Variant Style Specification"
+        verbose_name_plural = "Variant Style Specifications"
+
+    def __str__(self):
+        return f"{self.variant.product.title} - {self.variant.title} - {self.name}: {self.value}"
+
+
+class VariantFeature(models.Model):
+    """Variant features - using name-value pattern"""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='features')
+    name = models.CharField(max_length=100)  # e.g., "Weight Capacity Maximum", "Seating Capacity"
+    value = models.CharField(max_length=200)  # e.g., "450 Kilograms", "3.0"
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        verbose_name = "Variant Feature"
+        verbose_name_plural = "Variant Features"
+
+    def __str__(self):
+        return f"{self.variant.product.title} - {self.variant.title} - {self.name}: {self.value}"
+
+
+class VariantUserGuide(models.Model):
+    """Variant user guide - using name-value pattern"""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='user_guide')
+    name = models.CharField(max_length=100)  # e.g., "Assembly", "Care Instructions"
+    value = models.CharField(max_length=200)  # e.g., "Required", "Wipe with dry cloth"
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        verbose_name = "Variant User Guide"
+        verbose_name_plural = "Variant User Guides"
+
+    def __str__(self):
+        return f"{self.variant.product.title} - {self.variant.title} - {self.name}: {self.value}"
+
+
+class VariantItemDetail(models.Model):
+    """Variant item details - using name-value pattern"""
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='item_details')
+    name = models.CharField(max_length=100)  # e.g., "Assembly", "Warranty", "Weight"
+    value = models.CharField(max_length=200)  # e.g., "Required", "1 Year", "45 kg"
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        verbose_name = "Variant Item Detail"
+        verbose_name_plural = "Variant Item Details"
 
     def __str__(self):
         return f"{self.variant.product.title} - {self.variant.title} - {self.name}: {self.value}"

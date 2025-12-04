@@ -4,7 +4,9 @@ from accounts.models import User, Vendor, Media, PackagingFeedback
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage, 
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, 
-    ProductAboutItem, ProductOffer, Discount, ProductRecommendation, Coupon, ProductReview
+    ProductAboutItem, ProductOffer, Discount, ProductRecommendation, Coupon, ProductReview,
+    VariantMeasurementSpec, VariantStyleSpec, VariantFeature as VariantFeatureModel, 
+    VariantUserGuide, VariantItemDetail
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from accounts.models import ContactQuery, BulkOrder, DataRequest
@@ -234,11 +236,48 @@ class AdminProductSpecificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'value', 'sort_order', 'is_active']
 
 
+class AdminVariantMeasurementSpecSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantMeasurementSpec
+        fields = ['id', 'name', 'value', 'sort_order', 'is_active']
+
+
+class AdminVariantStyleSpecSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantStyleSpec
+        fields = ['id', 'name', 'value', 'sort_order', 'is_active']
+
+
+class AdminVariantFeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantFeatureModel
+        fields = ['id', 'name', 'value', 'sort_order', 'is_active']
+
+
+class AdminVariantUserGuideSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantUserGuide
+        fields = ['id', 'name', 'value', 'sort_order', 'is_active']
+
+
+class AdminVariantItemDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantItemDetail
+        fields = ['id', 'name', 'value', 'sort_order', 'is_active']
+
+
 class AdminProductVariantSerializer(serializers.ModelSerializer):
+    # Explicitly allow id field for updates (required=False allows it to be omitted for creates)
+    id = serializers.IntegerField(required=False)
     color = AdminColorSerializer(read_only=True)
     color_id = serializers.IntegerField()
     images = AdminProductVariantImageSerializer(many=True, required=False)
     specifications = AdminProductSpecificationSerializer(many=True, required=False)
+    measurement_specs = AdminVariantMeasurementSpecSerializer(many=True, required=False)
+    style_specs = AdminVariantStyleSpecSerializer(many=True, required=False)
+    features = AdminVariantFeatureSerializer(many=True, required=False)
+    user_guide = AdminVariantUserGuideSerializer(many=True, required=False)
+    item_details = AdminVariantItemDetailSerializer(many=True, required=False)
     subcategories = AdminSubcategorySerializer(many=True, read_only=True)
     subcategory_ids = serializers.ListField(
         child=serializers.IntegerField(),
@@ -554,9 +593,20 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             # Create variants individually to get IDs, but batch variant images and specifications
             variant_image_objects = []
             variant_spec_objects = []
+            variant_measurement_objects = []
+            variant_style_objects = []
+            variant_feature_objects = []
+            variant_userguide_objects = []
+            variant_itemdetail_objects = []
+            
             for variant_data in variants_data:
                 variant_images = variant_data.pop('images', [])
                 variant_specifications = variant_data.pop('specifications', [])
+                variant_measurements = variant_data.pop('measurement_specs', [])
+                variant_styles = variant_data.pop('style_specs', [])
+                variant_features = variant_data.pop('features', [])
+                variant_userguides = variant_data.pop('user_guide', [])
+                variant_itemdetails = variant_data.pop('item_details', [])
                 # Get subcategory_ids - ensure it's always a list
                 subcategory_ids = variant_data.pop('subcategory_ids', [])
                 if subcategory_ids is None:
@@ -571,7 +621,11 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                     **variant_data
                 )
                 # Set subcategories for this variant (always set, even if empty array)
+                print(f"[BACKEND CREATE] Setting subcategories for new variant: {subcategory_ids}")
                 variant.subcategories.set(subcategory_ids)
+                # Verify it was saved
+                saved_subcategories = list(variant.subcategories.values_list('id', flat=True))
+                print(f"[BACKEND CREATE] Verified subcategories for new variant {variant.id}: {saved_subcategories}")
                 # Collect variant images for bulk creation
                 if variant_images:
                     for variant_img_data in variant_images:
@@ -584,6 +638,36 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         variant_spec_objects.append(
                             ProductSpecification(variant=variant, **spec_data)
                         )
+                # Collect variant measurements for bulk creation
+                if variant_measurements:
+                    for meas_data in variant_measurements:
+                        variant_measurement_objects.append(
+                            VariantMeasurementSpec(variant=variant, **meas_data)
+                        )
+                # Collect variant styles for bulk creation
+                if variant_styles:
+                    for style_data in variant_styles:
+                        variant_style_objects.append(
+                            VariantStyleSpec(variant=variant, **style_data)
+                        )
+                # Collect variant features for bulk creation
+                if variant_features:
+                    for feat_data in variant_features:
+                        variant_feature_objects.append(
+                            VariantFeatureModel(variant=variant, **feat_data)
+                        )
+                # Collect variant user guides for bulk creation
+                if variant_userguides:
+                    for guide_data in variant_userguides:
+                        variant_userguide_objects.append(
+                            VariantUserGuide(variant=variant, **guide_data)
+                        )
+                # Collect variant item details for bulk creation
+                if variant_itemdetails:
+                    for detail_data in variant_itemdetails:
+                        variant_itemdetail_objects.append(
+                            VariantItemDetail(variant=variant, **detail_data)
+                        )
             
             # Bulk create variant images for better performance
             if variant_image_objects:
@@ -592,6 +676,26 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             # Bulk create variant specifications for better performance
             if variant_spec_objects:
                 ProductSpecification.objects.bulk_create(variant_spec_objects)
+            
+            # Bulk create variant measurements for better performance
+            if variant_measurement_objects:
+                VariantMeasurementSpec.objects.bulk_create(variant_measurement_objects)
+            
+            # Bulk create variant styles for better performance
+            if variant_style_objects:
+                VariantStyleSpec.objects.bulk_create(variant_style_objects)
+            
+            # Bulk create variant features for better performance
+            if variant_feature_objects:
+                VariantFeatureModel.objects.bulk_create(variant_feature_objects)
+            
+            # Bulk create variant user guides for better performance
+            if variant_userguide_objects:
+                VariantUserGuide.objects.bulk_create(variant_userguide_objects)
+            
+            # Bulk create variant item details for better performance
+            if variant_itemdetail_objects:
+                VariantItemDetail.objects.bulk_create(variant_itemdetail_objects)
             
             # Bulk create features
             if features_data:
@@ -650,6 +754,12 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         
         images_data = validated_data.pop('images', None)
         variants_data = validated_data.pop('variants', None)
+        print(f"[BACKEND UPDATE START] Product {instance.id} - Variants data received:")
+        if variants_data:
+            for idx, v in enumerate(variants_data):
+                print(f"  Variant {idx}: id={v.get('id')}, color_id={v.get('color_id')}, subcategory_ids={v.get('subcategory_ids')}")
+        else:
+            print("  No variants data received")
         features_data = validated_data.pop('features', None)
         about_items_data = validated_data.pop('about_items', None)
         offers_data = validated_data.pop('offers', None)
@@ -691,16 +801,26 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         if variants_data is not None:
             # Keep existing variant IDs if provided, delete others
             existing_variant_ids = [v.get('id') for v in variants_data if v.get('id')]
+            print(f"[BACKEND UPDATE] Existing variant IDs from request: {existing_variant_ids}")
+            print(f"[BACKEND UPDATE] Current product variants: {list(instance.variants.values_list('id', flat=True))}")
             if existing_variant_ids:
-                instance.variants.exclude(id__in=existing_variant_ids).delete()
+                variants_to_delete = instance.variants.exclude(id__in=existing_variant_ids)
+                print(f"[BACKEND UPDATE] Variants to delete: {list(variants_to_delete.values_list('id', flat=True))}")
+                variants_to_delete.delete()
             else:
                 # If no IDs provided, delete all and recreate
+                print(f"[BACKEND UPDATE] No variant IDs provided, deleting all variants")
                 instance.variants.all().delete()
             
             for variant_data in variants_data:
                 # Check if images and specifications keys exist (not just pop default)
                 variant_images = variant_data.pop('images') if 'images' in variant_data else None
                 variant_specifications = variant_data.pop('specifications') if 'specifications' in variant_data else None
+                variant_measurements = variant_data.pop('measurement_specs') if 'measurement_specs' in variant_data else None
+                variant_styles = variant_data.pop('style_specs') if 'style_specs' in variant_data else None
+                variant_features = variant_data.pop('features') if 'features' in variant_data else None
+                variant_userguides = variant_data.pop('user_guide') if 'user_guide' in variant_data else None
+                variant_itemdetails = variant_data.pop('item_details') if 'item_details' in variant_data else None
                 # Always get subcategory_ids, default to empty array if not provided
                 subcategory_ids = variant_data.pop('subcategory_ids', [])
                 variant_id = variant_data.pop('id', None)
@@ -720,7 +840,11 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                             subcategory_ids = []
                         if not isinstance(subcategory_ids, list):
                             subcategory_ids = []
+                        print(f"[BACKEND] Setting subcategories for variant {variant_id}: {subcategory_ids}")
                         variant.subcategories.set(subcategory_ids)
+                        # Verify it was saved
+                        saved_subcategories = list(variant.subcategories.values_list('id', flat=True))
+                        print(f"[BACKEND] Verified subcategories for variant {variant_id}: {saved_subcategories}")
                         
                         # Update variant images only if provided (empty list means delete all)
                         if variant_images is not None:
@@ -743,23 +867,72 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                                     for spec_data in variant_specifications
                                 ]
                                 ProductSpecification.objects.bulk_create(variant_spec_objects)
+                        
+                        # Update variant measurements only if provided (empty list means delete all)
+                        if variant_measurements is not None:
+                            variant.measurement_specs.all().delete()
+                            if variant_measurements:
+                                meas_objects = [
+                                    VariantMeasurementSpec(variant=variant, **meas_data)
+                                    for meas_data in variant_measurements
+                                ]
+                                VariantMeasurementSpec.objects.bulk_create(meas_objects)
+                        
+                        # Update variant styles only if provided (empty list means delete all)
+                        if variant_styles is not None:
+                            variant.style_specs.all().delete()
+                            if variant_styles:
+                                style_objects = [
+                                    VariantStyleSpec(variant=variant, **style_data)
+                                    for style_data in variant_styles
+                                ]
+                                VariantStyleSpec.objects.bulk_create(style_objects)
+                        
+                        # Update variant features only if provided (empty list means delete all)
+                        if variant_features is not None:
+                            variant.features.all().delete()
+                            if variant_features:
+                                feat_objects = [
+                                    VariantFeatureModel(variant=variant, **feat_data)
+                                    for feat_data in variant_features
+                                ]
+                                VariantFeatureModel.objects.bulk_create(feat_objects)
+                        
+                        # Update variant user guides only if provided (empty list means delete all)
+                        if variant_userguides is not None:
+                            variant.user_guide.all().delete()
+                            if variant_userguides:
+                                guide_objects = [
+                                    VariantUserGuide(variant=variant, **guide_data)
+                                    for guide_data in variant_userguides
+                                ]
+                                VariantUserGuide.objects.bulk_create(guide_objects)
+                        
+                        # Update variant item details only if provided (empty list means delete all)
+                        if variant_itemdetails is not None:
+                            variant.item_details.all().delete()
+                            if variant_itemdetails:
+                                detail_objects = [
+                                    VariantItemDetail(variant=variant, **detail_data)
+                                    for detail_data in variant_itemdetails
+                                ]
+                                VariantItemDetail.objects.bulk_create(detail_objects)
                     except ProductVariant.DoesNotExist:
                         # If variant doesn't exist, create new one
                         if color_id is None:
                             raise serializers.ValidationError({'variants': 'color_id is required for new variants'})
-                        variant_subcategory_ids = variant_data.pop('subcategory_ids', [])
-                        # Ensure variant_subcategory_ids is a list
-                        if variant_subcategory_ids is None:
-                            variant_subcategory_ids = []
-                        if not isinstance(variant_subcategory_ids, list):
-                            variant_subcategory_ids = []
+                        # Use subcategory_ids that was already popped at the beginning - DON'T pop again
+                        print(f"[BACKEND CREATE NEW] Creating variant with subcategories: {subcategory_ids}")
                         variant = ProductVariant.objects.create(
                             product=instance,
                             color_id=color_id,
                             **variant_data
                         )
                         # Set subcategories for new variant (always set, even if empty array)
-                        variant.subcategories.set(variant_subcategory_ids)
+                        variant.subcategories.set(subcategory_ids)
+                        # Verify it was saved
+                        saved_subcategories = list(variant.subcategories.values_list('id', flat=True))
+                        print(f"[BACKEND CREATE NEW] Verified subcategories for variant {variant.id}: {saved_subcategories}")
                         if variant_images:
                             variant_image_objects = [
                                 ProductVariantImage(variant=variant, **variant_img_data)
@@ -772,6 +945,21 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                                 for spec_data in variant_specifications
                             ]
                             ProductSpecification.objects.bulk_create(variant_spec_objects)
+                        if variant_measurements:
+                            meas_objects = [VariantMeasurementSpec(variant=variant, **md) for md in variant_measurements]
+                            VariantMeasurementSpec.objects.bulk_create(meas_objects)
+                        if variant_styles:
+                            style_objects = [VariantStyleSpec(variant=variant, **sd) for sd in variant_styles]
+                            VariantStyleSpec.objects.bulk_create(style_objects)
+                        if variant_features:
+                            feat_objects = [VariantFeatureModel(variant=variant, **fd) for fd in variant_features]
+                            VariantFeatureModel.objects.bulk_create(feat_objects)
+                        if variant_userguides:
+                            guide_objects = [VariantUserGuide(variant=variant, **gd) for gd in variant_userguides]
+                            VariantUserGuide.objects.bulk_create(guide_objects)
+                        if variant_itemdetails:
+                            detail_objects = [VariantItemDetail(variant=variant, **dd) for dd in variant_itemdetails]
+                            VariantItemDetail.objects.bulk_create(detail_objects)
                 else:
                     # New variant without ID
                     if color_id is None:
@@ -801,6 +989,21 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                             for spec_data in variant_specifications
                     ]
                         ProductSpecification.objects.bulk_create(variant_spec_objects)
+                    if variant_measurements:
+                        meas_objects = [VariantMeasurementSpec(variant=variant, **md) for md in variant_measurements]
+                        VariantMeasurementSpec.objects.bulk_create(meas_objects)
+                    if variant_styles:
+                        style_objects = [VariantStyleSpec(variant=variant, **sd) for sd in variant_styles]
+                        VariantStyleSpec.objects.bulk_create(style_objects)
+                    if variant_features:
+                        feat_objects = [VariantFeatureModel(variant=variant, **fd) for fd in variant_features]
+                        VariantFeatureModel.objects.bulk_create(feat_objects)
+                    if variant_userguides:
+                        guide_objects = [VariantUserGuide(variant=variant, **gd) for gd in variant_userguides]
+                        VariantUserGuide.objects.bulk_create(guide_objects)
+                    if variant_itemdetails:
+                        detail_objects = [VariantItemDetail(variant=variant, **dd) for dd in variant_itemdetails]
+                        VariantItemDetail.objects.bulk_create(detail_objects)
             
             # Update features if provided - use bulk_create for better performance
             if features_data is not None:

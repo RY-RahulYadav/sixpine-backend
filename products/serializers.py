@@ -3,7 +3,8 @@ from django.db.models import Q
 from .models import (
     Category, Subcategory, Color, Material, Product, ProductImage, ProductVariant,
     ProductVariantImage, ProductReview, ProductRecommendation, ProductSpecification, 
-    ProductFeature, ProductAboutItem, ProductOffer, BrowsingHistory, Wishlist
+    ProductFeature, ProductAboutItem, ProductOffer, BrowsingHistory, Wishlist,
+    VariantMeasurementSpec, VariantStyleSpec, VariantFeature, VariantUserGuide, VariantItemDetail
 )
 
 
@@ -51,11 +52,46 @@ class ProductSpecificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'value', 'sort_order']
 
 
+class VariantMeasurementSpecSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantMeasurementSpec
+        fields = ['id', 'name', 'value', 'sort_order']
+
+
+class VariantStyleSpecSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantStyleSpec
+        fields = ['id', 'name', 'value', 'sort_order']
+
+
+class VariantFeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantFeature
+        fields = ['id', 'name', 'value', 'sort_order']
+
+
+class VariantUserGuideSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantUserGuide
+        fields = ['id', 'name', 'value', 'sort_order']
+
+
+class VariantItemDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantItemDetail
+        fields = ['id', 'name', 'value', 'sort_order']
+
+
 class ProductVariantSerializer(serializers.ModelSerializer):
     color = ColorSerializer(read_only=True)
     color_id = serializers.IntegerField(write_only=True)
     images = ProductVariantImageSerializer(many=True, read_only=True)
     specifications = ProductSpecificationSerializer(many=True, read_only=True)
+    measurement_specs = VariantMeasurementSpecSerializer(many=True, read_only=True)
+    style_specs = VariantStyleSpecSerializer(many=True, read_only=True)
+    features = VariantFeatureSerializer(many=True, read_only=True)
+    user_guide = VariantUserGuideSerializer(many=True, read_only=True)
+    item_details = VariantItemDetailSerializer(many=True, read_only=True)
     
     class Meta:
         model = ProductVariant
