@@ -62,7 +62,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality', 'price', 'old_price',
             'discount_percentage', 'stock_quantity', 'is_in_stock', 'image', 'images', 'specifications',
-            'measurement_specs', 'style_specs', 'features', 'user_guide'
+            'measurement_specs', 'style_specs', 'features', 'user_guide', 'item_details'
         ]
 
 

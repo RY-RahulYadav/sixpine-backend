@@ -254,7 +254,7 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
             'id', 'title', 'color', 'color_id', 'size', 'pattern', 'quality',
             'price', 'old_price', 'discount_percentage', 'stock_quantity', 'is_in_stock',
             'image', 'images', 'specifications', 'is_active', 'created_at', 'updated_at',
-            'measurement_specs', 'style_specs', 'features', 'user_guide',
+            'measurement_specs', 'style_specs', 'features', 'user_guide', 'item_details',
             'subcategories', 'subcategory_ids'
         ]
 

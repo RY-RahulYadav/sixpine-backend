@@ -217,6 +217,9 @@ class ProductVariant(models.Model):
     # User guide as key-value pairs (JSONField)
     user_guide = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for user guide (e.g., {'Assembly': 'Required', 'Care Instructions': 'Wipe with dry cloth'})")
     
+    # Item details as key-value pairs (JSONField) - for Item Details box
+    item_details = models.JSONField(default=dict, blank=True, help_text="Key-value pairs for item details (e.g., {'Assembly': 'Required', 'Warranty': '1 Year', 'Weight': '45 kg'})")
+    
     # Display
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
