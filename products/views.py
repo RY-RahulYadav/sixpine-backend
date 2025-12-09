@@ -139,6 +139,7 @@ class ProductListView(generics.ListAPIView):
             
             # Expand variants: create a list where each variant is a separate item
             expanded_results = []
+            seen_variant_ids = set()  # Track variant IDs to prevent duplicates
             for product in queryset:
                 # Prefetch variants with their subcategories and images for better performance
                 # Use Prefetch to ensure subcategories are loaded correctly
@@ -170,6 +171,12 @@ class ProductListView(generics.ListAPIView):
                             # If variant doesn't have this subcategory, skip it
                             if not variant_has_subcategory:
                                 continue
+                        
+                        # Skip if this variant has already been added (prevent duplicates)
+                        # Check this AFTER subcategory filtering to ensure we only mark variants as seen if they're actually added
+                        if variant.id in seen_variant_ids:
+                            continue
+                        seen_variant_ids.add(variant.id)
                         # If no subcategory filter or it's a "set", include all variants
                         # Get variant images
                         variant_images = [
