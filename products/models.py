@@ -233,6 +233,9 @@ class ProductVariant(models.Model):
     # store an external or CDN URL to the variant image
     image = models.URLField(max_length=500, blank=True, null=True)
     
+    # Variant video URL
+    video_url = models.URLField(max_length=500, blank=True, null=True, help_text='Video URL for this variant (e.g., YouTube, Vimeo)')
+    
     # Note: Variant-specific information moved to separate models with name-value pattern:
     # - VariantMeasurementSpec (measurement specifications)
     # - VariantStyleSpec (style specifications)

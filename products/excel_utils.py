@@ -168,6 +168,7 @@ def generate_product_template(category_id):
         'Variant Is In Stock',
         'Variant Is Active',
         'Variant Image URL',
+        'Variant Video URL',
     ]
     
     # Add other_image columns (up to 5) - alt text and sort order are auto-generated during import
@@ -220,6 +221,7 @@ def generate_product_template(category_id):
     ws_child.cell(row=row_num, column=col_idx, value='Yes'); col_idx += 1  # Variant Is In Stock
     ws_child.cell(row=row_num, column=col_idx, value='Yes'); col_idx += 1  # Variant Is Active
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Image URL
+    ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Video URL
     
     # Other images (all empty for template) - alt text and sort order are auto-generated during import (max 5)
     for i in range(5):
@@ -477,6 +479,7 @@ def export_product_to_excel(product_id):
         'Variant Is In Stock',
         'Variant Is Active',
         'Variant Image URL',
+        'Variant Video URL',
     ]
     
     # Add other_image columns (up to 5) - alt text and sort order are auto-generated during import
@@ -590,6 +593,7 @@ def export_product_to_excel(product_id):
         ws_child.cell(row=row_num, column=col_idx, value='Yes' if variant.is_in_stock else 'No'); col_idx += 1  # Variant Is In Stock
         ws_child.cell(row=row_num, column=col_idx, value='Yes' if variant.is_active else 'No'); col_idx += 1  # Variant Is Active
         ws_child.cell(row=row_num, column=col_idx, value=variant.image or ''); col_idx += 1  # Variant Image URL
+        ws_child.cell(row=row_num, column=col_idx, value=variant.video_url or ''); col_idx += 1  # Variant Video URL
         
         # Multiple variant images (up to 5) - alt text and sort order are auto-generated during import
         variant_images = list(variant.images.all().order_by('sort_order')[:5])

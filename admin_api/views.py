@@ -1288,6 +1288,11 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     if child_col_map.get('Variant Image URL') and row[child_col_map['Variant Image URL'] - 1].value:
                         variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
                     
+                    # Variant video URL
+                    variant_video_url = ''
+                    if child_col_map.get('Variant Video URL') and row[child_col_map['Variant Video URL'] - 1].value:
+                        variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
+                    
                     if variant:
                         # Update existing variant (only if changed)
                         updated = False
@@ -1309,6 +1314,9 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         if variant_image and variant.image != variant_image:
                             variant.image = variant_image
                             updated = True
+                        if variant_video_url and variant.video_url != variant_video_url:
+                            variant.video_url = variant_video_url
+                            updated = True
                         if variant_title and variant.title != variant_title:
                             variant.title = variant_title
                             updated = True
@@ -1323,17 +1331,58 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         if updated:
                             variant.save()
                         
-                        # Update other images (clear and recreate) - always do this
+                        # Update other images - only update if Excel has image data, otherwise preserve existing
                         old_image_count = variant.images.count()
-                        variant.images.all().delete()
-                        new_image_count = 0
+                        # Check if Excel has any image data
+                        has_excel_images = False
                         for i in range(1, 6):
                             img_col = f'other_image{i}'
                             if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
-                                new_image_count += 1
+                                has_excel_images = True
+                                break
                         
-                        if old_image_count != new_image_count:
-                            has_image_changes = True
+                        # Only delete and recreate if Excel has image data
+                        if has_excel_images:
+                            variant.images.all().delete()
+                            # Process other images (up to 5) - auto-generate alt_text and sort_order
+                            image_counter = 0
+                            for i in range(1, 6):
+                                img_col = f'other_image{i}'
+                                
+                                if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
+                                    img_url = str(row[child_col_map[img_col] - 1].value).strip()
+                                    
+                                    if img_url:
+                                        image_counter += 1
+                                        # Auto-generate alt_text from image URL (extract filename or use default)
+                                        alt_text = ''
+                                        try:
+                                            # Try to extract filename from URL
+                                            parsed_url = urlparse(img_url)
+                                            path = unquote(parsed_url.path)
+                                            filename = path.split('/')[-1].split('.')[0] if '.' in path.split('/')[-1] else path.split('/')[-1]
+                                            if filename:
+                                                alt_text = filename.replace('_', ' ').replace('-', ' ').title()
+                                        except:
+                                            pass
+                                        
+                                        # If alt_text is still empty, use default
+                                        if not alt_text:
+                                            alt_text = f'Variant Image {image_counter}'
+                                        
+                                        # Auto-generate sort_order based on order of appearance
+                                        sort_order = image_counter
+                                        
+                                        ProductVariantImage.objects.create(
+                                            variant=variant,
+                                            image=img_url,
+                                            alt_text=alt_text,
+                                            sort_order=sort_order
+                                        )
+                            
+                            new_image_count = image_counter
+                            if old_image_count != new_image_count:
+                                has_image_changes = True
                         
                         # Update subcategories - always do this
                         old_subcat_ids = set(variant.subcategories.values_list('id', flat=True))
@@ -1415,6 +1464,11 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                             variants_updated += 1
                     else:
                         # Create new variant
+                        # Get video URL
+                        variant_video_url = ''
+                        if child_col_map.get('Variant Video URL') and row[child_col_map['Variant Video URL'] - 1].value:
+                            variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
+                        
                         variant = ProductVariant.objects.create(
                             product=product,
                             color=color,
@@ -1427,8 +1481,46 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                             stock_quantity=stock_qty,
                             is_in_stock=is_in_stock,
                             is_active=is_active,
-                            image=variant_image if variant_image else None
+                            image=variant_image if variant_image else None,
+                            video_url=variant_video_url if variant_video_url else None
                         )
+                        
+                        # Process other images (up to 5) - auto-generate alt_text and sort_order
+                        image_counter = 0
+                        for i in range(1, 6):
+                            img_col = f'other_image{i}'
+                            
+                            if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
+                                img_url = str(row[child_col_map[img_col] - 1].value).strip()
+                                
+                                if img_url:
+                                    image_counter += 1
+                                    # Auto-generate alt_text from image URL (extract filename or use default)
+                                    alt_text = ''
+                                    try:
+                                        # Try to extract filename from URL
+                                        parsed_url = urlparse(img_url)
+                                        path = unquote(parsed_url.path)
+                                        filename = path.split('/')[-1].split('.')[0] if '.' in path.split('/')[-1] else path.split('/')[-1]
+                                        if filename:
+                                            alt_text = filename.replace('_', ' ').replace('-', ' ').title()
+                                    except:
+                                        pass
+                                    
+                                    # If alt_text is still empty, use default
+                                    if not alt_text:
+                                        alt_text = f'Variant Image {image_counter}'
+                                    
+                                    # Auto-generate sort_order based on order of appearance
+                                    sort_order = image_counter
+                                    
+                                    ProductVariantImage.objects.create(
+                                        variant=variant,
+                                        image=img_url,
+                                        alt_text=alt_text,
+                                        sort_order=sort_order
+                                    )
+                        
                         variants_created += 1
                     
                     
@@ -1765,6 +1857,11 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     if child_col_map.get('Variant Image URL') and row[child_col_map['Variant Image URL'] - 1].value:
                         variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
                     
+                    # Variant video URL
+                    variant_video_url = ''
+                    if child_col_map.get('Variant Video URL') and row[child_col_map['Variant Video URL'] - 1].value:
+                        variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
+                    
                     # Create variant
                     variant = ProductVariant.objects.create(
                         product=product,
@@ -1778,7 +1875,8 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         stock_quantity=stock_qty,
                         is_in_stock=is_in_stock,
                         is_active=is_active,
-                        image=variant_image if variant_image else None
+                        image=variant_image if variant_image else None,
+                        video_url=variant_video_url if variant_video_url else None
                     )
                     
                     # Process other images (up to 5) - auto-generate alt_text and sort_order
