@@ -170,11 +170,9 @@ def generate_product_template(category_id):
         'Variant Image URL',
     ]
     
-    # Add other_image columns (up to 5) with alt text and sort order - max 5 for "+ Add" functionality
+    # Add other_image columns (up to 5) - alt text and sort order are auto-generated during import
     for i in range(1, 6):
         child_headers.append(f'other_image{i}')
-        child_headers.append(f'other_image{i}_alt_text')
-        child_headers.append(f'other_image{i}_sort_order')
     
     # Add subcategory boolean columns for variants (one per subcategory)
     for subcategory in subcategory_list:
@@ -223,13 +221,9 @@ def generate_product_template(category_id):
     ws_child.cell(row=row_num, column=col_idx, value='Yes'); col_idx += 1  # Variant Is Active
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Image URL
     
-    # Other images (all empty for template) - with alt text and sort order (max 5)
+    # Other images (all empty for template) - alt text and sort order are auto-generated during import (max 5)
     for i in range(5):
         ws_child.cell(row=row_num, column=col_idx, value='')  # Image URL
-        col_idx += 1
-        ws_child.cell(row=row_num, column=col_idx, value='')  # Alt Text
-        col_idx += 1
-        ws_child.cell(row=row_num, column=col_idx, value=i)  # Sort Order
         col_idx += 1
     
     # Subcategory boolean columns (all No for template)
@@ -485,11 +479,9 @@ def export_product_to_excel(product_id):
         'Variant Image URL',
     ]
     
-    # Add other_image columns (up to 5) with alt text and sort order - max 5 for "+ Add" functionality
+    # Add other_image columns (up to 5) - alt text and sort order are auto-generated during import
     for i in range(1, 6):
         child_headers.append(f'other_image{i}')
-        child_headers.append(f'other_image{i}_alt_text')
-        child_headers.append(f'other_image{i}_sort_order')
     
     # Add subcategory boolean columns for variants (one per subcategory)
     for subcategory in subcategory_list:
@@ -599,7 +591,7 @@ def export_product_to_excel(product_id):
         ws_child.cell(row=row_num, column=col_idx, value='Yes' if variant.is_active else 'No'); col_idx += 1  # Variant Is Active
         ws_child.cell(row=row_num, column=col_idx, value=variant.image or ''); col_idx += 1  # Variant Image URL
         
-        # Multiple variant images (up to 5) - with alt text and sort order
+        # Multiple variant images (up to 5) - alt text and sort order are auto-generated during import
         variant_images = list(variant.images.all().order_by('sort_order')[:5])
         
         for idx in range(5):
@@ -607,16 +599,8 @@ def export_product_to_excel(product_id):
                 img = variant_images[idx]
                 ws_child.cell(row=row_num, column=col_idx, value=img.image or '')  # Image URL
                 col_idx += 1
-                ws_child.cell(row=row_num, column=col_idx, value=img.alt_text or '')  # Alt Text
-                col_idx += 1
-                ws_child.cell(row=row_num, column=col_idx, value=img.sort_order)  # Sort Order
-                col_idx += 1
             else:
                 ws_child.cell(row=row_num, column=col_idx, value='')  # Image URL
-                col_idx += 1
-                ws_child.cell(row=row_num, column=col_idx, value='')  # Alt Text
-                col_idx += 1
-                ws_child.cell(row=row_num, column=col_idx, value=idx)  # Sort Order
                 col_idx += 1
         
         # Subcategory boolean columns for variants

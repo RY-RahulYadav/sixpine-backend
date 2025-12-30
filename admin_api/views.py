@@ -8,6 +8,7 @@ from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
 import os
+from urllib.parse import urlparse, unquote
 
 from .permissions import IsAdminUser, IsAdminOrReadOnly
 from .models import GlobalSettings, HomePageContent, BulkOrderPageContent, FAQPageContent, Advertisement
@@ -1780,25 +1781,35 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         image=variant_image if variant_image else None
                     )
                     
-                    # Process other images (up to 5)
+                    # Process other images (up to 5) - auto-generate alt_text and sort_order
+                    image_counter = 0
                     for i in range(1, 6):
                         img_col = f'other_image{i}'
-                        alt_col = f'other_image{i}_alt_text'
-                        sort_col = f'other_image{i}_sort_order'
                         
                         if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
                             img_url = str(row[child_col_map[img_col] - 1].value).strip()
-                            alt_text = ''
-                            if child_col_map.get(alt_col) and row[child_col_map[alt_col] - 1].value:
-                                alt_text = str(row[child_col_map[alt_col] - 1].value).strip()
-                            sort_order = i
-                            if child_col_map.get(sort_col) and row[child_col_map[sort_col] - 1].value:
-                                try:
-                                    sort_order = int(row[child_col_map[sort_col] - 1].value)
-                                except:
-                                    pass
                             
                             if img_url:
+                                image_counter += 1
+                                # Auto-generate alt_text from image URL (extract filename or use default)
+                                alt_text = ''
+                                try:
+                                    # Try to extract filename from URL
+                                    parsed_url = urlparse(img_url)
+                                    path = unquote(parsed_url.path)
+                                    filename = path.split('/')[-1].split('.')[0] if '.' in path.split('/')[-1] else path.split('/')[-1]
+                                    if filename:
+                                        alt_text = filename.replace('_', ' ').replace('-', ' ').title()
+                                except:
+                                    pass
+                                
+                                # If alt_text is still empty, use default
+                                if not alt_text:
+                                    alt_text = f'Variant Image {image_counter}'
+                                
+                                # Auto-generate sort_order based on order of appearance
+                                sort_order = image_counter
+                                
                                 ProductVariantImage.objects.create(
                                     variant=variant,
                                     image=img_url,
