@@ -1335,7 +1335,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         old_image_count = variant.images.count()
                         # Check if Excel has any image data
                         has_excel_images = False
-                        for i in range(1, 6):
+                        for i in range(1, 10):
                             img_col = f'other_image{i}'
                             if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
                                 has_excel_images = True
@@ -1344,9 +1344,9 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         # Only delete and recreate if Excel has image data
                         if has_excel_images:
                             variant.images.all().delete()
-                            # Process other images (up to 5) - auto-generate alt_text and sort_order
+                            # Process other images (up to 9) - auto-generate alt_text and sort_order
                             image_counter = 0
-                            for i in range(1, 6):
+                            for i in range(1, 10):
                                 img_col = f'other_image{i}'
                                 
                                 if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
@@ -1485,9 +1485,9 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                             video_url=variant_video_url if variant_video_url else None
                         )
                         
-                        # Process other images (up to 5) - auto-generate alt_text and sort_order
+                        # Process other images (up to 9) - auto-generate alt_text and sort_order
                         image_counter = 0
-                        for i in range(1, 6):
+                        for i in range(1, 10):
                             img_col = f'other_image{i}'
                             
                             if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
@@ -1879,9 +1879,9 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         video_url=variant_video_url if variant_video_url else None
                     )
                     
-                    # Process other images (up to 5) - auto-generate alt_text and sort_order
+                    # Process other images (up to 9) - auto-generate alt_text and sort_order
                     image_counter = 0
-                    for i in range(1, 6):
+                    for i in range(1, 10):
                         img_col = f'other_image{i}'
                         
                         if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:

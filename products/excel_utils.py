@@ -171,8 +171,8 @@ def generate_product_template(category_id):
         'Variant Video URL',
     ]
     
-    # Add other_image columns (up to 5) - alt text and sort order are auto-generated during import
-    for i in range(1, 6):
+    # Add other_image columns (up to 9) - alt text and sort order are auto-generated during import
+    for i in range(1, 10):
         child_headers.append(f'other_image{i}')
     
     # Add subcategory boolean columns for variants (one per subcategory)
@@ -223,8 +223,8 @@ def generate_product_template(category_id):
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Image URL
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Video URL
     
-    # Other images (all empty for template) - alt text and sort order are auto-generated during import (max 5)
-    for i in range(5):
+    # Other images (all empty for template) - alt text and sort order are auto-generated during import (max 9)
+    for i in range(9):
         ws_child.cell(row=row_num, column=col_idx, value='')  # Image URL
         col_idx += 1
     
@@ -264,7 +264,7 @@ def generate_product_template(category_id):
     # Child sheet validations
     color_col = get_column_letter(3)
     stock_status_col = get_column_letter(11)
-    variant_subcategory_start_col = 28  # After Variant Image URL (13) + 5 other_image sets (15 columns: 5 images * 3 columns each)
+    variant_subcategory_start_col = 37  # After Variant Image URL (13) + 9 other_image columns (9 columns: 9 images * 1 column each)
     
     if color_names:
         color_dv = DataValidation(type="list", formula1=f'"{",".join(color_names)}"', allow_blank=False)
@@ -482,8 +482,8 @@ def export_product_to_excel(product_id):
         'Variant Video URL',
     ]
     
-    # Add other_image columns (up to 5) - alt text and sort order are auto-generated during import
-    for i in range(1, 6):
+    # Add other_image columns (up to 9) - alt text and sort order are auto-generated during import
+    for i in range(1, 10):
         child_headers.append(f'other_image{i}')
     
     # Add subcategory boolean columns for variants (one per subcategory)
@@ -595,10 +595,10 @@ def export_product_to_excel(product_id):
         ws_child.cell(row=row_num, column=col_idx, value=variant.image or ''); col_idx += 1  # Variant Image URL
         ws_child.cell(row=row_num, column=col_idx, value=variant.video_url or ''); col_idx += 1  # Variant Video URL
         
-        # Multiple variant images (up to 5) - alt text and sort order are auto-generated during import
-        variant_images = list(variant.images.all().order_by('sort_order')[:5])
+        # Multiple variant images (up to 9) - alt text and sort order are auto-generated during import
+        variant_images = list(variant.images.all().order_by('sort_order')[:9])
         
-        for idx in range(5):
+        for idx in range(9):
             if idx < len(variant_images):
                 img = variant_images[idx]
                 ws_child.cell(row=row_num, column=col_idx, value=img.image or '')  # Image URL
@@ -697,7 +697,7 @@ def export_product_to_excel(product_id):
     # Child sheet validations
     color_col = get_column_letter(3)
     stock_status_col = get_column_letter(11)
-    variant_subcategory_start_col = 28  # After Variant Image URL (13) + 5 other_image sets (15 columns: 5 images * 3 columns each)
+    variant_subcategory_start_col = 37  # After Variant Image URL (13) + 9 other_image columns (9 columns: 9 images * 1 column each)
     
     if color_names:
         color_dv = DataValidation(type="list", formula1=f'"{",".join(color_names)}"', allow_blank=False)
