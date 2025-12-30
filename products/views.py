@@ -493,9 +493,49 @@ class ProductReviewListView(generics.ListCreateAPIView):
         ).select_related('user').order_by('-created_at')
     
     def create(self, request, *args, **kwargs):
-        """Override create to handle duplicate reviews"""
+        """Override create to handle duplicate reviews and file uploads"""
         product_slug = self.kwargs.get('slug')
         product = get_object_or_404(Product, slug=product_slug)
+        
+        # Handle file uploads to Cloudinary
+        attachments = []
+        if request.FILES:
+            try:
+                import cloudinary.uploader
+                
+                for key, file in request.FILES.items():
+                    if key.startswith('attachment_'):
+                        # Determine resource type based on file type
+                        file_type = file.content_type
+                        resource_type = 'auto'  # Cloudinary will auto-detect
+                        
+                        if file_type.startswith('image/'):
+                            resource_type = 'image'
+                        elif file_type == 'application/pdf':
+                            resource_type = 'raw'
+                        elif file_type.startswith('video/'):
+                            resource_type = 'video'
+                        
+                        # Upload to Cloudinary
+                        upload_result = cloudinary.uploader.upload(
+                            file,
+                            folder='review_attachments',
+                            resource_type=resource_type
+                        )
+                        
+                        attachments.append({
+                            'url': upload_result['secure_url'],
+                            'public_id': upload_result.get('public_id', ''),
+                            'type': resource_type,
+                            'name': file.name,
+                            'size': file.size,
+                            'mime_type': file_type
+                        })
+            except Exception as e:
+                return Response(
+                    {'error': f'File upload failed: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         # Check if user already has a review for this product
         existing_review = ProductReview.objects.filter(
@@ -503,24 +543,48 @@ class ProductReviewListView(generics.ListCreateAPIView):
             user=request.user
         ).first()
         
+        # Prepare data for serializer (exclude file fields)
+        # Convert QueryDict to regular dict for proper JSON handling
+        data = dict(request.data.items())
+        # Remove file keys from data
+        data = {k: v for k, v in data.items() if not k.startswith('attachment_')}
+        
         if existing_review:
             # Update existing review instead of creating a new one
-            serializer = self.get_serializer(existing_review, data=request.data, partial=True)
+            serializer = self.get_serializer(existing_review, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             existing_review.rating = serializer.validated_data.get('rating', existing_review.rating)
             existing_review.title = serializer.validated_data.get('title', existing_review.title)
             existing_review.comment = serializer.validated_data.get('comment', existing_review.comment)
+            existing_review.attachments = attachments if attachments else serializer.validated_data.get('attachments', existing_review.attachments)
             existing_review.is_verified_purchase = serializer.validated_data.get('is_verified_purchase', existing_review.is_verified_purchase)
             existing_review.is_approved = False  # Require re-approval when updated
             existing_review.save()
             
-            headers = self.get_success_headers(serializer.data)
-            return Response(serializer.data, status=status.HTTP_200_OK, headers=headers)
+            # Return updated data - refresh from DB to get attachments
+            existing_review.refresh_from_db()
+            response_serializer = self.get_serializer(existing_review)
+            headers = self.get_success_headers(response_serializer.data)
+            return Response(response_serializer.data, status=status.HTTP_200_OK, headers=headers)
         else:
             # Create new review - requires approval
-            return super().create(request, *args, **kwargs)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            # Save the review first
+            review = serializer.save(product=product, user=request.user, is_approved=False)
+            # Then set attachments directly (bypassing serializer for JSON field)
+            if attachments:
+                review.attachments = attachments
+                review.save(update_fields=['attachments'])
+            # Refresh from DB to get attachments in response
+            review.refresh_from_db()
+            response_serializer = self.get_serializer(review)
+            headers = self.get_success_headers(response_serializer.data)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     def perform_create(self, serializer):
+        # This method is overridden in create() method, so it won't be called
+        # But keeping it for compatibility
         product_slug = self.kwargs.get('slug')
         product = get_object_or_404(Product, slug=product_slug)
         # New reviews require approval - set is_approved=False

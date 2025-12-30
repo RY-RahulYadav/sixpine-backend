@@ -21,13 +21,16 @@ from .serializers import (
     AdminContactQuerySerializer, AdminBulkOrderSerializer, AdminLogSerializer,
     AdminCouponSerializer, HomePageContentSerializer, BulkOrderPageContentSerializer, FAQPageContentSerializer, AdvertisementSerializer,
     AdminDataRequestSerializer, AdminBrandSerializer, AdminBrandDetailSerializer,
-    SellerOrderListSerializer, AdminMediaSerializer, AdminPackagingFeedbackSerializer
+    SellerOrderListSerializer, AdminMediaSerializer, AdminPackagingFeedbackSerializer,
+    CategorySpecificationTemplateSerializer
 )
 from accounts.models import User, ContactQuery, BulkOrder, DataRequest, Vendor, Media, PackagingFeedback
 from accounts.data_export_utils import export_orders_to_excel, export_addresses_to_excel, export_payment_options_to_excel
+from products.excel_utils import generate_product_template, export_product_to_excel
 from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage,
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature,
+    CategorySpecificationTemplate,
     ProductOffer, Discount, Coupon, ProductReview
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
@@ -673,6 +676,91 @@ class AdminCategoryViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         categories = Category.objects.filter(is_active=True).prefetch_related('subcategories')
         serializer = self.get_serializer(categories, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def specification_defaults(self, request, pk=None):
+        """Get default specification field names for a category"""
+        category = self.get_object()
+        templates = CategorySpecificationTemplate.objects.filter(
+            category=category,
+            is_active=True
+        ).order_by('section', 'sort_order', 'field_name')
+        
+        # Group by section
+        defaults = {
+            'specifications': [],
+            'measurement_specs': [],
+            'style_specs': [],
+            'features': [],
+            'user_guide': [],
+            'item_details': []
+        }
+        
+        for template in templates:
+            defaults[template.section].append({
+                'field_name': template.field_name,
+                'sort_order': template.sort_order
+            })
+        
+        return Response(defaults)
+    
+    @action(detail=True, methods=['get'])
+    def download_excel_template(self, request, pk=None):
+        """Download category-specific Excel template for bulk product creation"""
+        from django.http import HttpResponse
+        from io import BytesIO
+        
+        try:
+            category = self.get_object()
+            wb = generate_product_template(category.id)
+            
+            # Create in-memory file
+            output = BytesIO()
+            wb.save(output)
+            output.seek(0)
+            
+            # Create HTTP response
+            response = HttpResponse(
+                output.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename="product_template_{category.slug}_{category.id}.xlsx"'
+            
+            # Log action
+            create_admin_log(
+                request=request,
+                action_type='download',
+                model_name='Category',
+                object_id=category.id,
+                object_repr=str(category),
+                details={'action': 'download_excel_template'}
+            )
+            
+            return response
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate template: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ==================== Category Specification Template Management ====================
+class AdminCategorySpecificationTemplateViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
+    """Admin viewset for managing category specification templates"""
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    queryset = CategorySpecificationTemplate.objects.all().order_by('category', 'section', 'sort_order', 'field_name')
+    serializer_class = CategorySpecificationTemplateSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        category = self.request.query_params.get('category', None)
+        section = self.request.query_params.get('section', None)
+        
+        if category:
+            queryset = queryset.filter(category_id=category)
+        if section:
+            queryset = queryset.filter(section=section)
+        
+        return queryset
 
 
 # ==================== Subcategory Management Views ====================
@@ -855,6 +943,940 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
             return Response(
                 {'error': 'Variant not found'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=True, methods=['get'])
+    def download_excel(self, request, pk=None):
+        """Download existing product data as Excel"""
+        from django.http import HttpResponse
+        from io import BytesIO
+        
+        try:
+            product = self.get_object()
+            wb = export_product_to_excel(product.id)
+            
+            # Create in-memory file
+            output = BytesIO()
+            wb.save(output)
+            output.seek(0)
+            
+            # Create HTTP response
+            response = HttpResponse(
+                output.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename="product_{product.slug}_{product.id}.xlsx"'
+            
+            # Log action
+            create_admin_log(
+                request=request,
+                action_type='download',
+                model_name='Product',
+                object_id=product.id,
+                object_repr=str(product),
+                details={'action': 'download_excel'}
+            )
+            
+            return response
+        except Exception as e:
+            return Response({
+                'error': f'Failed to export product: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['post'])
+    def update_from_excel(self, request, pk=None):
+        """Update existing product from Excel file with two-tab format (Parent Product and Child Variation)"""
+        from openpyxl import load_workbook
+        from io import BytesIO
+        from django.utils.text import slugify
+        from decimal import Decimal, InvalidOperation
+        from products.models import (
+            ProductSpecification, VariantMeasurementSpec, VariantStyleSpec,
+            VariantFeature, VariantUserGuide, VariantItemDetail,
+            ProductAboutItem, ProductVariantImage
+        )
+        
+        product = self.get_object()
+        
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': 'Excel file is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        excel_file = request.FILES['file']
+        
+        try:
+            # Load workbook
+            wb = load_workbook(filename=BytesIO(excel_file.read()), data_only=True)
+            
+            # Check for required sheets
+            if 'Parent Product' not in wb.sheetnames or 'Child Variation' not in wb.sheetnames:
+                return Response(
+                    {'error': 'Excel file must contain "Parent Product" and "Child Variation" sheets'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            ws_parent = wb['Parent Product']
+            ws_child = wb['Child Variation']
+            
+            # Get headers from both sheets
+            parent_headers = [cell.value for cell in ws_parent[1]]
+            child_headers = [cell.value for cell in ws_child[1]]
+            
+            # Create column maps
+            parent_col_map = {}
+            for idx, header in enumerate(parent_headers, 1):
+                if header:
+                    parent_col_map[str(header).strip()] = idx
+            
+            child_col_map = {}
+            for idx, header in enumerate(child_headers, 1):
+                if header:
+                    child_col_map[str(header).strip()] = idx
+            
+            # Validate required columns
+            required_parent = ['SKU*']
+            required_child = ['Parent SKU*', 'Variant Color*', 'Variant Price*', 'Variant Stock Quantity*']
+            
+            missing_parent = [f for f in required_parent if f not in parent_col_map]
+            missing_child = [f for f in required_child if f not in child_col_map]
+            
+            if missing_parent or missing_child:
+                errors_list = []
+                if missing_parent:
+                    errors_list.append(f'Parent Product tab missing: {", ".join(missing_parent)}')
+                if missing_child:
+                    errors_list.append(f'Child Variation tab missing: {", ".join(missing_child)}')
+                return Response(
+                    {'error': '; '.join(errors_list)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            variants_created = 0
+            variants_updated = 0
+            errors = []
+            product_updated = False
+            
+            # Step 1: Update product from Parent Product tab (find row with matching SKU)
+            parent_row = None
+            for row in ws_parent.iter_rows(min_row=2, values_only=False):
+                if not row[parent_col_map['SKU*'] - 1].value:
+                    continue
+                
+                sku = str(row[parent_col_map['SKU*'] - 1].value).strip()
+                if sku == product.sku or (not product.sku and sku):
+                    parent_row = row
+                    break
+            
+            if parent_row:
+                # Update product-level fields only if they have values
+                if parent_col_map.get('Product Title*') and parent_row[parent_col_map['Product Title*'] - 1].value:
+                    new_title = str(parent_row[parent_col_map['Product Title*'] - 1].value).strip()
+                    if new_title and new_title != product.title:
+                        product.title = new_title
+                        product_updated = True
+                
+                if parent_col_map.get('Short Description*') and parent_row[parent_col_map['Short Description*'] - 1].value:
+                    new_desc = str(parent_row[parent_col_map['Short Description*'] - 1].value).strip()
+                    if new_desc != product.short_description:
+                        product.short_description = new_desc
+                        product_updated = True
+                
+                if parent_col_map.get('Long Description') and parent_row[parent_col_map['Long Description'] - 1].value:
+                    new_long_desc = str(parent_row[parent_col_map['Long Description'] - 1].value).strip()
+                    if new_long_desc != product.long_description:
+                        product.long_description = new_long_desc
+                        product_updated = True
+                
+                # Material
+                if parent_col_map.get('Material') and parent_row[parent_col_map['Material'] - 1].value:
+                    material_name = str(parent_row[parent_col_map['Material'] - 1].value).strip()
+                    try:
+                        material = Material.objects.get(name=material_name)
+                        if product.material != material:
+                            product.material = material
+                            product_updated = True
+                    except Material.DoesNotExist:
+                        pass
+                
+                # Other fields
+                if parent_col_map.get('Brand') and parent_row[parent_col_map['Brand'] - 1].value:
+                    new_brand = str(parent_row[parent_col_map['Brand'] - 1].value).strip()
+                    if new_brand != product.brand:
+                        product.brand = new_brand
+                        product_updated = True
+                
+                if parent_col_map.get('Dimensions') and parent_row[parent_col_map['Dimensions'] - 1].value:
+                    new_dims = str(parent_row[parent_col_map['Dimensions'] - 1].value).strip()
+                    if new_dims != product.dimensions:
+                        product.dimensions = new_dims
+                        product_updated = True
+                
+                if parent_col_map.get('Weight') and parent_row[parent_col_map['Weight'] - 1].value:
+                    new_weight = str(parent_row[parent_col_map['Weight'] - 1].value).strip()
+                    if new_weight != product.weight:
+                        product.weight = new_weight
+                        product_updated = True
+                
+                if parent_col_map.get('Warranty') and parent_row[parent_col_map['Warranty'] - 1].value:
+                    new_warranty = str(parent_row[parent_col_map['Warranty'] - 1].value).strip()
+                    if new_warranty != product.warranty:
+                        product.warranty = new_warranty
+                        product_updated = True
+                
+                if parent_col_map.get('Assembly Required') and parent_row[parent_col_map['Assembly Required'] - 1].value:
+                    assembly_val = str(parent_row[parent_col_map['Assembly Required'] - 1].value).strip().lower()
+                    new_assembly = assembly_val == 'yes'
+                    if new_assembly != product.assembly_required:
+                        product.assembly_required = new_assembly
+                        product_updated = True
+                
+                if parent_col_map.get('Estimated Delivery Days') and parent_row[parent_col_map['Estimated Delivery Days'] - 1].value:
+                    try:
+                        new_delivery = int(parent_row[parent_col_map['Estimated Delivery Days'] - 1].value)
+                        if new_delivery != product.estimated_delivery_days:
+                            product.estimated_delivery_days = new_delivery
+                            product_updated = True
+                    except:
+                        pass
+                
+                if parent_col_map.get('Care Instructions') and parent_row[parent_col_map['Care Instructions'] - 1].value:
+                    new_care = str(parent_row[parent_col_map['Care Instructions'] - 1].value).strip()
+                    if new_care != product.care_instructions:
+                        product.care_instructions = new_care
+                        product_updated = True
+                
+                if parent_col_map.get('What is in Box') and parent_row[parent_col_map['What is in Box'] - 1].value:
+                    new_box = str(parent_row[parent_col_map['What is in Box'] - 1].value).strip()
+                    if new_box != product.what_in_box:
+                        product.what_in_box = new_box
+                        product_updated = True
+                
+                if parent_col_map.get('Meta Title') and parent_row[parent_col_map['Meta Title'] - 1].value:
+                    new_meta_title = str(parent_row[parent_col_map['Meta Title'] - 1].value).strip()
+                    if new_meta_title != product.meta_title:
+                        product.meta_title = new_meta_title
+                        product_updated = True
+                
+                if parent_col_map.get('Meta Description') and parent_row[parent_col_map['Meta Description'] - 1].value:
+                    new_meta_desc = str(parent_row[parent_col_map['Meta Description'] - 1].value).strip()
+                    if new_meta_desc != product.meta_description:
+                        product.meta_description = new_meta_desc
+                        product_updated = True
+                
+                if parent_col_map.get('Is Featured') and parent_row[parent_col_map['Is Featured'] - 1].value:
+                    featured_val = str(parent_row[parent_col_map['Is Featured'] - 1].value).strip().lower()
+                    new_featured = featured_val == 'yes'
+                    if new_featured != product.is_featured:
+                        product.is_featured = new_featured
+                        product_updated = True
+                
+                if parent_col_map.get('Is Active') and parent_row[parent_col_map['Is Active'] - 1].value:
+                    active_val = str(parent_row[parent_col_map['Is Active'] - 1].value).strip().lower()
+                    new_active = active_val == 'yes'
+                    if new_active != product.is_active:
+                        product.is_active = new_active
+                        product_updated = True
+                
+                # Update About Items (clear and recreate)
+                if any(parent_col_map.get(f'About This Item {i}') for i in range(1, 11)):
+                    product.about_items.all().delete()
+                    for i in range(1, 11):
+                        col_name = f'About This Item {i}'
+                        if parent_col_map.get(col_name) and parent_row[parent_col_map[col_name] - 1].value:
+                            item_text = str(parent_row[parent_col_map[col_name] - 1].value).strip()
+                            if item_text:
+                                ProductAboutItem.objects.create(
+                                    product=product,
+                                    item=item_text,
+                                    sort_order=i
+                                )
+                                product_updated = True
+                
+                # Update Screen Offers (clear and recreate)
+                screen_offers = []
+                for i in range(1, 11):
+                    title_col = f'Screen Offer Title {i}'
+                    desc_col = f'Screen Offer Description {i}'
+                    if parent_col_map.get(title_col) and parent_row[parent_col_map[title_col] - 1].value:
+                        offer_title = str(parent_row[parent_col_map[title_col] - 1].value).strip()
+                        offer_desc = ''
+                        if parent_col_map.get(desc_col) and parent_row[parent_col_map[desc_col] - 1].value:
+                            offer_desc = str(parent_row[parent_col_map[desc_col] - 1].value).strip()
+                        if offer_title:
+                            screen_offers.append({'title': offer_title, 'description': offer_desc})
+                
+                if screen_offers != product.screen_offer:
+                    product.screen_offer = screen_offers
+                    product_updated = True
+            
+            if product_updated:
+                product.save()
+            
+            # Step 2: Update/Create variants from Child Variation tab
+            for row_num, row in enumerate(ws_child.iter_rows(min_row=2, values_only=False), start=2):
+                # Skip empty rows
+                if not row[child_col_map['Parent SKU*'] - 1].value:
+                    continue
+                
+                try:
+                    parent_sku = str(row[child_col_map['Parent SKU*'] - 1].value).strip()
+                    if not parent_sku or parent_sku == 'Parent SKU*':
+                        continue
+                    
+                    # Verify this variant belongs to this product
+                    if parent_sku != product.sku:
+                        continue  # Skip variants that don't belong to this product
+                    
+                    # Get color
+                    color_name = str(row[child_col_map['Variant Color*'] - 1].value).strip()
+                    try:
+                        color = Color.objects.get(name=color_name)
+                    except Color.DoesNotExist:
+                        errors.append(f'Child row {row_num}: Color "{color_name}" not found')
+                        continue
+                    
+                    # Variant fields
+                    size = str(row[child_col_map.get('Variant Size', 0) - 1].value).strip() if child_col_map.get('Variant Size') and row[child_col_map.get('Variant Size', 0) - 1].value else ''
+                    pattern = str(row[child_col_map.get('Variant Pattern', 0) - 1].value).strip() if child_col_map.get('Variant Pattern') and row[child_col_map.get('Variant Pattern', 0) - 1].value else ''
+                    quality = str(row[child_col_map.get('Variant Quality', 0) - 1].value).strip() if child_col_map.get('Variant Quality') and row[child_col_map.get('Variant Quality', 0) - 1].value else ''
+                    variant_title = str(row[child_col_map.get('Variant Title', 0) - 1].value).strip() if child_col_map.get('Variant Title') and row[child_col_map.get('Variant Title', 0) - 1].value else ''
+                    
+                    # Try to find existing variant
+                    variant = product.variants.filter(
+                        color=color,
+                        size=size,
+                        pattern=pattern,
+                        quality=quality
+                    ).first()
+                    
+                    # Price
+                    try:
+                        price = Decimal(str(row[child_col_map['Variant Price*'] - 1].value))
+                    except (ValueError, InvalidOperation, TypeError):
+                        errors.append(f'Child row {row_num}: Invalid price value')
+                        continue
+                    
+                    old_price = None
+                    if child_col_map.get('Variant Old Price') and row[child_col_map['Variant Old Price'] - 1].value:
+                        try:
+                            old_price = Decimal(str(row[child_col_map['Variant Old Price'] - 1].value))
+                        except:
+                            pass
+                    
+                    # Stock
+                    try:
+                        stock_qty = int(row[child_col_map['Variant Stock Quantity*'] - 1].value or 0)
+                    except (ValueError, TypeError):
+                        errors.append(f'Child row {row_num}: Invalid stock quantity')
+                        continue
+                    
+                    is_in_stock = True
+                    if child_col_map.get('Variant Is In Stock') and row[child_col_map['Variant Is In Stock'] - 1].value:
+                        stock_val = str(row[child_col_map['Variant Is In Stock'] - 1].value).strip().lower()
+                        is_in_stock = stock_val == 'yes'
+                    
+                    is_active = True
+                    if child_col_map.get('Variant Is Active') and row[child_col_map['Variant Is Active'] - 1].value:
+                        active_val = str(row[child_col_map['Variant Is Active'] - 1].value).strip().lower()
+                        is_active = active_val == 'yes'
+                    
+                    # Variant image
+                    variant_image = ''
+                    if child_col_map.get('Variant Image URL') and row[child_col_map['Variant Image URL'] - 1].value:
+                        variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
+                    
+                    if variant:
+                        # Update existing variant (only if changed)
+                        updated = False
+                        if variant.price != price:
+                            variant.price = price
+                            updated = True
+                        if variant.old_price != old_price:
+                            variant.old_price = old_price
+                            updated = True
+                        if variant.stock_quantity != stock_qty:
+                            variant.stock_quantity = stock_qty
+                            updated = True
+                        if variant.is_in_stock != is_in_stock:
+                            variant.is_in_stock = is_in_stock
+                            updated = True
+                        if variant.is_active != is_active:
+                            variant.is_active = is_active
+                            updated = True
+                        if variant_image and variant.image != variant_image:
+                            variant.image = variant_image
+                            updated = True
+                        if variant_title and variant.title != variant_title:
+                            variant.title = variant_title
+                            updated = True
+                        
+                        # Always update specifications, images, and subcategories (they might have changed)
+                        # Check if there are any changes in these fields
+                        has_spec_changes = False
+                        has_image_changes = False
+                        has_subcat_changes = False
+                        
+                        # We'll update these regardless, but mark if variant was updated
+                        if updated:
+                            variant.save()
+                        
+                        # Update other images (clear and recreate) - always do this
+                        old_image_count = variant.images.count()
+                        variant.images.all().delete()
+                        new_image_count = 0
+                        for i in range(1, 6):
+                            img_col = f'other_image{i}'
+                            if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
+                                new_image_count += 1
+                        
+                        if old_image_count != new_image_count:
+                            has_image_changes = True
+                        
+                        # Update subcategories - always do this
+                        old_subcat_ids = set(variant.subcategories.values_list('id', flat=True))
+                        variant.subcategories.clear()
+                        new_subcat_ids = set()
+                        for col_name, col_idx in child_col_map.items():
+                            if col_name.startswith('Subcategory-'):
+                                subcat_name = col_name.replace('Subcategory-', '').strip()
+                                if row[col_idx - 1].value:
+                                    val = str(row[col_idx - 1].value).strip().lower()
+                                    if val == 'yes' or val == 'true' or val == '1':
+                                        try:
+                                            subcat = Subcategory.objects.get(name=subcat_name, category=product.category)
+                                            variant.subcategories.add(subcat)
+                                            new_subcat_ids.add(subcat.id)
+                                        except Subcategory.DoesNotExist:
+                                            pass
+                        
+                        if old_subcat_ids != new_subcat_ids:
+                            has_subcat_changes = True
+                        
+                        # Update specifications (clear and recreate) - always do this
+                        # Check if specs changed by comparing counts
+                        old_spec_counts = {
+                            'specifications': variant.specifications.count(),
+                            'measurement_specs': variant.measurement_specs.count(),
+                            'style_specs': variant.style_specs.count(),
+                            'features': variant.features.count(),
+                            'user_guide': variant.user_guide.count(),
+                            'item_details': variant.item_details.count()
+                        }
+                        
+                        spec_sections = {
+                            'Specification:': ('specifications', ProductSpecification),
+                            'Measurement Specification:': ('measurement_specs', VariantMeasurementSpec),
+                            'Style Specification:': ('style_specs', VariantStyleSpec),
+                            'Feature:': ('features', VariantFeature),
+                            'User Guide:': ('user_guide', VariantUserGuide),
+                            'Item Detail:': ('item_details', VariantItemDetail),
+                        }
+                        
+                        for prefix, (section, model_class) in spec_sections.items():
+                            # Clear existing specs for this section
+                            getattr(variant, section).all().delete()
+                            
+                            # Add new specs from Excel
+                            for col_name, col_idx in child_col_map.items():
+                                if col_name.startswith(prefix):
+                                    spec_name = col_name.replace(prefix, '').strip()
+                                    spec_value = ''
+                                    if row[col_idx - 1].value:
+                                        spec_value = str(row[col_idx - 1].value).strip()
+                                    
+                                    if spec_value:
+                                        model_class.objects.create(
+                                            variant=variant,
+                                            name=spec_name,
+                                            value=spec_value,
+                                            sort_order=0
+                                        )
+                        
+                        # Check if spec counts changed
+                        new_spec_counts = {
+                            'specifications': variant.specifications.count(),
+                            'measurement_specs': variant.measurement_specs.count(),
+                            'style_specs': variant.style_specs.count(),
+                            'features': variant.features.count(),
+                            'user_guide': variant.user_guide.count(),
+                            'item_details': variant.item_details.count()
+                        }
+                        
+                        if old_spec_counts != new_spec_counts:
+                            has_spec_changes = True
+                        
+                        # If any changes were made, mark as updated
+                        if updated or has_spec_changes or has_image_changes or has_subcat_changes:
+                            if not updated:  # Save if we haven't already
+                                variant.save()
+                            variants_updated += 1
+                    else:
+                        # Create new variant
+                        variant = ProductVariant.objects.create(
+                            product=product,
+                            color=color,
+                            size=size,
+                            pattern=pattern,
+                            quality=quality,
+                            title=variant_title if variant_title else None,
+                            price=price,
+                            old_price=old_price,
+                            stock_quantity=stock_qty,
+                            is_in_stock=is_in_stock,
+                            is_active=is_active,
+                            image=variant_image if variant_image else None
+                        )
+                        variants_created += 1
+                    
+                    
+                except Exception as e:
+                    errors.append(f'Child row {row_num}: {str(e)}')
+                    continue
+            
+            # Log action
+            create_admin_log(
+                request=request,
+                action_type='update',
+                model_name='Product',
+                object_id=product.id,
+                object_repr=str(product),
+                details={
+                    'action': 'update_from_excel',
+                    'product_updated': product_updated,
+                    'variants_created': variants_created,
+                    'variants_updated': variants_updated
+                }
+            )
+            
+            # Build success message
+            if product_updated or variants_updated > 0 or variants_created > 0:
+                message = 'Product successfully edited'
+            else:
+                message = 'No changes detected'
+            
+            return Response({
+                'success': True,
+                'message': message,
+                'product_updated': product_updated,
+                'variants_created': variants_created,
+                'variants_updated': variants_updated,
+                'errors': errors[:50]
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            import traceback
+            return Response(
+                {'error': f'Failed to update product from Excel: {str(e)}', 'traceback': traceback.format_exc()},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def import_excel(self, request):
+        """Import products from Excel file with two-tab format (Parent Product and Child Variation)"""
+        from openpyxl import load_workbook
+        from io import BytesIO
+        from django.utils.text import slugify
+        from decimal import Decimal, InvalidOperation
+        from products.models import (
+            ProductSpecification, VariantMeasurementSpec, VariantStyleSpec,
+            VariantFeature, VariantUserGuide, VariantItemDetail,
+            ProductAboutItem, ProductVariantImage
+        )
+        
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': 'Excel file is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        excel_file = request.FILES['file']
+        
+        try:
+            # Load workbook
+            wb = load_workbook(filename=BytesIO(excel_file.read()), data_only=True)
+            
+            # Check for required sheets
+            if 'Parent Product' not in wb.sheetnames or 'Child Variation' not in wb.sheetnames:
+                return Response(
+                    {'error': 'Excel file must contain "Parent Product" and "Child Variation" sheets'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            ws_parent = wb['Parent Product']
+            ws_child = wb['Child Variation']
+            
+            # Get headers from both sheets
+            parent_headers = [cell.value for cell in ws_parent[1]]
+            child_headers = [cell.value for cell in ws_child[1]]
+            
+            # Create column maps
+            parent_col_map = {}
+            for idx, header in enumerate(parent_headers, 1):
+                if header:
+                    parent_col_map[str(header).strip()] = idx
+            
+            child_col_map = {}
+            for idx, header in enumerate(child_headers, 1):
+                if header:
+                    child_col_map[str(header).strip()] = idx
+            
+            # Validate required columns
+            required_parent = ['Product Title*', 'SKU*', 'Short Description*', 'Category ID']
+            required_child = ['Parent SKU*', 'Variant Color*', 'Variant Price*', 'Variant Stock Quantity*']
+            
+            missing_parent = [f for f in required_parent if f not in parent_col_map]
+            missing_child = [f for f in required_child if f not in child_col_map]
+            
+            if missing_parent or missing_child:
+                errors_list = []
+                if missing_parent:
+                    errors_list.append(f'Parent Product tab missing: {", ".join(missing_parent)}')
+                if missing_child:
+                    errors_list.append(f'Child Variation tab missing: {", ".join(missing_child)}')
+                return Response(
+                    {'error': '; '.join(errors_list)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            products_created = 0
+            variants_created = 0
+            errors = []
+            
+            # Step 1: Read Parent Product tab and create products
+            parent_products = {}  # {sku: {product_data, row_num}}
+            
+            for row_num, row in enumerate(ws_parent.iter_rows(min_row=2, values_only=False), start=2):
+                # Skip empty rows
+                if not row[parent_col_map['SKU*'] - 1].value:
+                    continue
+                
+                try:
+                    sku = str(row[parent_col_map['SKU*'] - 1].value).strip()
+                    if not sku or sku == 'SKU*':
+                        continue
+                    
+                    # Check if product with this SKU already exists
+                    if Product.objects.filter(sku=sku).exists():
+                        errors.append(f'Parent row {row_num}: Product with SKU "{sku}" already exists')
+                        continue
+                    
+                    # Get category
+                    category_id = None
+                    if parent_col_map.get('Category ID'):
+                        cat_id_val = row[parent_col_map['Category ID'] - 1].value
+                        if cat_id_val:
+                            try:
+                                category_id = int(cat_id_val)
+                            except (ValueError, TypeError):
+                                errors.append(f'Parent row {row_num}: Invalid Category ID')
+                                continue
+                    
+                    if not category_id:
+                        errors.append(f'Parent row {row_num}: Category ID is required')
+                        continue
+                    
+                    try:
+                        category = Category.objects.get(id=category_id)
+                    except Category.DoesNotExist:
+                        errors.append(f'Parent row {row_num}: Category ID {category_id} not found')
+                        continue
+                    
+                    # Extract product data
+                    product_title = str(row[parent_col_map['Product Title*'] - 1].value).strip()
+                    short_desc = str(row[parent_col_map['Short Description*'] - 1].value).strip()
+                    long_desc = str(row[parent_col_map.get('Long Description', 0) - 1].value).strip() if parent_col_map.get('Long Description') and row[parent_col_map.get('Long Description', 0) - 1].value else ''
+                    
+                    # Material
+                    material = None
+                    if parent_col_map.get('Material') and row[parent_col_map['Material'] - 1].value:
+                        material_name = str(row[parent_col_map['Material'] - 1].value).strip()
+                        try:
+                            material = Material.objects.get(name=material_name)
+                        except Material.DoesNotExist:
+                            pass
+                    
+                    # Other fields
+                    brand = str(row[parent_col_map.get('Brand', 0) - 1].value).strip() if parent_col_map.get('Brand') and row[parent_col_map.get('Brand', 0) - 1].value else ''
+                    dimensions = str(row[parent_col_map.get('Dimensions', 0) - 1].value).strip() if parent_col_map.get('Dimensions') and row[parent_col_map.get('Dimensions', 0) - 1].value else ''
+                    weight = str(row[parent_col_map.get('Weight', 0) - 1].value).strip() if parent_col_map.get('Weight') and row[parent_col_map.get('Weight', 0) - 1].value else ''
+                    warranty = str(row[parent_col_map.get('Warranty', 0) - 1].value).strip() if parent_col_map.get('Warranty') and row[parent_col_map.get('Warranty', 0) - 1].value else ''
+                    
+                    assembly_required = False
+                    if parent_col_map.get('Assembly Required') and row[parent_col_map['Assembly Required'] - 1].value:
+                        assembly_val = str(row[parent_col_map['Assembly Required'] - 1].value).strip().lower()
+                        assembly_required = assembly_val == 'yes'
+                    
+                    estimated_delivery = 4
+                    if parent_col_map.get('Estimated Delivery Days') and row[parent_col_map['Estimated Delivery Days'] - 1].value:
+                        try:
+                            estimated_delivery = int(row[parent_col_map['Estimated Delivery Days'] - 1].value)
+                        except:
+                            pass
+                    
+                    care_instructions = str(row[parent_col_map.get('Care Instructions', 0) - 1].value).strip() if parent_col_map.get('Care Instructions') and row[parent_col_map.get('Care Instructions', 0) - 1].value else ''
+                    what_in_box = str(row[parent_col_map.get('What is in Box', 0) - 1].value).strip() if parent_col_map.get('What is in Box') and row[parent_col_map.get('What is in Box', 0) - 1].value else ''
+                    
+                    meta_title = str(row[parent_col_map.get('Meta Title', 0) - 1].value).strip() if parent_col_map.get('Meta Title') and row[parent_col_map.get('Meta Title', 0) - 1].value else ''
+                    meta_desc = str(row[parent_col_map.get('Meta Description', 0) - 1].value).strip() if parent_col_map.get('Meta Description') and row[parent_col_map.get('Meta Description', 0) - 1].value else ''
+                    
+                    is_featured = False
+                    if parent_col_map.get('Is Featured') and row[parent_col_map['Is Featured'] - 1].value:
+                        featured_val = str(row[parent_col_map['Is Featured'] - 1].value).strip().lower()
+                        is_featured = featured_val == 'yes'
+                    
+                    is_active = True
+                    if parent_col_map.get('Is Active') and row[parent_col_map['Is Active'] - 1].value:
+                        active_val = str(row[parent_col_map['Is Active'] - 1].value).strip().lower()
+                        is_active = active_val == 'yes'
+                    
+                    # Generate slug
+                    slug = slugify(product_title)
+                    if Product.objects.filter(slug=slug).exists():
+                        slug = f"{slug}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+                    
+                    # Create product
+                    product = Product.objects.create(
+                        title=product_title,
+                        slug=slug,
+                        sku=sku,
+                        short_description=short_desc,
+                        long_description=long_desc,
+                        category=category,
+                        material=material,
+                        brand=brand,
+                        dimensions=dimensions,
+                        weight=weight,
+                        warranty=warranty,
+                        assembly_required=assembly_required,
+                        estimated_delivery_days=estimated_delivery,
+                        care_instructions=care_instructions,
+                        what_in_box=what_in_box,
+                        meta_title=meta_title,
+                        meta_description=meta_desc,
+                        is_featured=is_featured,
+                        is_active=is_active
+                    )
+                    
+                    # Process About Items (up to 10)
+                    for i in range(1, 11):
+                        col_name = f'About This Item {i}'
+                        if parent_col_map.get(col_name) and row[parent_col_map[col_name] - 1].value:
+                            item_text = str(row[parent_col_map[col_name] - 1].value).strip()
+                            if item_text:
+                                ProductAboutItem.objects.create(
+                                    product=product,
+                                    item=item_text,
+                                    sort_order=i
+                                )
+                    
+                    # Process Screen Offers (up to 10)
+                    screen_offers = []
+                    for i in range(1, 11):
+                        title_col = f'Screen Offer Title {i}'
+                        desc_col = f'Screen Offer Description {i}'
+                        if parent_col_map.get(title_col) and row[parent_col_map[title_col] - 1].value:
+                            offer_title = str(row[parent_col_map[title_col] - 1].value).strip()
+                            offer_desc = ''
+                            if parent_col_map.get(desc_col) and row[parent_col_map[desc_col] - 1].value:
+                                offer_desc = str(row[parent_col_map[desc_col] - 1].value).strip()
+                            if offer_title:
+                                screen_offers.append({'title': offer_title, 'description': offer_desc})
+                    
+                    if screen_offers:
+                        product.screen_offer = screen_offers
+                        product.save()
+                    
+                    parent_products[sku] = {'product': product, 'category': category}
+                    products_created += 1
+                    
+                except Exception as e:
+                    errors.append(f'Parent row {row_num}: {str(e)}')
+                    continue
+            
+            # Step 2: Read Child Variation tab and create variants
+            for row_num, row in enumerate(ws_child.iter_rows(min_row=2, values_only=False), start=2):
+                # Skip empty rows
+                if not row[child_col_map['Parent SKU*'] - 1].value:
+                    continue
+                
+                try:
+                    parent_sku = str(row[child_col_map['Parent SKU*'] - 1].value).strip()
+                    if not parent_sku or parent_sku == 'Parent SKU*':
+                        continue
+                    
+                    # Find parent product
+                    if parent_sku not in parent_products:
+                        errors.append(f'Child row {row_num}: Parent SKU "{parent_sku}" not found in Parent Product tab')
+                        continue
+                    
+                    product = parent_products[parent_sku]['product']
+                    category = parent_products[parent_sku]['category']
+                    
+                    # Get color
+                    color_name = str(row[child_col_map['Variant Color*'] - 1].value).strip()
+                    try:
+                        color = Color.objects.get(name=color_name)
+                    except Color.DoesNotExist:
+                        errors.append(f'Child row {row_num}: Color "{color_name}" not found')
+                        continue
+                    
+                    # Variant fields
+                    size = str(row[child_col_map.get('Variant Size', 0) - 1].value).strip() if child_col_map.get('Variant Size') and row[child_col_map.get('Variant Size', 0) - 1].value else ''
+                    pattern = str(row[child_col_map.get('Variant Pattern', 0) - 1].value).strip() if child_col_map.get('Variant Pattern') and row[child_col_map.get('Variant Pattern', 0) - 1].value else ''
+                    quality = str(row[child_col_map.get('Variant Quality', 0) - 1].value).strip() if child_col_map.get('Variant Quality') and row[child_col_map.get('Variant Quality', 0) - 1].value else ''
+                    variant_title = str(row[child_col_map.get('Variant Title', 0) - 1].value).strip() if child_col_map.get('Variant Title') and row[child_col_map.get('Variant Title', 0) - 1].value else ''
+                    
+                    # Price
+                    try:
+                        price = Decimal(str(row[child_col_map['Variant Price*'] - 1].value))
+                    except (ValueError, InvalidOperation, TypeError):
+                        errors.append(f'Child row {row_num}: Invalid price value')
+                        continue
+                    
+                    old_price = None
+                    if child_col_map.get('Variant Old Price') and row[child_col_map['Variant Old Price'] - 1].value:
+                        try:
+                            old_price = Decimal(str(row[child_col_map['Variant Old Price'] - 1].value))
+                        except:
+                            pass
+                    
+                    # Stock
+                    try:
+                        stock_qty = int(row[child_col_map['Variant Stock Quantity*'] - 1].value or 0)
+                    except (ValueError, TypeError):
+                        errors.append(f'Child row {row_num}: Invalid stock quantity')
+                        continue
+                    
+                    is_in_stock = True
+                    if child_col_map.get('Variant Is In Stock') and row[child_col_map['Variant Is In Stock'] - 1].value:
+                        stock_val = str(row[child_col_map['Variant Is In Stock'] - 1].value).strip().lower()
+                        is_in_stock = stock_val == 'yes'
+                    
+                    is_active = True
+                    if child_col_map.get('Variant Is Active') and row[child_col_map['Variant Is Active'] - 1].value:
+                        active_val = str(row[child_col_map['Variant Is Active'] - 1].value).strip().lower()
+                        is_active = active_val == 'yes'
+                    
+                    # Variant image
+                    variant_image = ''
+                    if child_col_map.get('Variant Image URL') and row[child_col_map['Variant Image URL'] - 1].value:
+                        variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
+                    
+                    # Create variant
+                    variant = ProductVariant.objects.create(
+                        product=product,
+                        color=color,
+                        size=size,
+                        pattern=pattern,
+                        quality=quality,
+                        title=variant_title if variant_title else None,
+                        price=price,
+                        old_price=old_price,
+                        stock_quantity=stock_qty,
+                        is_in_stock=is_in_stock,
+                        is_active=is_active,
+                        image=variant_image if variant_image else None
+                    )
+                    
+                    # Process other images (up to 5)
+                    for i in range(1, 6):
+                        img_col = f'other_image{i}'
+                        alt_col = f'other_image{i}_alt_text'
+                        sort_col = f'other_image{i}_sort_order'
+                        
+                        if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
+                            img_url = str(row[child_col_map[img_col] - 1].value).strip()
+                            alt_text = ''
+                            if child_col_map.get(alt_col) and row[child_col_map[alt_col] - 1].value:
+                                alt_text = str(row[child_col_map[alt_col] - 1].value).strip()
+                            sort_order = i
+                            if child_col_map.get(sort_col) and row[child_col_map[sort_col] - 1].value:
+                                try:
+                                    sort_order = int(row[child_col_map[sort_col] - 1].value)
+                                except:
+                                    pass
+                            
+                            if img_url:
+                                ProductVariantImage.objects.create(
+                                    variant=variant,
+                                    image=img_url,
+                                    alt_text=alt_text,
+                                    sort_order=sort_order
+                                )
+                    
+                    # Process subcategories (boolean columns like "Subcategory-{name}")
+                    for col_name, col_idx in child_col_map.items():
+                        if col_name.startswith('Subcategory-'):
+                            subcat_name = col_name.replace('Subcategory-', '').strip()
+                            if row[col_idx - 1].value:
+                                val = str(row[col_idx - 1].value).strip().lower()
+                                if val == 'yes' or val == 'true' or val == '1':
+                                    try:
+                                        subcat = Subcategory.objects.get(name=subcat_name, category=category)
+                                        variant.subcategories.add(subcat)
+                                    except Subcategory.DoesNotExist:
+                                        pass
+                    
+                    # Process specifications
+                    spec_sections = {
+                        'Specification:': ('specifications', ProductSpecification),
+                        'Measurement Specification:': ('measurement_specs', VariantMeasurementSpec),
+                        'Style Specification:': ('style_specs', VariantStyleSpec),
+                        'Feature:': ('features', VariantFeature),
+                        'User Guide:': ('user_guide', VariantUserGuide),
+                        'Item Detail:': ('item_details', VariantItemDetail),
+                    }
+                    
+                    for col_name, col_idx in child_col_map.items():
+                        for prefix, (section, model_class) in spec_sections.items():
+                            if col_name.startswith(prefix):
+                                spec_name = col_name.replace(prefix, '').strip()
+                                spec_value = ''
+                                if row[col_idx - 1].value:
+                                    spec_value = str(row[col_idx - 1].value).strip()
+                                
+                                if spec_value:
+                                    model_class.objects.create(
+                                        variant=variant,
+                                        name=spec_name,
+                                        value=spec_value,
+                                        sort_order=0
+                                    )
+                    
+                    variants_created += 1
+                    
+                except Exception as e:
+                    errors.append(f'Child row {row_num}: {str(e)}')
+                    continue
+            
+            # Log action
+            create_admin_log(
+                request=request,
+                action_type='bulk_create',
+                model_name='Product',
+                object_repr=f'Bulk import: {products_created} products, {variants_created} variants',
+                details={
+                    'products_created': products_created,
+                    'variants_created': variants_created,
+                    'errors_count': len(errors)
+                }
+            )
+            
+            return Response({
+                'success': True,
+                'message': f'Import completed: {products_created} products and {variants_created} variants created',
+                'products_created': products_created,
+                'variants_created': variants_created,
+                'errors': errors[:50]  # Limit to first 50 errors
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            import traceback
+            return Response(
+                {'error': f'Failed to import Excel: {str(e)}', 'traceback': traceback.format_exc()},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 

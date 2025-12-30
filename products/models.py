@@ -29,6 +29,35 @@ class Category(models.Model):
         return self.name
 
 
+class CategorySpecificationTemplate(models.Model):
+    """Default specification field names for categories - used to auto-populate product specification fields"""
+    SPECIFICATION_SECTIONS = [
+        ('specifications', 'Specifications'),
+        ('measurement_specs', 'Measurement Specifications'),
+        ('style_specs', 'Style Specifications'),
+        ('features', 'Features'),
+        ('user_guide', 'User Guide'),
+        ('item_details', 'Item Details'),
+    ]
+    
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='specification_templates')
+    section = models.CharField(max_length=50, choices=SPECIFICATION_SECTIONS)
+    field_name = models.CharField(max_length=100, help_text='Default field name (e.g., "Brand", "Weight", "Bed Type")')
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Category Specification Template"
+        verbose_name_plural = "Category Specification Templates"
+        unique_together = ['category', 'section', 'field_name']
+        ordering = ['category', 'section', 'sort_order', 'field_name']
+
+    def __str__(self):
+        return f"{self.category.name} - {self.get_section_display()} - {self.field_name}"
+
+
 class Subcategory(models.Model):
     """Subcategories like 3-Seater, 2-Seater for Sofas"""
     name = models.CharField(max_length=100)
@@ -259,6 +288,7 @@ class ProductReview(models.Model):
     rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     title = models.CharField(max_length=200, blank=True)
     comment = models.TextField(blank=True)
+    attachments = models.JSONField(default=list, blank=True, help_text='List of attachment objects with url, type, and name')
     is_verified_purchase = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False, help_text='Review must be approved by admin or vendor before appearing on product page')
     created_at = models.DateTimeField(auto_now_add=True)

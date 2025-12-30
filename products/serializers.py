@@ -422,6 +422,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 class ProductReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.get_full_name', read_only=True)
     user_username = serializers.CharField(source='user.username', read_only=True)
+    # Attachments removed from public API - only visible in admin panel
     
     class Meta:
         model = ProductReview

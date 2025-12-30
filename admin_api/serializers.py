@@ -6,7 +6,7 @@ from products.models import (
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, 
     ProductAboutItem, ProductOffer, Discount, ProductRecommendation, Coupon, ProductReview,
     VariantMeasurementSpec, VariantStyleSpec, VariantFeature as VariantFeatureModel, 
-    VariantUserGuide, VariantItemDetail
+    VariantUserGuide, VariantItemDetail, CategorySpecificationTemplate
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from accounts.models import ContactQuery, BulkOrder, DataRequest
@@ -192,6 +192,14 @@ class AdminCategorySerializer(serializers.ModelSerializer):
     
     def get_subcategory_count(self, obj):
         return obj.subcategories.count()
+
+
+# ==================== Category Specification Template Serializers ====================
+class CategorySpecificationTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategorySpecificationTemplate
+        fields = ['id', 'category', 'section', 'field_name', 'sort_order', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
 
 
 # ==================== Color & Material Serializers ====================
@@ -1912,12 +1920,13 @@ class AdminProductReviewSerializer(serializers.ModelSerializer):
     product_title = serializers.CharField(source='product.title', read_only=True)
     product_slug = serializers.CharField(source='product.slug', read_only=True)
     vendor_name = serializers.SerializerMethodField()
+    attachments = serializers.JSONField(required=False, allow_null=True)
     
     class Meta:
         model = ProductReview
         fields = [
             'id', 'product', 'product_title', 'product_slug', 'user', 'user_name', 
-            'user_email', 'rating', 'title', 'comment', 'is_verified_purchase', 
+            'user_email', 'rating', 'title', 'comment', 'attachments', 'is_verified_purchase', 
             'is_approved', 'created_at', 'updated_at', 'vendor_name'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

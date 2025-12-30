@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     dashboard_stats, platform_analytics, AdminUserViewSet, AdminCategoryViewSet,
     AdminSubcategoryViewSet, AdminColorViewSet, AdminMaterialViewSet,
+    AdminCategorySpecificationTemplateViewSet,
     AdminProductViewSet, AdminOrderViewSet, AdminDiscountViewSet,
     AdminCouponViewSet, payment_charges_settings, global_settings,
     AdminContactQueryViewSet, AdminBulkOrderViewSet, AdminLogViewSet,
@@ -16,6 +17,7 @@ from .auth import admin_login_view
 router = DefaultRouter()
 router.register(r'users', AdminUserViewSet, basename='admin-users')
 router.register(r'categories', AdminCategoryViewSet, basename='admin-categories')
+router.register(r'category-specification-templates', AdminCategorySpecificationTemplateViewSet, basename='admin-category-specification-templates')
 router.register(r'subcategories', AdminSubcategoryViewSet, basename='admin-subcategories')
 router.register(r'colors', AdminColorViewSet, basename='admin-colors')
 router.register(r'materials', AdminMaterialViewSet, basename='admin-materials')
