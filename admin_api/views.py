@@ -1211,6 +1211,69 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                 if screen_offers != product.screen_offer:
                     product.screen_offer = screen_offers
                     product_updated = True
+                
+                # Process Product Recommendations (supports 5 per type, can be extended manually)
+                from products.models import ProductRecommendation
+                recommendation_types = [
+                    ('buy_with', 'Buy it with'),
+                    ('frequently_viewed', 'Frequently viewed'),
+                    ('inspired_by', 'Inspired by browsing history'),
+                    ('similar', 'Similar products'),
+                    ('recommended', 'Recommended for you')
+                ]
+                
+                # Clear existing recommendations if Excel has recommendation data
+                has_recommendations = False
+                for rec_type, rec_label in recommendation_types:
+                    for i in range(1, 6):
+                        sku_col = f'{rec_label} Product {i} SKU'
+                        if parent_col_map.get(sku_col) and parent_row[parent_col_map[sku_col] - 1].value:
+                            has_recommendations = True
+                            break
+                    if has_recommendations:
+                        break
+                
+                # Only delete and recreate if Excel has recommendation data
+                if has_recommendations:
+                    product.recommendations.all().delete()
+                    
+                    for rec_type, rec_label in recommendation_types:
+                        # Check for columns up to 5 (can be extended manually)
+                        for i in range(1, 20):  # Support up to 20 manually extended columns
+                            sku_col = f'{rec_label} Product {i} SKU'
+                            
+                            # Get product by SKU (from dropdown or manual entry)
+                            recommended_product = None
+                            
+                            if parent_col_map.get(sku_col) and parent_row[parent_col_map[sku_col] - 1].value:
+                                sku_value = str(parent_row[parent_col_map[sku_col] - 1].value).strip()
+                                
+                                # Extract SKU from dropdown format "SKU - Product Title" or use as-is if manual entry
+                                if ' - ' in sku_value:
+                                    sku_value = sku_value.split(' - ')[0].strip()
+                                
+                                if sku_value:
+                                    try:
+                                        recommended_product = Product.objects.get(sku=sku_value, is_active=True)
+                                    except (Product.DoesNotExist, Product.MultipleObjectsReturned):
+                                        pass
+                            
+                            # Create recommendation if product found and not the same product
+                            if recommended_product and recommended_product.id != product.id:
+                                try:
+                                    ProductRecommendation.objects.get_or_create(
+                                        product=product,
+                                        recommended_product=recommended_product,
+                                        recommendation_type=rec_type,
+                                        defaults={
+                                            'sort_order': i - 1,
+                                            'is_active': True
+                                        }
+                                    )
+                                    product_updated = True
+                                except Exception as e:
+                                    # Log error but don't fail the update
+                                    errors.append(f'Failed to create recommendation for {rec_label} Product {i}: {str(e)}')
             
             if product_updated:
                 product.save()
@@ -1349,7 +1412,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                             for i in range(1, 10):
                                 img_col = f'other_image{i}'
                                 
-                                if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
+                            if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
                                     img_url = str(row[child_col_map[img_col] - 1].value).strip()
                                     
                                     if img_url:
@@ -1381,8 +1444,8 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                                         )
                             
                             new_image_count = image_counter
-                            if old_image_count != new_image_count:
-                                has_image_changes = True
+                        if old_image_count != new_image_count:
+                            has_image_changes = True
                         
                         # Update subcategories - always do this
                         old_subcat_ids = set(variant.subcategories.values_list('id', flat=True))
@@ -1780,6 +1843,54 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     if screen_offers:
                         product.screen_offer = screen_offers
                         product.save()
+                    
+                    # Process Product Recommendations (supports 5 per type, can be extended manually)
+                    from products.models import ProductRecommendation
+                    recommendation_types = [
+                        ('buy_with', 'Buy it with'),
+                        ('frequently_viewed', 'Frequently viewed'),
+                        ('inspired_by', 'Inspired by browsing history'),
+                        ('similar', 'Similar products'),
+                        ('recommended', 'Recommended for you')
+                    ]
+                    
+                    for rec_type, rec_label in recommendation_types:
+                        # Check for columns up to 5 (can be extended manually)
+                        for i in range(1, 20):  # Support up to 20 manually extended columns
+                            sku_col = f'{rec_label} Product {i} SKU'
+                            
+                            # Get product by SKU (from dropdown or manual entry)
+                            recommended_product = None
+                            
+                            if parent_col_map.get(sku_col) and row[parent_col_map[sku_col] - 1].value:
+                                sku_value = str(row[parent_col_map[sku_col] - 1].value).strip()
+                                
+                                # Extract SKU from dropdown format "SKU - Product Title" or use as-is if manual entry
+                                if ' - ' in sku_value:
+                                    sku_value = sku_value.split(' - ')[0].strip()
+                                
+                                if sku_value:
+                                    try:
+                                        recommended_product = Product.objects.get(sku=sku_value, is_active=True)
+                                    except Product.DoesNotExist:
+                                        errors.append(f'Parent row {row_num}: Product with SKU "{sku_value}" not found for {rec_label} Product {i}')
+                                    except Product.MultipleObjectsReturned:
+                                        errors.append(f'Parent row {row_num}: Multiple products found with SKU "{sku_value}" for {rec_label} Product {i}')
+                            
+                            # Create recommendation if product found and not the same product
+                            if recommended_product and recommended_product.id != product.id:
+                                try:
+                                    ProductRecommendation.objects.get_or_create(
+                                        product=product,
+                                        recommended_product=recommended_product,
+                                        recommendation_type=rec_type,
+                                        defaults={
+                                            'sort_order': i - 1,
+                                            'is_active': True
+                                        }
+                                    )
+                                except Exception as e:
+                                    errors.append(f'Parent row {row_num}: Failed to create recommendation for {rec_label} Product {i}: {str(e)}')
                     
                     parent_products[sku] = {'product': product, 'category': category}
                     products_created += 1

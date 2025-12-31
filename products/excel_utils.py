@@ -97,6 +97,21 @@ def generate_product_template(category_id):
         parent_headers.append(f'Screen Offer Title {i}')
         parent_headers.append(f'Screen Offer Description {i}')
     
+    # Define recommendation types (used in multiple places)
+    recommendation_types = [
+        ('buy_with', 'Buy it with'),
+        ('frequently_viewed', 'Frequently viewed'),
+        ('inspired_by', 'Inspired by browsing history'),
+        ('similar', 'Similar products'),
+        ('recommended', 'Recommended for you')
+    ]
+    
+    # Add Product Recommendation columns (5 columns per type, can be extended manually)
+    # Each column contains SKU dropdown (can also manually enter SKU)
+    for rec_type, rec_label in recommendation_types:
+        for i in range(1, 6):  # 5 columns per type
+            parent_headers.append(f'{rec_label} Product {i} SKU')
+    
     # Note: Specification columns are NOT in Parent tab - they are variant-specific and only in Child Variation tab
     
     # Style parent header
@@ -148,7 +163,15 @@ def generate_product_template(category_id):
         ws_parent.cell(row=row_num, column=col_idx, value='')  # Description
         col_idx += 1
     
+    # Product Recommendation columns (all empty for template)
+    # Each column contains SKU (dropdown or manual entry)
+    for rec_type, rec_label in recommendation_types:
+        for i in range(5):  # 5 columns per type
+            ws_parent.cell(row=row_num, column=col_idx, value='')  # Product SKU
+            col_idx += 1
+    
     # Note: Specifications are variant-specific and are NOT in Parent tab - they are only in Child Variation tab
+    # Note: Recommendation columns do not have dropdown - users manually enter SKUs
     
     # ========== CHILD VARIATION TAB ==========
     ws_child = wb.create_sheet("Child Variation")
@@ -260,6 +283,9 @@ def generate_product_template(category_id):
     for idx, subcategory in enumerate(subcategory_list):
         subcategory_col = get_column_letter(subcategory_start_col + idx)
         yes_no_dv.add(f'{subcategory_col}2:{subcategory_col}1000')
+    
+    # Note: Recommendation columns do not have dropdown validation
+    # Users can manually enter SKU values in the recommendation columns
     
     # Child sheet validations
     color_col = get_column_letter(3)
@@ -392,6 +418,21 @@ def export_product_to_excel(product_id):
         parent_headers.append(f'Screen Offer Title {i}')
         parent_headers.append(f'Screen Offer Description {i}')
     
+    # Define recommendation types (used in multiple places)
+    recommendation_types = [
+        ('buy_with', 'Buy it with'),
+        ('frequently_viewed', 'Frequently viewed'),
+        ('inspired_by', 'Inspired by browsing history'),
+        ('similar', 'Similar products'),
+        ('recommended', 'Recommended for you')
+    ]
+    
+    # Add Product Recommendation columns (5 columns per type, can be extended manually)
+    # Each column contains SKU dropdown (can also manually enter SKU)
+    for rec_type, rec_label in recommendation_types:
+        for i in range(1, 6):  # 5 columns per type
+            parent_headers.append(f'{rec_label} Product {i} SKU')
+    
     # Note: Specification columns are NOT in Parent tab - they are variant-specific and only in Child Variation tab
     
     # Style parent header
@@ -458,6 +499,31 @@ def export_product_to_excel(product_id):
              col_idx += 1
              ws_parent.cell(row=row_num, column=col_idx, value='')
              col_idx += 1
+     
+    # Product Recommendations (up to 5 per type, can be extended manually)
+    recommendation_types = [
+        ('buy_with', 'Buy it with'),
+        ('frequently_viewed', 'Frequently viewed'),
+        ('inspired_by', 'Inspired by browsing history'),
+        ('similar', 'Similar products'),
+        ('recommended', 'Recommended for you')
+    ]
+    
+    for rec_type, rec_label in recommendation_types:
+        recommendations = product.recommendations.filter(
+            recommendation_type=rec_type,
+            is_active=True
+        ).select_related('recommended_product').order_by('sort_order')[:5]
+        
+        for idx in range(5):
+            if idx < len(recommendations):
+                rec = recommendations[idx]
+                recommended_product = rec.recommended_product
+                ws_parent.cell(row=row_num, column=col_idx, value=recommended_product.sku or '')
+                col_idx += 1
+            else:
+                ws_parent.cell(row=row_num, column=col_idx, value='')
+                col_idx += 1
      
      # Note: Specifications are variant-specific and are NOT in Parent tab - they are only in Child Variation tab
      
