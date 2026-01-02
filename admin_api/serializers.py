@@ -837,22 +837,38 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                 if variant_id:
                     try:
                         variant = ProductVariant.objects.get(id=variant_id, product=instance)
-                        for attr, value in variant_data.items():
-                            setattr(variant, attr, value)
-                        if color_id is not None:
-                            variant.color_id = color_id
-                        variant.save()
-                        # Always update subcategories (even if empty array to clear them)
+                        
+                        # Check if variant actually needs updating (optimization for large variant counts)
+                        # If only ID and color_id are provided, skip update (variant hasn't changed)
+                        has_changes = False
+                        if color_id is not None and variant.color_id != color_id:
+                            has_changes = True
+                        elif variant_data:
+                            # Check if any field in variant_data differs from current variant
+                            for attr, value in variant_data.items():
+                                current_value = getattr(variant, attr, None)
+                                if current_value != value:
+                                    has_changes = True
+                                    break
+                        
+                        # Only update if there are actual changes
+                        if has_changes:
+                            for attr, value in variant_data.items():
+                                setattr(variant, attr, value)
+                            if color_id is not None:
+                                variant.color_id = color_id
+                            variant.save()
+                        
+                        # Only update subcategories if they're provided and different
                         # Ensure subcategory_ids is a list
                         if subcategory_ids is None:
                             subcategory_ids = []
                         if not isinstance(subcategory_ids, list):
                             subcategory_ids = []
-                        print(f"[BACKEND] Setting subcategories for variant {variant_id}: {subcategory_ids}")
-                        variant.subcategories.set(subcategory_ids)
-                        # Verify it was saved
-                        saved_subcategories = list(variant.subcategories.values_list('id', flat=True))
-                        print(f"[BACKEND] Verified subcategories for variant {variant_id}: {saved_subcategories}")
+                        # Only update if subcategories have actually changed (optimization)
+                        current_subcat_ids = list(variant.subcategories.values_list('id', flat=True))
+                        if set(current_subcat_ids) != set(subcategory_ids):
+                            variant.subcategories.set(subcategory_ids)
                         
                         # Update variant images only if provided (empty list means delete all)
                         if variant_images is not None:

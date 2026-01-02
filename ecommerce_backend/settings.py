@@ -275,10 +275,10 @@ if not DEBUG:
 # Static files configuration for production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Data upload settings - increase limits for large product payloads
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB (default is 2.5MB)
+# Data upload settings - increase limits for large product payloads and videos
+DATA_UPLOAD_MAX_MEMORY_SIZE = 500 * 1024 * 1024  # 500MB for large video uploads
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Increase from default 1000
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 500 * 1024 * 1024  # 500MB for large video uploads
 
 # Logging Configuration
 LOGGING = {

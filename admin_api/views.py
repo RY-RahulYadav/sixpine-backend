@@ -3306,7 +3306,7 @@ class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
             resource_type = 'image'
         elif file_type in allowed_video_types:
             resource_type = 'video'
-            max_size = 100 * 1024 * 1024  # 100MB for videos
+            max_size = 500 * 1024 * 1024  # 500MB for videos
         else:
             return Response(
                 {'error': f'Invalid file type. Allowed types: images ({", ".join(allowed_image_types)}) or videos ({", ".join(allowed_video_types)})'},
