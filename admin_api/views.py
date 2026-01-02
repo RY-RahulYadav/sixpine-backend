@@ -1302,10 +1302,28 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         continue
                     
                     # Variant fields
-                    size = str(row[child_col_map.get('Variant Size', 0) - 1].value).strip() if child_col_map.get('Variant Size') and row[child_col_map.get('Variant Size', 0) - 1].value else ''
-                    pattern = str(row[child_col_map.get('Variant Pattern', 0) - 1].value).strip() if child_col_map.get('Variant Pattern') and row[child_col_map.get('Variant Pattern', 0) - 1].value else ''
-                    quality = str(row[child_col_map.get('Variant Quality', 0) - 1].value).strip() if child_col_map.get('Variant Quality') and row[child_col_map.get('Variant Quality', 0) - 1].value else ''
-                    variant_title = str(row[child_col_map.get('Variant Title', 0) - 1].value).strip() if child_col_map.get('Variant Title') and row[child_col_map.get('Variant Title', 0) - 1].value else ''
+                    size = ''
+                    if child_col_map.get('Variant Size') and row[child_col_map['Variant Size'] - 1].value:
+                        size = str(row[child_col_map['Variant Size'] - 1].value).strip()
+                    
+                    pattern = ''
+                    if child_col_map.get('Variant Pattern') and row[child_col_map['Variant Pattern'] - 1].value:
+                        pattern = str(row[child_col_map['Variant Pattern'] - 1].value).strip()
+                    
+                    quality = ''
+                    if child_col_map.get('Variant Quality') and row[child_col_map['Variant Quality'] - 1].value:
+                        quality = str(row[child_col_map['Variant Quality'] - 1].value).strip()
+                    
+                    variant_title = ''
+                    if child_col_map.get('Variant Title'):
+                        if row[child_col_map['Variant Title'] - 1].value:
+                            variant_title = str(row[child_col_map['Variant Title'] - 1].value).strip()
+                    
+                    variant_sku = ''
+                    if child_col_map.get('Variant SKU'):
+                        if row[child_col_map['Variant SKU'] - 1].value:
+                            variant_sku = str(row[child_col_map['Variant SKU'] - 1].value).strip()
+                        # If column exists but value is empty, variant_sku remains '' which will clear the field
                     
                     # Try to find existing variant
                     variant = product.variants.filter(
@@ -1348,13 +1366,15 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     
                     # Variant image
                     variant_image = ''
-                    if child_col_map.get('Variant Image URL') and row[child_col_map['Variant Image URL'] - 1].value:
-                        variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
+                    if child_col_map.get('Variant Image URL'):
+                        if row[child_col_map['Variant Image URL'] - 1].value:
+                            variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
                     
                     # Variant video URL
                     variant_video_url = ''
-                    if child_col_map.get('Variant Video URL') and row[child_col_map['Variant Video URL'] - 1].value:
-                        variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
+                    if child_col_map.get('Variant Video URL'):
+                        if row[child_col_map['Variant Video URL'] - 1].value:
+                            variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
                     
                     if variant:
                         # Update existing variant (only if changed)
@@ -1374,15 +1394,34 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         if variant.is_active != is_active:
                             variant.is_active = is_active
                             updated = True
-                        if variant_image and variant.image != variant_image:
-                            variant.image = variant_image
-                            updated = True
-                        if variant_video_url and variant.video_url != variant_video_url:
-                            variant.video_url = variant_video_url
-                            updated = True
-                        if variant_title and variant.title != variant_title:
-                            variant.title = variant_title
-                            updated = True
+                        # Update image, video, title, and SKU if column exists in Excel
+                        if child_col_map.get('Variant Image URL'):
+                            current_image = str(variant.image or '')
+                            new_image = variant_image if variant_image else ''
+                            if current_image != new_image:
+                                variant.image = new_image if new_image else None
+                                updated = True
+                        
+                        if child_col_map.get('Variant Video URL'):
+                            current_video = str(variant.video_url or '')
+                            new_video = variant_video_url if variant_video_url else ''
+                            if current_video != new_video:
+                                variant.video_url = new_video if new_video else None
+                                updated = True
+                        
+                        if child_col_map.get('Variant Title'):
+                            current_title = str(variant.title or '')
+                            new_title = variant_title if variant_title else ''
+                            if current_title != new_title:
+                                variant.title = new_title if new_title else None
+                                updated = True
+                        
+                        if child_col_map.get('Variant SKU'):
+                            current_sku = str(variant.sku or '')
+                            new_sku = variant_sku if variant_sku else ''
+                            if current_sku != new_sku:
+                                variant.sku = new_sku if new_sku else None
+                                updated = True
                         
                         # Always update specifications, images, and subcategories (they might have changed)
                         # Check if there are any changes in these fields
@@ -1400,9 +1439,10 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         has_excel_images = False
                         for i in range(1, 10):
                             img_col = f'other_image{i}'
-                            if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
-                                has_excel_images = True
-                                break
+                            if child_col_map.get(img_col):
+                                if row[child_col_map[img_col] - 1].value:
+                                    has_excel_images = True
+                                    break
                         
                         # Only delete and recreate if Excel has image data
                         if has_excel_images:
@@ -1412,38 +1452,42 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                             for i in range(1, 10):
                                 img_col = f'other_image{i}'
                                 
-                            if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
-                                    img_url = str(row[child_col_map[img_col] - 1].value).strip()
-                                    
-                                    if img_url:
-                                        image_counter += 1
-                                        # Auto-generate alt_text from image URL (extract filename or use default)
-                                        alt_text = ''
-                                        try:
-                                            # Try to extract filename from URL
-                                            parsed_url = urlparse(img_url)
-                                            path = unquote(parsed_url.path)
-                                            filename = path.split('/')[-1].split('.')[0] if '.' in path.split('/')[-1] else path.split('/')[-1]
-                                            if filename:
-                                                alt_text = filename.replace('_', ' ').replace('-', ' ').title()
-                                        except:
-                                            pass
+                                if child_col_map.get(img_col):
+                                    if row[child_col_map[img_col] - 1].value:
+                                        img_url = str(row[child_col_map[img_col] - 1].value).strip()
                                         
-                                        # If alt_text is still empty, use default
-                                        if not alt_text:
-                                            alt_text = f'Variant Image {image_counter}'
-                                        
-                                        # Auto-generate sort_order based on order of appearance
-                                        sort_order = image_counter
-                                        
-                                        ProductVariantImage.objects.create(
-                                            variant=variant,
-                                            image=img_url,
-                                            alt_text=alt_text,
-                                            sort_order=sort_order
-                                        )
+                                        if img_url:
+                                            image_counter += 1
+                                            # Auto-generate alt_text from image URL (extract filename or use default)
+                                            alt_text = ''
+                                            try:
+                                                # Try to extract filename from URL
+                                                parsed_url = urlparse(img_url)
+                                                path = unquote(parsed_url.path)
+                                                filename = path.split('/')[-1].split('.')[0] if '.' in path.split('/')[-1] else path.split('/')[-1]
+                                                if filename:
+                                                    alt_text = filename.replace('_', ' ').replace('-', ' ').title()
+                                            except:
+                                                pass
+                                            
+                                            # If alt_text is still empty, use default
+                                            if not alt_text:
+                                                alt_text = f'Variant Image {image_counter}'
+                                            
+                                            # Auto-generate sort_order based on order of appearance
+                                            sort_order = image_counter
+                                            
+                                            ProductVariantImage.objects.create(
+                                                variant=variant,
+                                                image=img_url,
+                                                alt_text=alt_text,
+                                                sort_order=sort_order
+                                            )
                             
                             new_image_count = image_counter
+                        else:
+                            new_image_count = old_image_count
+                        
                         if old_image_count != new_image_count:
                             has_image_changes = True
                         
@@ -1529,8 +1573,9 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         # Create new variant
                         # Get video URL
                         variant_video_url = ''
-                        if child_col_map.get('Variant Video URL') and row[child_col_map['Variant Video URL'] - 1].value:
-                            variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
+                        if child_col_map.get('Variant Video URL'):
+                            if row[child_col_map['Variant Video URL'] - 1].value:
+                                variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
                         
                         variant = ProductVariant.objects.create(
                             product=product,
@@ -1539,6 +1584,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                             pattern=pattern,
                             quality=quality,
                             title=variant_title if variant_title else None,
+                            sku=variant_sku if variant_sku else None,
                             price=price,
                             old_price=old_price,
                             stock_quantity=stock_qty,
@@ -1553,8 +1599,9 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         for i in range(1, 10):
                             img_col = f'other_image{i}'
                             
-                            if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
-                                img_url = str(row[child_col_map[img_col] - 1].value).strip()
+                            if child_col_map.get(img_col):
+                                if row[child_col_map[img_col] - 1].value:
+                                    img_url = str(row[child_col_map[img_col] - 1].value).strip()
                                 
                                 if img_url:
                                     image_counter += 1
@@ -1927,10 +1974,27 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         continue
                     
                     # Variant fields
-                    size = str(row[child_col_map.get('Variant Size', 0) - 1].value).strip() if child_col_map.get('Variant Size') and row[child_col_map.get('Variant Size', 0) - 1].value else ''
-                    pattern = str(row[child_col_map.get('Variant Pattern', 0) - 1].value).strip() if child_col_map.get('Variant Pattern') and row[child_col_map.get('Variant Pattern', 0) - 1].value else ''
-                    quality = str(row[child_col_map.get('Variant Quality', 0) - 1].value).strip() if child_col_map.get('Variant Quality') and row[child_col_map.get('Variant Quality', 0) - 1].value else ''
-                    variant_title = str(row[child_col_map.get('Variant Title', 0) - 1].value).strip() if child_col_map.get('Variant Title') and row[child_col_map.get('Variant Title', 0) - 1].value else ''
+                    size = ''
+                    if child_col_map.get('Variant Size') and row[child_col_map['Variant Size'] - 1].value:
+                        size = str(row[child_col_map['Variant Size'] - 1].value).strip()
+                    
+                    pattern = ''
+                    if child_col_map.get('Variant Pattern') and row[child_col_map['Variant Pattern'] - 1].value:
+                        pattern = str(row[child_col_map['Variant Pattern'] - 1].value).strip()
+                    
+                    quality = ''
+                    if child_col_map.get('Variant Quality') and row[child_col_map['Variant Quality'] - 1].value:
+                        quality = str(row[child_col_map['Variant Quality'] - 1].value).strip()
+                    
+                    variant_title = ''
+                    if child_col_map.get('Variant Title') and row[child_col_map['Variant Title'] - 1].value:
+                        variant_title = str(row[child_col_map['Variant Title'] - 1].value).strip()
+                    
+                    variant_sku = ''
+                    if child_col_map.get('Variant SKU'):
+                        if row[child_col_map['Variant SKU'] - 1].value:
+                            variant_sku = str(row[child_col_map['Variant SKU'] - 1].value).strip()
+                        # If column exists but value is empty, variant_sku remains '' which will clear the field
                     
                     # Price
                     try:
@@ -1965,13 +2029,15 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     
                     # Variant image
                     variant_image = ''
-                    if child_col_map.get('Variant Image URL') and row[child_col_map['Variant Image URL'] - 1].value:
-                        variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
+                    if child_col_map.get('Variant Image URL'):
+                        if row[child_col_map['Variant Image URL'] - 1].value:
+                            variant_image = str(row[child_col_map['Variant Image URL'] - 1].value).strip()
                     
                     # Variant video URL
                     variant_video_url = ''
-                    if child_col_map.get('Variant Video URL') and row[child_col_map['Variant Video URL'] - 1].value:
-                        variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
+                    if child_col_map.get('Variant Video URL'):
+                        if row[child_col_map['Variant Video URL'] - 1].value:
+                            variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
                     
                     # Create variant
                     variant = ProductVariant.objects.create(
@@ -1981,6 +2047,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         pattern=pattern,
                         quality=quality,
                         title=variant_title if variant_title else None,
+                        sku=variant_sku if variant_sku else None,
                         price=price,
                         old_price=old_price,
                         stock_quantity=stock_qty,
@@ -1995,36 +2062,37 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     for i in range(1, 10):
                         img_col = f'other_image{i}'
                         
-                        if child_col_map.get(img_col) and row[child_col_map[img_col] - 1].value:
-                            img_url = str(row[child_col_map[img_col] - 1].value).strip()
-                            
-                            if img_url:
-                                image_counter += 1
-                                # Auto-generate alt_text from image URL (extract filename or use default)
-                                alt_text = ''
-                                try:
-                                    # Try to extract filename from URL
-                                    parsed_url = urlparse(img_url)
-                                    path = unquote(parsed_url.path)
-                                    filename = path.split('/')[-1].split('.')[0] if '.' in path.split('/')[-1] else path.split('/')[-1]
-                                    if filename:
-                                        alt_text = filename.replace('_', ' ').replace('-', ' ').title()
-                                except:
-                                    pass
+                        if child_col_map.get(img_col):
+                            if row[child_col_map[img_col] - 1].value:
+                                img_url = str(row[child_col_map[img_col] - 1].value).strip()
                                 
-                                # If alt_text is still empty, use default
-                                if not alt_text:
-                                    alt_text = f'Variant Image {image_counter}'
-                                
-                                # Auto-generate sort_order based on order of appearance
-                                sort_order = image_counter
-                                
-                                ProductVariantImage.objects.create(
-                                    variant=variant,
-                                    image=img_url,
-                                    alt_text=alt_text,
-                                    sort_order=sort_order
-                                )
+                                if img_url:
+                                    image_counter += 1
+                                    # Auto-generate alt_text from image URL (extract filename or use default)
+                                    alt_text = ''
+                                    try:
+                                        # Try to extract filename from URL
+                                        parsed_url = urlparse(img_url)
+                                        path = unquote(parsed_url.path)
+                                        filename = path.split('/')[-1].split('.')[0] if '.' in path.split('/')[-1] else path.split('/')[-1]
+                                        if filename:
+                                            alt_text = filename.replace('_', ' ').replace('-', ' ').title()
+                                    except:
+                                        pass
+                                    
+                                    # If alt_text is still empty, use default
+                                    if not alt_text:
+                                        alt_text = f'Variant Image {image_counter}'
+                                    
+                                    # Auto-generate sort_order based on order of appearance
+                                    sort_order = image_counter
+                                    
+                                    ProductVariantImage.objects.create(
+                                        variant=variant,
+                                        image=img_url,
+                                        alt_text=alt_text,
+                                        sort_order=sort_order
+                                    )
                     
                     # Process subcategories (boolean columns like "Subcategory-{name}")
                     for col_name, col_idx in child_col_map.items():
@@ -3212,27 +3280,44 @@ class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], url_path='upload')
     def upload_media(self, request):
-        """Upload image to Cloudinary"""
-        if 'image' not in request.FILES:
+        """Upload image or video to Cloudinary"""
+        # Check for either 'image' or 'video' file
+        file_key = None
+        if 'image' in request.FILES:
+            file_key = 'image'
+        elif 'video' in request.FILES:
+            file_key = 'video'
+        else:
             return Response(
-                {'error': 'No image file provided'},
+                {'error': 'No file provided. Please provide an image or video file.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        image_file = request.FILES['image']
+        media_file = request.FILES[file_key]
+        file_type = media_file.content_type
         
-        # Validate file type
-        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-        if image_file.content_type not in allowed_types:
+        # Determine resource type and validate
+        resource_type = 'auto'
+        allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        allowed_video_types = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/ogg']
+        max_size = 10 * 1024 * 1024  # 10MB for images
+        
+        if file_type in allowed_image_types:
+            resource_type = 'image'
+        elif file_type in allowed_video_types:
+            resource_type = 'video'
+            max_size = 100 * 1024 * 1024  # 100MB for videos
+        else:
             return Response(
-                {'error': 'Invalid file type. Only images are allowed.'},
+                {'error': f'Invalid file type. Allowed types: images ({", ".join(allowed_image_types)}) or videos ({", ".join(allowed_video_types)})'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validate file size (max 10MB)
-        if image_file.size > 10 * 1024 * 1024:
+        # Validate file size
+        if media_file.size > max_size:
+            max_size_mb = max_size / (1024 * 1024)
             return Response(
-                {'error': 'File size too large. Maximum size is 10MB.'},
+                {'error': f'File size too large. Maximum size is {max_size_mb}MB.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -3241,9 +3326,9 @@ class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
             
             # Upload to Cloudinary
             upload_result = cloudinary.uploader.upload(
-                image_file,
+                media_file,
                 folder='admin_media',
-                resource_type='image'
+                resource_type=resource_type
             )
             
             # Create Media record
@@ -3251,9 +3336,9 @@ class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                 uploaded_by_user=request.user,
                 cloudinary_url=upload_result['secure_url'],
                 cloudinary_public_id=upload_result['public_id'],
-                file_name=image_file.name,
-                file_size=image_file.size,
-                mime_type=image_file.content_type,
+                file_name=media_file.name,
+                file_size=media_file.size,
+                mime_type=media_file.content_type,
                 alt_text=request.data.get('alt_text', ''),
                 description=request.data.get('description', '')
             )

@@ -185,6 +185,7 @@ def generate_product_template(category_id):
         'Variant Pattern',
         'Variant Quality',
         'Variant Title',
+        'Variant SKU',
         'Variant Price*',
         'Variant Old Price',
         'Variant Stock Quantity*',
@@ -238,6 +239,7 @@ def generate_product_template(category_id):
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Pattern
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Quality
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Title
+    ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant SKU
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Price
     ws_child.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Variant Old Price
     ws_child.cell(row=row_num, column=col_idx, value=0); col_idx += 1  # Variant Stock Quantity
@@ -539,6 +541,7 @@ def export_product_to_excel(product_id):
         'Variant Pattern',
         'Variant Quality',
         'Variant Title',
+        'Variant SKU',
         'Variant Price*',
         'Variant Old Price',
         'Variant Stock Quantity*',
@@ -582,6 +585,10 @@ def export_product_to_excel(product_id):
         'item_details': set()
     }
     
+    # For item_details and user_guide, count max occurrences per name across all variants
+    item_details_name_max_count = {}  # name -> max count across all variants
+    user_guide_name_max_count = {}  # name -> max count across all variants
+    
     variants = product.variants.all()
     for variant in variants:
         # Get all specification names from this variant
@@ -593,10 +600,23 @@ def export_product_to_excel(product_id):
             all_variant_spec_names['style_specs'].add(spec.name)
         for spec in variant.features.all():
             all_variant_spec_names['features'].add(spec.name)
-        for spec in variant.user_guide.all():
+        
+        # For user_guide and item_details, count occurrences per name per variant
+        user_guide_counts = {}
+        for spec in variant.user_guide.all().order_by('sort_order', 'id'):
             all_variant_spec_names['user_guide'].add(spec.name)
-        for spec in variant.item_details.all():
+            user_guide_counts[spec.name] = user_guide_counts.get(spec.name, 0) + 1
+            # Update max count
+            if spec.name not in user_guide_name_max_count or user_guide_counts[spec.name] > user_guide_name_max_count[spec.name]:
+                user_guide_name_max_count[spec.name] = user_guide_counts[spec.name]
+        
+        item_details_counts = {}
+        for spec in variant.item_details.all().order_by('sort_order', 'id'):
             all_variant_spec_names['item_details'].add(spec.name)
+            item_details_counts[spec.name] = item_details_counts.get(spec.name, 0) + 1
+            # Update max count
+            if spec.name not in item_details_name_max_count or item_details_counts[spec.name] > item_details_name_max_count[spec.name]:
+                item_details_name_max_count[spec.name] = item_details_counts[spec.name]
     
     # Add variant-specific specifications that are not in category templates
     template_spec_names = {
@@ -618,6 +638,32 @@ def export_product_to_excel(product_id):
         'item_details': sorted(all_variant_spec_names['item_details'] - template_spec_names['item_details'])
     }
     
+    # Create numbered column names for item_details and user_guide
+    additional_item_details_columns = []
+    additional_user_guide_columns = []
+    
+    # For item_details: create columns for each unique name, numbered if duplicates exist
+    for name in sorted(all_variant_spec_names['item_details'] - template_spec_names['item_details']):
+        max_count = item_details_name_max_count.get(name, 1)
+        if max_count > 1:
+            # Multiple entries with same name - create numbered columns
+            for i in range(1, max_count + 1):
+                additional_item_details_columns.append((name, i))
+        else:
+            # Single entry - no number needed
+            additional_item_details_columns.append((name, None))
+    
+    # For user_guide: create columns for each unique name, numbered if duplicates exist
+    for name in sorted(all_variant_spec_names['user_guide'] - template_spec_names['user_guide']):
+        max_count = user_guide_name_max_count.get(name, 1)
+        if max_count > 1:
+            # Multiple entries with same name - create numbered columns
+            for i in range(1, max_count + 1):
+                additional_user_guide_columns.append((name, i))
+        else:
+            # Single entry - no number needed
+            additional_user_guide_columns.append((name, None))
+    
     # Add additional specification columns to child headers
     for spec_name in additional_specs['specifications']:
         child_headers.append(f'Specification: {spec_name}')
@@ -627,10 +673,18 @@ def export_product_to_excel(product_id):
         child_headers.append(f'Style Specification: {spec_name}')
     for spec_name in additional_specs['features']:
         child_headers.append(f'Feature: {spec_name}')
-    for spec_name in additional_specs['user_guide']:
-        child_headers.append(f'User Guide: {spec_name}')
-    for spec_name in additional_specs['item_details']:
-        child_headers.append(f'Item Detail: {spec_name}')
+    # Add user_guide columns (numbered if duplicates)
+    for name, number in additional_user_guide_columns:
+        if number:
+            child_headers.append(f'User Guide: {name} ({number})')
+        else:
+            child_headers.append(f'User Guide: {name}')
+    # Add item_details columns (numbered if duplicates)
+    for name, number in additional_item_details_columns:
+        if number:
+            child_headers.append(f'Item Detail: {name} ({number})')
+        else:
+            child_headers.append(f'Item Detail: {name}')
     
     # Re-style child header (update headers after adding additional specs)
     for col_num, header in enumerate(child_headers, 1):
@@ -653,6 +707,7 @@ def export_product_to_excel(product_id):
         ws_child.cell(row=row_num, column=col_idx, value=variant.pattern or ''); col_idx += 1  # Variant Pattern
         ws_child.cell(row=row_num, column=col_idx, value=variant.quality or ''); col_idx += 1  # Variant Quality
         ws_child.cell(row=row_num, column=col_idx, value=variant.title or ''); col_idx += 1  # Variant Title
+        ws_child.cell(row=row_num, column=col_idx, value=variant.sku or ''); col_idx += 1  # Variant SKU
         ws_child.cell(row=row_num, column=col_idx, value=float(variant.price) if variant.price else ''); col_idx += 1  # Variant Price
         ws_child.cell(row=row_num, column=col_idx, value=float(variant.old_price) if variant.old_price else ''); col_idx += 1  # Variant Old Price
         ws_child.cell(row=row_num, column=col_idx, value=variant.stock_quantity); col_idx += 1  # Variant Stock Quantity
@@ -725,13 +780,52 @@ def export_product_to_excel(product_id):
             spec = variant.features.filter(name=spec_name).first()
             ws_child.cell(row=row_num, column=col_idx, value=spec.value if spec else '')
             col_idx += 1
-        for spec_name in additional_specs['user_guide']:
-            spec = variant.user_guide.filter(name=spec_name).first()
-            ws_child.cell(row=row_num, column=col_idx, value=spec.value if spec else '')
+        # Export user_guide entries (matching by name and order)
+        user_guide_list = list(variant.user_guide.all().order_by('sort_order', 'id'))
+        user_guide_by_name = {}
+        for spec in user_guide_list:
+            if spec.name not in user_guide_by_name:
+                user_guide_by_name[spec.name] = []
+            user_guide_by_name[spec.name].append(spec)
+        
+        for name, number in additional_user_guide_columns:
+            if name in user_guide_by_name:
+                if number is not None and number <= len(user_guide_by_name[name]):
+                    # Get the specific numbered entry
+                    spec = user_guide_by_name[name][number - 1]
+                    ws_child.cell(row=row_num, column=col_idx, value=spec.value if spec else '')
+                elif number is None:
+                    # Single entry, no number
+                    spec = user_guide_by_name[name][0] if user_guide_by_name[name] else None
+                    ws_child.cell(row=row_num, column=col_idx, value=spec.value if spec else '')
+                else:
+                    ws_child.cell(row=row_num, column=col_idx, value='')
+            else:
+                ws_child.cell(row=row_num, column=col_idx, value='')
             col_idx += 1
-        for spec_name in additional_specs['item_details']:
-            spec = variant.item_details.filter(name=spec_name).first()
-            ws_child.cell(row=row_num, column=col_idx, value=spec.value if spec else '')
+        
+        # Export item_details entries (matching by name and order)
+        item_details_list = list(variant.item_details.all().order_by('sort_order', 'id'))
+        item_details_by_name = {}
+        for spec in item_details_list:
+            if spec.name not in item_details_by_name:
+                item_details_by_name[spec.name] = []
+            item_details_by_name[spec.name].append(spec)
+        
+        for name, number in additional_item_details_columns:
+            if name in item_details_by_name:
+                if number is not None and number <= len(item_details_by_name[name]):
+                    # Get the specific numbered entry
+                    spec = item_details_by_name[name][number - 1]
+                    ws_child.cell(row=row_num, column=col_idx, value=spec.value if spec else '')
+                elif number is None:
+                    # Single entry, no number
+                    spec = item_details_by_name[name][0] if item_details_by_name[name] else None
+                    ws_child.cell(row=row_num, column=col_idx, value=spec.value if spec else '')
+                else:
+                    ws_child.cell(row=row_num, column=col_idx, value='')
+            else:
+                ws_child.cell(row=row_num, column=col_idx, value='')
             col_idx += 1
         
         row_num += 1

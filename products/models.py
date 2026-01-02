@@ -220,6 +220,9 @@ class ProductVariant(models.Model):
     # Variant title for display (e.g., "White 4-Door Modern")
     title = models.CharField(max_length=200, blank=True)
     
+    # Variant SKU
+    sku = models.CharField(max_length=100, blank=True, null=True, help_text='Stock Keeping Unit for this variant')
+    
     # Variant-specific pricing (required - variants are the actual products)
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], help_text='Price is required for variants')
     old_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
