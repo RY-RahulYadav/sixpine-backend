@@ -189,10 +189,11 @@ class ProductListView(generics.ListAPIView):
                             for img in variant.images.filter(is_active=True).order_by('sort_order')
                         ] if hasattr(variant, 'images') else []
                         
-                        # Determine main image: prioritize first variant image, then variant.image field, then product main_image
+                        # Determine main image: prioritize variant.image field, then first variant image, then product main_image
+                        # variant.image is the designated main image set by admin
                         main_image_url = (
-                            variant_images[0]['image'] if variant_images 
-                            else variant.image if variant.image 
+                            variant.image if variant.image 
+                            else variant_images[0]['image'] if variant_images 
                             else product.main_image
                         )
                         

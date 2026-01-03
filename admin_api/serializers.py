@@ -279,7 +279,7 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     color = AdminColorSerializer(read_only=True)
     color_id = serializers.IntegerField()
-    images = AdminProductVariantImageSerializer(many=True, required=False)
+    images = serializers.SerializerMethodField()
     specifications = AdminProductSpecificationSerializer(many=True, required=False)
     measurement_specs = AdminVariantMeasurementSpecSerializer(many=True, required=False)
     style_specs = AdminVariantStyleSpecSerializer(many=True, required=False)
@@ -304,6 +304,11 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
             'measurement_specs', 'style_specs', 'features', 'user_guide', 'item_details',
             'subcategories', 'subcategory_ids'
         ]
+    
+    def get_images(self, obj):
+        """Get variant images explicitly ordered by sort_order"""
+        images = obj.images.all().order_by('sort_order', 'created_at')
+        return AdminProductVariantImageSerializer(images, many=True).data
 
 
 class AdminProductFeatureSerializer(serializers.ModelSerializer):

@@ -85,7 +85,7 @@ class VariantItemDetailSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
     color = ColorSerializer(read_only=True)
     color_id = serializers.IntegerField(write_only=True)
-    images = ProductVariantImageSerializer(many=True, read_only=True)
+    images = serializers.SerializerMethodField()
     specifications = ProductSpecificationSerializer(many=True, read_only=True)
     measurement_specs = VariantMeasurementSpecSerializer(many=True, read_only=True)
     style_specs = VariantStyleSpecSerializer(many=True, read_only=True)
@@ -100,6 +100,11 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             'discount_percentage', 'stock_quantity', 'is_in_stock', 'image', 'video_url', 'images', 'specifications',
             'measurement_specs', 'style_specs', 'features', 'user_guide', 'item_details'
         ]
+    
+    def get_images(self, obj):
+        """Get variant images explicitly ordered by sort_order"""
+        images = obj.images.filter(is_active=True).order_by('sort_order', 'created_at')
+        return ProductVariantImageSerializer(images, many=True).data
 
 
 class ProductFeatureSerializer(serializers.ModelSerializer):
@@ -164,16 +169,16 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
     
     def get_main_image(self, obj):
-        """Get image from first active variant - prioritize variant images collection"""
+        """Get main image from first active variant - prioritize variant.image field"""
         first_variant = obj.variants.filter(is_active=True).first()
         if first_variant:
-            # First priority: images from variant.images collection (sorted by sort_order)
+            # First priority: variant.image field (designated main image by admin)
+            if first_variant.image:
+                return first_variant.image
+            # Second priority: first image from variant.images collection (sorted by sort_order)
             first_variant_image = first_variant.images.filter(is_active=True).order_by('sort_order').first()
             if first_variant_image and first_variant_image.image:
                 return first_variant_image.image
-            # Second priority: variant.image field
-            if first_variant.image:
-                return first_variant.image
         # Fallback to product main_image if no variant image
         return obj.main_image
     
