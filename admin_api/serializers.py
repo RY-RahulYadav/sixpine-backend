@@ -279,6 +279,7 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     color = AdminColorSerializer(read_only=True)
     color_id = serializers.IntegerField()
+    # Read-only fields for output - write handled via to_internal_value override
     images = serializers.SerializerMethodField()
     specifications = serializers.SerializerMethodField()
     measurement_specs = serializers.SerializerMethodField()
@@ -304,6 +305,38 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
             'measurement_specs', 'style_specs', 'features', 'user_guide', 'item_details',
             'subcategories', 'subcategory_ids'
         ]
+    
+    def to_internal_value(self, data):
+        """Override to accept nested list fields for writing"""
+        # Extract the nested fields before parent validation (which would ignore them)
+        images_data = data.pop('images', None)
+        specifications_data = data.pop('specifications', None)
+        measurement_specs_data = data.pop('measurement_specs', None)
+        style_specs_data = data.pop('style_specs', None)
+        features_data = data.pop('features', None)
+        user_guide_data = data.pop('user_guide', None)
+        item_details_data = data.pop('item_details', None)
+        
+        # Call parent to validate other fields
+        validated_data = super().to_internal_value(data)
+        
+        # Add back the nested fields to validated_data
+        if images_data is not None:
+            validated_data['images'] = images_data
+        if specifications_data is not None:
+            validated_data['specifications'] = specifications_data
+        if measurement_specs_data is not None:
+            validated_data['measurement_specs'] = measurement_specs_data
+        if style_specs_data is not None:
+            validated_data['style_specs'] = style_specs_data
+        if features_data is not None:
+            validated_data['features'] = features_data
+        if user_guide_data is not None:
+            validated_data['user_guide'] = user_guide_data
+        if item_details_data is not None:
+            validated_data['item_details'] = item_details_data
+        
+        return validated_data
     
     def get_images(self, obj):
         """Get variant images explicitly ordered by sort_order"""
@@ -858,6 +891,11 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
             for variant_data in variants_data:
                 # Check if images and specifications keys exist (not just pop default)
                 variant_images = variant_data.pop('images') if 'images' in variant_data else None
+                # DEBUG: Log the images received
+                print(f"[BACKEND UPDATE] Variant images received: {len(variant_images) if variant_images else 'None'} images")
+                if variant_images:
+                    for idx, img in enumerate(variant_images):
+                        print(f"  Image {idx}: {img.get('image', img.get('image_url', 'NO URL'))[:50]}...")
                 variant_specifications = variant_data.pop('specifications') if 'specifications' in variant_data else None
                 variant_measurements = variant_data.pop('measurement_specs') if 'measurement_specs' in variant_data else None
                 variant_styles = variant_data.pop('style_specs') if 'style_specs' in variant_data else None
