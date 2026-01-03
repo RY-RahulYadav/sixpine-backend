@@ -359,7 +359,7 @@ class VariantMeasurementSpec(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['sort_order', 'name']
+        ordering = ['sort_order']
         verbose_name = "Variant Measurement Specification"
         verbose_name_plural = "Variant Measurement Specifications"
 
@@ -377,7 +377,7 @@ class VariantStyleSpec(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['sort_order', 'name']
+        ordering = ['sort_order']
         verbose_name = "Variant Style Specification"
         verbose_name_plural = "Variant Style Specifications"
 
@@ -395,7 +395,7 @@ class VariantFeature(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['sort_order', 'name']
+        ordering = ['sort_order']
         verbose_name = "Variant Feature"
         verbose_name_plural = "Variant Features"
 
@@ -413,7 +413,7 @@ class VariantUserGuide(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['sort_order', 'name']
+        ordering = ['sort_order']
         verbose_name = "Variant User Guide"
         verbose_name_plural = "Variant User Guides"
 
@@ -431,7 +431,7 @@ class VariantItemDetail(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['sort_order', 'name']
+        ordering = ['sort_order']
         verbose_name = "Variant Item Detail"
         verbose_name_plural = "Variant Item Details"
 

@@ -87,11 +87,11 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     color_id = serializers.IntegerField(write_only=True)
     images = serializers.SerializerMethodField()
     specifications = ProductSpecificationSerializer(many=True, read_only=True)
-    measurement_specs = VariantMeasurementSpecSerializer(many=True, read_only=True)
-    style_specs = VariantStyleSpecSerializer(many=True, read_only=True)
-    features = VariantFeatureSerializer(many=True, read_only=True)
-    user_guide = VariantUserGuideSerializer(many=True, read_only=True)
-    item_details = VariantItemDetailSerializer(many=True, read_only=True)
+    measurement_specs = serializers.SerializerMethodField()
+    style_specs = serializers.SerializerMethodField()
+    features = serializers.SerializerMethodField()
+    user_guide = serializers.SerializerMethodField()
+    item_details = serializers.SerializerMethodField()
     
     class Meta:
         model = ProductVariant
@@ -105,6 +105,31 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         """Get variant images explicitly ordered by sort_order"""
         images = obj.images.filter(is_active=True).order_by('sort_order', 'created_at')
         return ProductVariantImageSerializer(images, many=True).data
+    
+    def get_measurement_specs(self, obj):
+        """Get measurement specs ordered by sort_order"""
+        specs = obj.measurement_specs.filter(is_active=True).order_by('sort_order')
+        return VariantMeasurementSpecSerializer(specs, many=True).data
+    
+    def get_style_specs(self, obj):
+        """Get style specs ordered by sort_order"""
+        specs = obj.style_specs.filter(is_active=True).order_by('sort_order')
+        return VariantStyleSpecSerializer(specs, many=True).data
+    
+    def get_features(self, obj):
+        """Get features ordered by sort_order"""
+        features = obj.features.filter(is_active=True).order_by('sort_order')
+        return VariantFeatureSerializer(features, many=True).data
+    
+    def get_user_guide(self, obj):
+        """Get user guide ordered by sort_order"""
+        guide = obj.user_guide.filter(is_active=True).order_by('sort_order')
+        return VariantUserGuideSerializer(guide, many=True).data
+    
+    def get_item_details(self, obj):
+        """Get item details ordered by sort_order"""
+        details = obj.item_details.filter(is_active=True).order_by('sort_order')
+        return VariantItemDetailSerializer(details, many=True).data
 
 
 class ProductFeatureSerializer(serializers.ModelSerializer):

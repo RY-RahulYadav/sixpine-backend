@@ -280,12 +280,12 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
     color = AdminColorSerializer(read_only=True)
     color_id = serializers.IntegerField()
     images = serializers.SerializerMethodField()
-    specifications = AdminProductSpecificationSerializer(many=True, required=False)
-    measurement_specs = AdminVariantMeasurementSpecSerializer(many=True, required=False)
-    style_specs = AdminVariantStyleSpecSerializer(many=True, required=False)
-    features = AdminVariantFeatureSerializer(many=True, required=False)
-    user_guide = AdminVariantUserGuideSerializer(many=True, required=False)
-    item_details = AdminVariantItemDetailSerializer(many=True, required=False)
+    specifications = serializers.SerializerMethodField()
+    measurement_specs = serializers.SerializerMethodField()
+    style_specs = serializers.SerializerMethodField()
+    features = serializers.SerializerMethodField()
+    user_guide = serializers.SerializerMethodField()
+    item_details = serializers.SerializerMethodField()
     subcategories = AdminSubcategorySerializer(many=True, read_only=True)
     subcategory_ids = serializers.ListField(
         child=serializers.IntegerField(),
@@ -309,6 +309,36 @@ class AdminProductVariantSerializer(serializers.ModelSerializer):
         """Get variant images explicitly ordered by sort_order"""
         images = obj.images.all().order_by('sort_order', 'created_at')
         return AdminProductVariantImageSerializer(images, many=True).data
+    
+    def get_specifications(self, obj):
+        """Get specifications ordered by sort_order"""
+        specs = obj.specifications.filter(is_active=True).order_by('sort_order')
+        return AdminProductSpecificationSerializer(specs, many=True).data
+    
+    def get_measurement_specs(self, obj):
+        """Get measurement specs ordered by sort_order"""
+        specs = obj.measurement_specs.filter(is_active=True).order_by('sort_order')
+        return AdminVariantMeasurementSpecSerializer(specs, many=True).data
+    
+    def get_style_specs(self, obj):
+        """Get style specs ordered by sort_order"""
+        specs = obj.style_specs.filter(is_active=True).order_by('sort_order')
+        return AdminVariantStyleSpecSerializer(specs, many=True).data
+    
+    def get_features(self, obj):
+        """Get features ordered by sort_order"""
+        features = obj.features.filter(is_active=True).order_by('sort_order')
+        return AdminVariantFeatureSerializer(features, many=True).data
+    
+    def get_user_guide(self, obj):
+        """Get user guide ordered by sort_order"""
+        guide = obj.user_guide.filter(is_active=True).order_by('sort_order')
+        return AdminVariantUserGuideSerializer(guide, many=True).data
+    
+    def get_item_details(self, obj):
+        """Get item details ordered by sort_order"""
+        details = obj.item_details.filter(is_active=True).order_by('sort_order')
+        return AdminVariantItemDetailSerializer(details, many=True).data
 
 
 class AdminProductFeatureSerializer(serializers.ModelSerializer):
