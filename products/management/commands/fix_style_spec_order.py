@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from products.models import (
     CategorySpecificationTemplate, VariantStyleSpec, VariantMeasurementSpec,
-    VariantFeature, VariantUserGuide, VariantItemDetail, ProductVariant
+    VariantFeature, VariantUserGuide, VariantItemDetail, ProductVariant,
+    ProductSpecification
 )
 
 
@@ -19,6 +20,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Processing {total_variants} variants...')
         
         updated_counts = {
+            'specifications': 0,
             'style_specs': 0,
             'measurement_specs': 0,
             'features': 0,
@@ -34,6 +36,21 @@ class Command(BaseCommand):
             category = variant.product.category
             if not category:
                 continue
+            
+            # Fix specifications (Key Details)
+            specifications = variant.specifications.all()
+            for spec in specifications:
+                template = CategorySpecificationTemplate.objects.filter(
+                    category=category,
+                    section='specifications',
+                    field_name__iexact=spec.name,
+                    is_active=True
+                ).first()
+                
+                if template and spec.sort_order != template.sort_order:
+                    spec.sort_order = template.sort_order
+                    spec.save(update_fields=['sort_order'])
+                    updated_counts['specifications'] += 1
             
             # Fix style specs
             style_specs = variant.style_specs.all()
@@ -111,6 +128,7 @@ class Command(BaseCommand):
                     updated_counts['item_details'] += 1
         
         self.stdout.write(self.style.SUCCESS('\nUpdate Summary:'))
+        self.stdout.write(f'Specifications (Key Details) updated: {updated_counts["specifications"]}')
         self.stdout.write(f'Style Specs updated: {updated_counts["style_specs"]}')
         self.stdout.write(f'Measurement Specs updated: {updated_counts["measurement_specs"]}')
         self.stdout.write(f'Features updated: {updated_counts["features"]}')

@@ -105,7 +105,7 @@ jobs:
             python seed_trending_page_sections.py
             python  seed_homepage_all_sections.py 
             python seed_best_deals_page_sections.py
-            python manage.py fix_style_spec_order
+            python manage.py fix_style_spec_order 2>&1
 
             echo "🔄 Restarting Gunicorn..."
             systemctl restart gunicorn-sixpine
