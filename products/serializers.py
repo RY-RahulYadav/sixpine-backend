@@ -164,10 +164,16 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
     
     def get_main_image(self, obj):
-        """Get image from first active variant"""
+        """Get image from first active variant - prioritize variant images collection"""
         first_variant = obj.variants.filter(is_active=True).first()
-        if first_variant and first_variant.image:
-            return first_variant.image
+        if first_variant:
+            # First priority: images from variant.images collection (sorted by sort_order)
+            first_variant_image = first_variant.images.filter(is_active=True).order_by('sort_order').first()
+            if first_variant_image and first_variant_image.image:
+                return first_variant_image.image
+            # Second priority: variant.image field
+            if first_variant.image:
+                return first_variant.image
         # Fallback to product main_image if no variant image
         return obj.main_image
     

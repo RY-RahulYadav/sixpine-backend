@@ -189,6 +189,13 @@ class ProductListView(generics.ListAPIView):
                             for img in variant.images.filter(is_active=True).order_by('sort_order')
                         ] if hasattr(variant, 'images') else []
                         
+                        # Determine main image: prioritize first variant image, then variant.image field, then product main_image
+                        main_image_url = (
+                            variant_images[0]['image'] if variant_images 
+                            else variant.image if variant.image 
+                            else product.main_image
+                        )
+                        
                         expanded_results.append({
                             'id': f"{product.id}-{variant.id}",  # Unique ID for variant
                             'product_id': product.id,
@@ -197,7 +204,7 @@ class ProductListView(generics.ListAPIView):
                             'slug': product.slug,
                             'product_title': product.title,  # Original product title
                             'short_description': product.short_description,
-                            'main_image': variant.image if variant.image else product.main_image,
+                            'main_image': main_image_url,
                             'images': variant_images if variant_images else [{'image': variant.image if variant.image else product.main_image}] if variant.image or product.main_image else [],
                             'price': float(variant.price) if variant.price else float(product.price),
                             'old_price': float(variant.old_price) if variant.old_price else (float(product.old_price) if product.old_price else None),
@@ -244,7 +251,7 @@ class ProductListView(generics.ListAPIView):
                                 'old_price': float(variant.old_price) if variant.old_price else None,
                                 'stock_quantity': variant.stock_quantity,
                                 'is_in_stock': variant.is_in_stock,
-                                'image': variant.image if variant.image else product.main_image,
+                                'image': main_image_url,  # Use same main_image logic
                                 'images': variant_images
                             },
                             'variant_title': variant.title,  # For easy access in frontend

@@ -1677,11 +1677,13 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'])
     def import_excel(self, request):
-        """Import products from Excel file with two-tab format (Parent Product and Child Variation)"""
+        """Import products from Excel file with two-tab format (Parent Product and Child Variation) - OPTIMIZED"""
         from openpyxl import load_workbook
         from io import BytesIO
         from django.utils.text import slugify
         from decimal import Decimal, InvalidOperation
+        from django.db import transaction
+        from collections import defaultdict
         from products.models import (
             ProductSpecification, VariantMeasurementSpec, VariantStyleSpec,
             VariantFeature, VariantUserGuide, VariantItemDetail,
@@ -1698,7 +1700,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         
         try:
             # Load workbook
-            wb = load_workbook(filename=BytesIO(excel_file.read()), data_only=True)
+            wb = load_workbook(filename=BytesIO(excel_file.read()), data_only=True, read_only=True)
             
             # Check for required sheets
             if 'Parent Product' not in wb.sheetnames or 'Child Variation' not in wb.sheetnames:
@@ -1946,7 +1948,22 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     errors.append(f'Parent row {row_num}: {str(e)}')
                     continue
             
-            # Step 2: Read Child Variation tab and create variants
+            # ========== OPTIMIZATION: Pre-cache all lookups before processing variants ==========
+            # Cache all colors for faster lookup
+            color_cache = {color.name: color for color in Color.objects.all()}
+            
+            # Cache all subcategories by category for faster lookup
+            subcategory_cache = defaultdict(dict)
+            for subcat in Subcategory.objects.select_related('category').all():
+                subcategory_cache[subcat.category.id][subcat.name] = subcat
+            
+            # Step 2: Read Child Variation tab and prepare variants for bulk creation
+            variants_to_create = []
+            variant_images_to_create = []
+            variant_specs_to_create = defaultdict(list)  # {model_class: [instances]}
+            variant_subcategories_mapping = []  # [(variant_index, subcategory)]
+            
+            # First pass: collect all variant data
             for row_num, row in enumerate(ws_child.iter_rows(min_row=2, values_only=False), start=2):
                 # Skip empty rows
                 if not row[child_col_map['Parent SKU*'] - 1].value:
@@ -1965,11 +1982,10 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     product = parent_products[parent_sku]['product']
                     category = parent_products[parent_sku]['category']
                     
-                    # Get color
+                    # Get color from cache
                     color_name = str(row[child_col_map['Variant Color*'] - 1].value).strip()
-                    try:
-                        color = Color.objects.get(name=color_name)
-                    except Color.DoesNotExist:
+                    color = color_cache.get(color_name)
+                    if not color:
                         errors.append(f'Child row {row_num}: Color "{color_name}" not found')
                         continue
                     
@@ -2039,25 +2055,29 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         if row[child_col_map['Variant Video URL'] - 1].value:
                             variant_video_url = str(row[child_col_map['Variant Video URL'] - 1].value).strip()
                     
-                    # Create variant
-                    variant = ProductVariant.objects.create(
-                        product=product,
-                        color=color,
-                        size=size,
-                        pattern=pattern,
-                        quality=quality,
-                        title=variant_title if variant_title else None,
-                        sku=variant_sku if variant_sku else None,
-                        price=price,
-                        old_price=old_price,
-                        stock_quantity=stock_qty,
-                        is_in_stock=is_in_stock,
-                        is_active=is_active,
-                        image=variant_image if variant_image else None,
-                        video_url=variant_video_url if variant_video_url else None
-                    )
+                    # Prepare variant for bulk creation
+                    variant_data = {
+                        'product': product,
+                        'color': color,
+                        'size': size,
+                        'pattern': pattern,
+                        'quality': quality,
+                        'title': variant_title if variant_title else None,
+                        'sku': variant_sku if variant_sku else None,
+                        'price': price,
+                        'old_price': old_price,
+                        'stock_quantity': stock_qty,
+                        'is_in_stock': is_in_stock,
+                        'is_active': is_active,
+                        'image': variant_image if variant_image else None,
+                        'video_url': variant_video_url if variant_video_url else None,
+                        'row_num': row_num,
+                        'images': [],  # Store image data
+                        'subcategories': [],  # Store subcategory names
+                        'specifications': {},  # Store specifications by type
+                    }
                     
-                    # Process other images (up to 9) - auto-generate alt_text and sort_order
+                    # Collect other images (up to 9) - auto-generate alt_text and sort_order
                     image_counter = 0
                     for i in range(1, 10):
                         img_col = f'other_image{i}'
@@ -2084,30 +2104,25 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                                     if not alt_text:
                                         alt_text = f'Variant Image {image_counter}'
                                     
-                                    # Auto-generate sort_order based on order of appearance
-                                    sort_order = image_counter
-                                    
-                                    ProductVariantImage.objects.create(
-                                        variant=variant,
-                                        image=img_url,
-                                        alt_text=alt_text,
-                                        sort_order=sort_order
-                                    )
+                                    # Store image data for bulk creation later
+                                    variant_data['images'].append({
+                                        'image': img_url,
+                                        'alt_text': alt_text,
+                                        'sort_order': image_counter
+                                    })
                     
-                    # Process subcategories (boolean columns like "Subcategory-{name}")
+                    # Collect subcategories (boolean columns like "Subcategory-{name}")
                     for col_name, col_idx in child_col_map.items():
                         if col_name.startswith('Subcategory-'):
                             subcat_name = col_name.replace('Subcategory-', '').strip()
                             if row[col_idx - 1].value:
                                 val = str(row[col_idx - 1].value).strip().lower()
                                 if val == 'yes' or val == 'true' or val == '1':
-                                    try:
-                                        subcat = Subcategory.objects.get(name=subcat_name, category=category)
-                                        variant.subcategories.add(subcat)
-                                    except Subcategory.DoesNotExist:
-                                        pass
+                                    subcat = subcategory_cache.get(category.id, {}).get(subcat_name)
+                                    if subcat:
+                                        variant_data['subcategories'].append(subcat)
                     
-                    # Process specifications
+                    # Collect specifications
                     spec_sections = {
                         'Specification:': ('specifications', ProductSpecification),
                         'Measurement Specification:': ('measurement_specs', VariantMeasurementSpec),
@@ -2117,6 +2132,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         'Item Detail:': ('item_details', VariantItemDetail),
                     }
                     
+                    variant_data['specifications'] = {}
                     for col_name, col_idx in child_col_map.items():
                         for prefix, (section, model_class) in spec_sections.items():
                             if col_name.startswith(prefix):
@@ -2126,18 +2142,87 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                                     spec_value = str(row[col_idx - 1].value).strip()
                                 
                                 if spec_value:
-                                    model_class.objects.create(
-                                        variant=variant,
-                                        name=spec_name,
-                                        value=spec_value,
-                                        sort_order=0
-                                    )
+                                    if section not in variant_data['specifications']:
+                                        variant_data['specifications'][section] = []
+                                    variant_data['specifications'][section].append({
+                                        'model_class': model_class,
+                                        'name': spec_name,
+                                        'value': spec_value
+                                    })
                     
-                    variants_created += 1
+                    # Add variant data to list for bulk creation
+                    variants_to_create.append(variant_data)
                     
                 except Exception as e:
                     errors.append(f'Child row {row_num}: {str(e)}')
                     continue
+            
+            # ========== BULK CREATE ALL VARIANTS ==========
+            # Use transaction to ensure atomicity
+            with transaction.atomic():
+                # Bulk create all variants
+                variant_instances = []
+                for vdata in variants_to_create:
+                    variant_instances.append(ProductVariant(
+                        product=vdata['product'],
+                        color=vdata['color'],
+                        size=vdata['size'],
+                        pattern=vdata['pattern'],
+                        quality=vdata['quality'],
+                        title=vdata['title'],
+                        sku=vdata['sku'],
+                        price=vdata['price'],
+                        old_price=vdata['old_price'],
+                        stock_quantity=vdata['stock_quantity'],
+                        is_in_stock=vdata['is_in_stock'],
+                        is_active=vdata['is_active'],
+                        image=vdata['image'],
+                        video_url=vdata['video_url']
+                    ))
+                
+                # Bulk create variants
+                created_variants = ProductVariant.objects.bulk_create(variant_instances, batch_size=500)
+                variants_created = len(created_variants)
+                
+                # Now bulk create related objects
+                all_variant_images = []
+                all_specs = defaultdict(list)
+                
+                for idx, variant in enumerate(created_variants):
+                    vdata = variants_to_create[idx]
+                    
+                    # Collect variant images
+                    for img_data in vdata['images']:
+                        all_variant_images.append(ProductVariantImage(
+                            variant=variant,
+                            image=img_data['image'],
+                            alt_text=img_data['alt_text'],
+                            sort_order=img_data['sort_order']
+                        ))
+                    
+                    # Set subcategories (ManyToMany - can't bulk, but use set() which is optimized)
+                    if vdata['subcategories']:
+                        variant.subcategories.set(vdata['subcategories'])
+                    
+                    # Collect specifications by type
+                    for section, spec_list in vdata['specifications'].items():
+                        for spec_data in spec_list:
+                            model_class = spec_data['model_class']
+                            all_specs[model_class].append(model_class(
+                                variant=variant,
+                                name=spec_data['name'],
+                                value=spec_data['value'],
+                                sort_order=0
+                            ))
+                
+                # Bulk create variant images
+                if all_variant_images:
+                    ProductVariantImage.objects.bulk_create(all_variant_images, batch_size=500)
+                
+                # Bulk create specifications
+                for model_class, instances in all_specs.items():
+                    if instances:
+                        model_class.objects.bulk_create(instances, batch_size=500)
             
             # Log action
             create_admin_log(
@@ -2154,18 +2239,22 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
             
             return Response({
                 'success': True,
-                'message': f'Import completed: {products_created} products and {variants_created} variants created',
+                'message': f'✅ Import completed successfully! Created {products_created} products with {variants_created} variants.',
                 'products_created': products_created,
                 'variants_created': variants_created,
-                'errors': errors[:50]  # Limit to first 50 errors
+                'errors_count': len(errors),
+                'errors': errors[:100] if errors else [],  # Show up to 100 errors
+                'performance_note': 'Used optimized bulk operations for faster processing'
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
             import traceback
-            return Response(
-                {'error': f'Failed to import Excel: {str(e)}', 'traceback': traceback.format_exc()},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            error_details = {
+                'error': f'Failed to import Excel: {str(e)}',
+                'type': type(e).__name__,
+                'traceback': traceback.format_exc()
+            }
+            return Response(error_details, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ==================== Order Management Views ====================
