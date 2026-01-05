@@ -137,6 +137,27 @@ class ProductListView(generics.ListAPIView):
                     # If not found, use the param as-is (might be a name)
                     subcategory_name = subcategory_param.replace('-', ' ')
             
+            # Get price range filters if present
+            min_price = request.query_params.get('min_price')
+            max_price = request.query_params.get('max_price')
+            min_price_float = float(min_price) if min_price else None
+            max_price_float = float(max_price) if max_price else None
+            
+            # Get color filter if present
+            color_param = request.query_params.get('color')
+            selected_colors = []
+            if color_param:
+                # Handle comma-separated color names
+                selected_colors = [c.strip() for c in color_param.split(',') if c.strip()]
+            
+            # Get discount filter if present
+            min_discount_param = request.query_params.get('min_discount')
+            min_discount_float = float(min_discount_param) if min_discount_param else None
+            
+            # Get rating filter if present
+            min_rating_param = request.query_params.get('min_rating')
+            min_rating_float = float(min_rating_param) if min_rating_param else None
+            
             # Expand variants: create a list where each variant is a separate item
             expanded_results = []
             seen_variant_ids = set()  # Track variant IDs to prevent duplicates
@@ -150,6 +171,55 @@ class ProductListView(generics.ListAPIView):
                 if variants.exists():
                     # If product has variants, add each variant as a separate item
                     for variant in variants:
+                        # Filter by color if specified
+                        if selected_colors:
+                            variant_color_name = variant.color.name if variant.color else ''
+                            # Check if variant color matches any selected color (case-insensitive)
+                            color_matches = any(
+                                variant_color_name.lower() == selected_color.lower() 
+                                for selected_color in selected_colors
+                            )
+                            if not color_matches:
+                                continue
+                        
+                        # Filter by price range if specified
+                        variant_price = float(variant.price) if variant.price else 0
+                        if min_price_float is not None and variant_price < min_price_float:
+                            continue
+                        if max_price_float is not None and variant_price > max_price_float:
+                            continue
+                        
+                        # Filter by discount percentage if specified
+                        if min_discount_float is not None:
+                            # Calculate discount percentage for this variant
+                            variant_discount = 0
+                            # First check if variant has discount_percentage field set
+                            if variant.discount_percentage:
+                                variant_discount = float(variant.discount_percentage)
+                            # Otherwise calculate from old_price and price
+                            elif variant.old_price and variant.price and float(variant.old_price) > 0:
+                                variant_discount = ((float(variant.old_price) - float(variant.price)) / float(variant.old_price)) * 100
+                            
+                            # Round discount to avoid floating point comparison issues
+                            variant_discount = round(variant_discount, 2)
+                            
+                            # Only include variants with discount >= min_discount
+                            # Use >= comparison to include variants that meet or exceed the threshold
+                            if variant_discount < min_discount_float:
+                                continue
+                        
+                        # Filter by rating if specified
+                        if min_rating_float is not None:
+                            # Get average rating for the product
+                            from django.db.models import Avg
+                            avg_rating = product.reviews.filter(is_approved=True).aggregate(
+                                avg_rating=Avg('rating')
+                            )['avg_rating']
+                            product_rating = round(float(avg_rating), 1) if avg_rating else 0.0
+                            
+                            # Only include variants from products with rating >= min_rating
+                            if product_rating < min_rating_float:
+                                continue
                         # Filter variants by subcategory: if subcategory filter is set, only include variants that have this subcategory
                         # If subcategory is "Sofa Set" or similar, show all variants
                         if subcategory_name and subcategory_name.lower() not in ['sofa set', 'sofa sets', 'set']:
@@ -210,9 +280,9 @@ class ProductListView(generics.ListAPIView):
                             'price': float(variant.price) if variant.price else float(product.price),
                             'old_price': float(variant.old_price) if variant.old_price else (float(product.old_price) if product.old_price else None),
                             'is_on_sale': bool(variant.old_price and variant.price and float(variant.old_price) > float(variant.price)),
-                            'discount_percentage': variant.discount_percentage if variant.discount_percentage else (
-                                int(((float(variant.old_price) - float(variant.price)) / float(variant.old_price) * 100)) 
-                                if variant.old_price and variant.price and float(variant.old_price) > float(variant.price) 
+                            'discount_percentage': int(variant.discount_percentage) if variant.discount_percentage else (
+                                int(round(((float(variant.old_price) - float(variant.price)) / float(variant.old_price) * 100), 0)) 
+                                if variant.old_price and variant.price and float(variant.old_price) > 0 and float(variant.old_price) > float(variant.price) 
                                 else 0
                             ),
                             'average_rating': self._get_average_rating(product),

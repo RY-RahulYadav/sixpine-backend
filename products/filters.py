@@ -10,15 +10,15 @@ class ProductFilter(django_filters.FilterSet):
     category = django_filters.CharFilter(field_name='category__slug', lookup_expr='iexact')
     subcategory = django_filters.CharFilter(method='filter_by_subcategory')
     
-    # Price range filters - now filter by variant prices
-    min_price = django_filters.NumberFilter(field_name='variants__price', lookup_expr='gte')
-    max_price = django_filters.NumberFilter(field_name='variants__price', lookup_expr='lte')
+    # Price range filters - filter products that have at least one variant in the price range
+    min_price = django_filters.NumberFilter(method='filter_by_min_price')
+    max_price = django_filters.NumberFilter(method='filter_by_max_price')
     
     # Color filter
     color = django_filters.CharFilter(method='filter_by_color')
     
     # Material filter
-    material = django_filters.CharFilter(field_name='material__name', lookup_expr='icontains')
+    material = django_filters.CharFilter(method='filter_by_material')
     
     # Rating filter
     min_rating = django_filters.NumberFilter(field_name='average_rating', lookup_expr='gte')
@@ -52,10 +52,50 @@ class ProductFilter(django_filters.FilterSet):
                 return queryset.filter(vendor_id=value)
         return queryset
     
+    def filter_by_min_price(self, queryset, name, value):
+        """Filter products that have at least one variant with price >= min_price"""
+        if value is not None:
+            return queryset.filter(
+                variants__price__gte=value,
+                variants__is_active=True
+            ).distinct()
+        return queryset
+    
+    def filter_by_max_price(self, queryset, name, value):
+        """Filter products that have at least one variant with price <= max_price"""
+        if value is not None:
+            return queryset.filter(
+                variants__price__lte=value,
+                variants__is_active=True
+            ).distinct()
+        return queryset
+    
     def filter_by_color(self, queryset, name, value):
-        """Filter products by color through variants"""
+        """Filter products by color through variants - supports comma-separated colors"""
         if value:
-            return queryset.filter(variants__color__name__icontains=value, variants__is_active=True).distinct()
+            # Handle comma-separated color names
+            color_names = [c.strip() for c in value.split(',') if c.strip()]
+            if color_names:
+                # Use Q objects to match any of the colors
+                from django.db.models import Q
+                color_query = Q()
+                for color_name in color_names:
+                    color_query |= Q(variants__color__name__iexact=color_name, variants__is_active=True)
+                return queryset.filter(color_query).distinct()
+        return queryset
+    
+    def filter_by_material(self, queryset, name, value):
+        """Filter products by material - supports comma-separated materials"""
+        if value:
+            # Handle comma-separated material names
+            material_names = [m.strip() for m in value.split(',') if m.strip()]
+            if material_names:
+                # Use Q objects to match any of the materials
+                from django.db.models import Q
+                material_query = Q()
+                for material_name in material_names:
+                    material_query |= Q(material__name__iexact=material_name)
+                return queryset.filter(material_query).distinct()
         return queryset
     
     def filter_by_subcategory(self, queryset, name, value):
@@ -105,17 +145,35 @@ class ProductFilter(django_filters.FilterSet):
         return queryset
     
     def filter_by_discount(self, queryset, name, value):
-        """Filter products by discount percentage (calculated from variant prices)"""
+        """Filter products that have at least one variant with discount >= value
+        
+        This is a BROAD filter at product level - keeps products that potentially have
+        qualifying variants. The precise variant-level filtering happens during variant
+        expansion in the view to show only variants meeting the threshold.
+        
+        We check:
+        1. Variants with stored discount_percentage >= value
+        2. Variants with old_price > price (indicating potential discount)
+        
+        The view then does exact calculations to show only qualifying variants.
+        """
         if value:
-            # Filter products that have variants with discount >= value
-            # Discount = ((old_price - price) / old_price) * 100
+            from django.db.models import Q
+            
+            # Keep products that have variants with stored discount_percentage >= threshold
+            # OR variants that have old_price/price set (might have sufficient discount)
             return queryset.filter(
-                variants__old_price__isnull=False,
-                variants__price__isnull=False,
-                variants__is_active=True
-            ).annotate(
-                discount_percent=((F('variants__old_price') - F('variants__price')) / F('variants__old_price')) * 100
-            ).filter(discount_percent__gte=value).distinct()
+                Q(
+                    variants__discount_percentage__gte=value,
+                    variants__is_active=True
+                ) |
+                Q(
+                    variants__old_price__isnull=False,
+                    variants__price__isnull=False,
+                    variants__old_price__gt=F('variants__price'),
+                    variants__is_active=True
+                )
+            ).distinct()
         return queryset
 
 
