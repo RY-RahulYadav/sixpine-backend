@@ -316,6 +316,7 @@ def resend_otp_view(request):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({
+            
             'success': True,
             'message': f'OTP resent successfully to your {otp_method}',
         }, status=status.HTTP_200_OK)
