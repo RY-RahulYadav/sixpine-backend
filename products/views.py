@@ -1387,6 +1387,35 @@ def get_footer_settings(request):
     return Response(settings_map)
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_theme_colors(request):
+    """Get theme colors for public display (no authentication required)"""
+    from admin_api.models import GlobalSettings
+    
+    # Theme color keys
+    theme_keys = [
+        'header_bg_color', 'header_text_color',
+        'subnav_bg_color', 'subnav_text_color',
+        'category_tabs_bg_color', 'category_tabs_text_color',
+        'footer_bg_color', 'footer_text_color',
+        'buy_button_bg_color', 'buy_button_text_color',
+        'cart_icon_color', 'wishlist_icon_color', 'wishlist_icon_inactive_color',
+        'logo_url'
+    ]
+    
+    settings_map = {}
+    for key in theme_keys:
+        try:
+            setting = GlobalSettings.objects.get(key=key)
+            settings_map[key] = setting.value
+        except GlobalSettings.DoesNotExist:
+            # Return empty string for missing settings (frontend will use defaults)
+            settings_map[key] = ''
+    
+    return Response(settings_map)
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def clear_all_user_data(request):

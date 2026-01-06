@@ -54,4 +54,7 @@ urlpatterns = [
     
     # Footer settings (public)
     path('footer-settings/', views.get_footer_settings, name='footer-settings'),
+    
+    # Theme colors (public)
+    path('theme-colors/', views.get_theme_colors, name='theme-colors'),
 ]
