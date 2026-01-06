@@ -1132,12 +1132,28 @@ class SellerMediaViewSet(viewsets.ModelViewSet):
         try:
             import cloudinary.uploader
             
-            # Upload to Cloudinary with vendor-specific folder
+            # Prepare transformations with watermark and WebP format
+            transformations = [
+                {
+                    'fetch_format': 'webp',
+                    'quality': 'auto',
+                    'overlay': 'watermarks:sixpine_watermark',
+                    'opacity': 25,  # Lower opacity (25%) so main image is clearly visible, watermark subtle
+                    'angle': -45,
+                    'flags': 'tiled',
+                    'width': 600,
+                    'height': 600,
+                    'gravity': 'center'
+                }
+            ]
+            
+            # Upload to Cloudinary with vendor-specific folder and transformations
             folder_name = f'seller_media/{vendor.id}'
             upload_result = cloudinary.uploader.upload(
                 image_file,
                 folder=folder_name,
-                resource_type='image'
+                resource_type='image',
+                transformation=transformations
             )
             
             # Create Media record

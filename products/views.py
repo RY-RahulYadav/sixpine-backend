@@ -594,11 +594,32 @@ class ProductReviewListView(generics.ListCreateAPIView):
                         elif file_type.startswith('video/'):
                             resource_type = 'video'
                         
+                        # Prepare transformations for images only
+                        upload_params = {
+                            'folder': 'review_attachments',
+                            'resource_type': resource_type
+                        }
+                        
+                        # Add watermark and WebP format for images
+                        if resource_type == 'image':
+                            upload_params['transformation'] = [
+                                {
+                                    'fetch_format': 'webp',
+                                    'quality': 'auto',
+                                    'overlay': 'watermarks:sixpine_watermark',
+                                    'opacity': 25,  # Lower opacity (25%) so main image is clearly visible, watermark subtle
+                                    'angle': -45,
+                                    'flags': 'tiled',
+                                    'width': 600,
+                                    'height': 600,
+                                    'gravity': 'center'
+                                }
+                            ]
+                        
                         # Upload to Cloudinary
                         upload_result = cloudinary.uploader.upload(
                             file,
-                            folder='review_attachments',
-                            resource_type=resource_type
+                            **upload_params
                         )
                         
                         attachments.append({

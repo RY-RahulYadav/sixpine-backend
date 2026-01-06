@@ -3413,11 +3413,38 @@ class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         try:
             import cloudinary.uploader
             
-            # Upload to Cloudinary
+            # Prepare transformations for images only
+            transformations = []
+            if resource_type == 'image':
+                # Force WebP format and add tiled watermark with lower opacity
+                # Lower opacity ensures main image is clearly visible first, watermark appears subtle behind
+                transformations = [
+                    {
+                        'fetch_format': 'webp',
+                        'quality': 'auto',
+                        'overlay': 'watermarks:sixpine_watermark',
+                        'opacity': 25,  # Lower opacity (25%) so main image is clearly visible, watermark subtle
+                        'angle': -45,
+                        'flags': 'tiled',
+                        'width': 600,
+                        'height': 600,
+                        'gravity': 'center'
+                    }
+                ]
+            
+            # Upload to Cloudinary with transformations
+            upload_params = {
+                'folder': 'admin_media',
+                'resource_type': resource_type
+            }
+            
+            # Add transformations only for images
+            if transformations:
+                upload_params['transformation'] = transformations
+            
             upload_result = cloudinary.uploader.upload(
                 media_file,
-                folder='admin_media',
-                resource_type=resource_type
+                **upload_params
             )
             
             # Create Media record
