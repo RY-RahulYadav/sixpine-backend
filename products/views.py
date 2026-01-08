@@ -607,7 +607,7 @@ class ProductReviewListView(generics.ListCreateAPIView):
                                     'fetch_format': 'webp',
                                     'quality': 'auto',
                                     'overlay': 'watermarks:sixpine_watermark',
-                                    'opacity': 25,  # Lower opacity (25%) so main image is clearly visible, watermark subtle
+                                    'opacity': 70,  # Higher opacity (70%) for more visible watermark protection
                                     'angle': -45,
                                     'flags': 'tiled',
                                     'width': 600,
