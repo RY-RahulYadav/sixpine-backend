@@ -27,7 +27,14 @@ def upload_new_watermark():
     """Upload new Sixpine.in watermark to Cloudinary"""
     # Try multiple possible locations for the watermark
     possible_paths = [
-        # New watermark location
+        # Primary location - server/media/watermarks (production-ready)
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'media',
+            'watermarks',
+            'sixpine_watermark.png'
+        ),
+        # Fallback: client/public/images
         os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             'client',
@@ -42,13 +49,6 @@ def upload_new_watermark():
             'public',
             'images',
             'new-watermark.png'
-        ),
-        # Share icon (if that's the new watermark)
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'client',
-            'public',
-            'share-icon.svg&quot'
         ),
     ]
     
