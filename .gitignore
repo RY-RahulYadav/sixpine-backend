@@ -58,8 +58,11 @@ staticfiles/
 static_root/
 
 # Django media files (user uploaded content)
-media/
-media_root/
+# media/
+media_root/data_exports/
+media/data_exports/
+media/products/
+
 
 # ============================================
 # Environment Variables & Secrets
