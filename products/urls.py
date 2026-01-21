@@ -49,6 +49,8 @@ urlpatterns = [
     # Wishlist
     path('wishlist/', views.wishlist_view, name='wishlist-list'),
     path('wishlist/<int:id>/', views.remove_from_wishlist, name='wishlist-remove'),
+    path('wishlist/toggle/', views.toggle_wishlist, name='wishlist-toggle'),
+    path('wishlist/product/<int:product_id>/', views.remove_from_wishlist_by_product, name='wishlist-remove-by-product'),
     
     # Clear all user data
     path('clear-all-data/', views.clear_all_user_data, name='clear-all-data'),

@@ -1494,6 +1494,73 @@ def remove_from_wishlist(request, id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def toggle_wishlist(request):
+    """Toggle wishlist item: add if not exists, remove if exists. Returns current state."""
+    try:
+        product_id = request.data.get('product_id')
+        if not product_id:
+            return Response({
+                'error': 'product_id is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            product = Product.objects.get(id=product_id, is_active=True)
+        except Product.DoesNotExist:
+            return Response({
+                'error': 'Product not found or inactive'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Try to find existing wishlist item
+        wishlist_item = Wishlist.objects.filter(user=request.user, product=product).first()
+        
+        if wishlist_item:
+            # Remove from wishlist
+            wishlist_item.delete()
+            return Response({
+                'message': 'Product removed from wishlist',
+                'is_in_wishlist': False,
+                'action': 'removed'
+            }, status=status.HTTP_200_OK)
+        else:
+            # Add to wishlist
+            wishlist_item = Wishlist.objects.create(user=request.user, product=product)
+            serializer = WishlistSerializer(wishlist_item)
+            return Response({
+                'message': 'Product added to wishlist',
+                'is_in_wishlist': True,
+                'action': 'added',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
+            
+    except Exception as e:
+        return Response({
+            'error': f'Failed to toggle wishlist: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_from_wishlist_by_product(request, product_id):
+    """Remove product from wishlist by product_id (more efficient than fetching entire wishlist)"""
+    try:
+        wishlist_item = Wishlist.objects.filter(user=request.user, product_id=product_id).first()
+        if wishlist_item:
+            wishlist_item.delete()
+            return Response({
+                'message': 'Product removed from wishlist'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': 'Product not in wishlist'
+            }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': f'Failed to remove from wishlist: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_footer_settings(request):
