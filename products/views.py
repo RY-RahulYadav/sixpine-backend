@@ -1564,3 +1564,36 @@ def clear_all_user_data(request):
         return Response({
             'error': f'Failed to clear all data: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_site_settings(request):
+    """Get site settings for public display (right-click protection, etc.)"""
+    from admin_api.models import GlobalSettings
+    
+    # Site settings keys
+    setting_keys = [
+        'right_click_protection_enabled',
+    ]
+    
+    settings_map = {}
+    for key in setting_keys:
+        try:
+            setting = GlobalSettings.objects.get(key=key)
+            # Convert string 'true'/'false' to boolean for boolean settings
+            value = setting.value
+            if value.lower() == 'true':
+                settings_map[key] = True
+            elif value.lower() == 'false':
+                settings_map[key] = False
+            else:
+                settings_map[key] = value
+        except GlobalSettings.DoesNotExist:
+            # Default values for settings
+            if key == 'right_click_protection_enabled':
+                settings_map[key] = True  # Default to enabled
+            else:
+                settings_map[key] = ''
+    
+    return Response(settings_map)

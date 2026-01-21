@@ -58,4 +58,7 @@ urlpatterns = [
     
     # Theme colors (public)
     path('theme-colors/', views.get_theme_colors, name='theme-colors'),
+    
+    # Site settings (public - right click protection, etc.)
+    path('site-settings/', views.get_site_settings, name='site-settings'),
 ]
