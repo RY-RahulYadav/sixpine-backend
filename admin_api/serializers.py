@@ -6,7 +6,8 @@ from products.models import (
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature, 
     ProductAboutItem, ProductOffer, Discount, ProductRecommendation, Coupon, ProductReview,
     VariantMeasurementSpec, VariantStyleSpec, VariantFeature as VariantFeatureModel, 
-    VariantUserGuide, VariantItemDetail, CategorySpecificationTemplate
+    VariantUserGuide, VariantItemDetail, CategorySpecificationTemplate,
+    NavbarCategory, NavbarSubcategory
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from accounts.models import ContactQuery, BulkOrder, DataRequest
@@ -416,6 +417,41 @@ class AdminProductRecommendationSerializer(serializers.ModelSerializer):
         return data
 
 
+class AdminProductReviewSerializer(serializers.ModelSerializer):
+    """Serializer for product reviews in admin panel"""
+    user_name = serializers.SerializerMethodField()
+    reviewer_name = serializers.CharField(required=False, allow_blank=True)  # Make it writable for admin
+    user_email = serializers.CharField(source='user.email', read_only=True, allow_null=True)
+    product_title = serializers.CharField(source='product.title', read_only=True)
+    product_slug = serializers.CharField(source='product.slug', read_only=True)
+    vendor_name = serializers.SerializerMethodField()
+    attachments = serializers.JSONField(required=False, allow_null=True)
+    user = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)  # Make user read-only and optional
+    
+    class Meta:
+        model = ProductReview
+        fields = [
+            'id', 'product', 'product_title', 'product_slug', 'user', 'user_name', 'reviewer_name',
+            'user_email', 'rating', 'title', 'comment', 'attachments', 'is_verified_purchase', 
+            'is_approved', 'created_at', 'updated_at', 'vendor_name'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_user_name(self, obj):
+        # Prioritize reviewer_name (custom name entered by user or admin)
+        if obj.reviewer_name:
+            return obj.reviewer_name
+        # Fall back to user account name if no reviewer_name
+        if obj.user:
+            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+        return 'Anonymous'
+    
+    def get_vendor_name(self, obj):
+        if obj.product and obj.product.vendor:
+            return obj.product.vendor.business_name or obj.product.vendor.brand_name or 'N/A'
+        return 'N/A'
+
+
 class AdminProductListSerializer(serializers.ModelSerializer):
     category = serializers.StringRelatedField(read_only=True)
     subcategory = serializers.StringRelatedField(read_only=True)
@@ -436,13 +472,18 @@ class AdminProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'title', 'slug', 'sku', 'main_image', 'category', 'subcategory', 'price', 'old_price',
+            'id', 'title', 'slug', 'sku', 'main_image', 'parent_main_image', 'category', 'subcategory', 'price', 'old_price',
             'is_on_sale', 'discount_percentage', 'is_featured', 'is_active',
             'variant_count', 'total_stock', 'order_count', 'variants', 'created_at', 'updated_at'
         ]
     
     def get_main_image(self, obj):
-        """Get image from first active variant"""
+        """Get main image - prioritize parent_main_image if set, otherwise use variant image"""
+        # FIRST PRIORITY: Use parent_main_image if it exists
+        if obj.parent_main_image:
+            return obj.parent_main_image
+        
+        # SECOND PRIORITY: Get from first active variant
         first_variant = obj.variants.filter(is_active=True).first()
         if first_variant and first_variant.image:
             return first_variant.image
@@ -530,6 +571,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
     about_items = AdminProductAboutItemSerializer(many=True, required=False)
     offers = AdminProductOfferSerializer(many=True, required=False)
     recommendations = AdminProductRecommendationSerializer(many=True, required=False)
+    reviews = AdminProductReviewSerializer(many=True, required=False)
     
     # Note: price and old_price are not in Product model anymore - only in variants
     # These fields are kept for backward compatibility but will be read-only
@@ -542,14 +584,14 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'title', 'slug', 'sku', 'short_description', 'long_description',
-            'main_image', 'category', 'category_id', 'subcategory', 'subcategory_id',
+            'main_image', 'parent_main_image', 'category', 'category_id', 'subcategory', 'subcategory_id',
             'subcategories', 'subcategory_ids',
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'brand', 'material', 'material_id', 'dimensions', 'weight', 'warranty',
             'assembly_required', 'estimated_delivery_days', 'screen_offer', 'style_description', 'user_guide', 'care_instructions', 'what_in_box',
             'meta_title', 'meta_description',
             'is_featured', 'is_active', 'images', 'variants',
-            'features', 'about_items', 'offers', 'recommendations', 'average_rating', 'review_count',
+            'features', 'about_items', 'offers', 'recommendations', 'reviews', 'average_rating', 'review_count',
             'created_at', 'updated_at'
         ]
     
@@ -590,6 +632,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         about_items_data = validated_data.pop('about_items', [])
         offers_data = validated_data.pop('offers', [])
         recommendations_data = validated_data.pop('recommendations', [])
+        reviews_data = validated_data.pop('reviews', [])
         
         category_id = validated_data.pop('category_id', None)
         if category_id is None or category_id == 0:
@@ -822,6 +865,28 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                         for attr, value in rec_data.items():
                             setattr(rec, attr, value)
                         rec.save()
+            
+            # Bulk create reviews (admin-added reviews don't require user)
+            if reviews_data:
+                review_objects = []
+                for review_data in reviews_data:
+                    # Admin reviews are optional - can be added without a real user
+                    review_data_copy = review_data.copy()
+                    user_name = review_data_copy.pop('user_name', None)
+                    
+                    # Store custom reviewer name in reviewer_name field
+                    if user_name:
+                        review_data_copy['reviewer_name'] = user_name
+                    
+                    review = ProductReview(
+                        product=product,
+                        user=None,  # Admin-created reviews don't need a user
+                        **review_data_copy
+                    )
+                    review_objects.append(review)
+                
+                if review_objects:
+                    ProductReview.objects.bulk_create(review_objects)
         
         return product
     
@@ -840,6 +905,7 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
         about_items_data = validated_data.pop('about_items', None)
         offers_data = validated_data.pop('offers', None)
         recommendations_data = validated_data.pop('recommendations', None)
+        reviews_data = validated_data.pop('reviews', None)
         
         category_id = validated_data.pop('category_id', None)
         subcategory_id = validated_data.pop('subcategory_id', None)
@@ -1181,6 +1247,45 @@ class AdminProductDetailSerializer(serializers.ModelSerializer):
                             setattr(rec, attr, value)
                         rec.save()
         
+        # Update reviews if provided (admin-added reviews)
+        if reviews_data is not None:
+            # Keep existing review IDs if provided, delete others
+            existing_review_ids = [r.get('id') for r in reviews_data if r.get('id')]
+            if existing_review_ids:
+                instance.reviews.exclude(id__in=existing_review_ids).delete()
+            else:
+                # If no IDs provided, delete all and recreate
+                instance.reviews.all().delete()
+            
+            for review_data in reviews_data:
+                review_id = review_data.pop('id', None)
+                user_name = review_data.pop('user_name', None)
+                
+                # Store custom reviewer name in reviewer_name field
+                if user_name:
+                    review_data['reviewer_name'] = user_name
+                
+                if review_id:
+                    try:
+                        review = ProductReview.objects.get(id=review_id, product=instance)
+                        for attr, value in review_data.items():
+                            setattr(review, attr, value)
+                        review.save()
+                    except ProductReview.DoesNotExist:
+                        # Create new review if doesn't exist
+                        ProductReview.objects.create(
+                            product=instance,
+                            user=None,  # Admin-created reviews don't require a user
+                            **review_data
+                        )
+                else:
+                    # New review without ID
+                    ProductReview.objects.create(
+                        product=instance,
+                        user=None,  # Admin-created reviews don't require a user
+                        **review_data
+                    )
+        
         return instance
 
 
@@ -1516,6 +1621,19 @@ class PaymentChargeSerializer(serializers.Serializer):
     tax_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
     razorpay_enabled = serializers.BooleanField()
     cod_enabled = serializers.BooleanField()
+    # Payment Gateway Selection
+    active_payment_gateway = serializers.ChoiceField(
+        choices=[('razorpay', 'Razorpay'), ('cashfree', 'Cashfree')],
+        default='razorpay',
+        help_text='Active payment gateway for online payments'
+    )
+    # Return Policy
+    return_window_days = serializers.IntegerField(
+        default=7,
+        min_value=1,
+        max_value=90,
+        help_text='Number of days after delivery during which customers can request returns'
+    )
 
 
 # ==================== Brand/Vendor Serializers ====================
@@ -2001,31 +2119,37 @@ class AdminPackagingFeedbackSerializer(serializers.ModelSerializer):
         return obj.name or 'Anonymous'
 
 
-# ==================== Product Review Serializers ====================
-class AdminProductReviewSerializer(serializers.ModelSerializer):
-    """Serializer for product reviews in admin panel"""
-    user_name = serializers.SerializerMethodField()
-    user_email = serializers.CharField(source='user.email', read_only=True)
-    product_title = serializers.CharField(source='product.title', read_only=True)
-    product_slug = serializers.CharField(source='product.slug', read_only=True)
-    vendor_name = serializers.SerializerMethodField()
-    attachments = serializers.JSONField(required=False, allow_null=True)
+# ==================== Navbar Categories Serializers ====================
+class NavbarSubcategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NavbarSubcategory
+        fields = ['id', 'name', 'slug', 'link', 'is_active', 'sort_order', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class NavbarCategorySerializer(serializers.ModelSerializer):
+    subcategories = NavbarSubcategorySerializer(many=True, read_only=True)
+    subcategory_count = serializers.SerializerMethodField()
     
     class Meta:
-        model = ProductReview
-        fields = [
-            'id', 'product', 'product_title', 'product_slug', 'user', 'user_name', 
-            'user_email', 'rating', 'title', 'comment', 'attachments', 'is_verified_purchase', 
-            'is_approved', 'created_at', 'updated_at', 'vendor_name'
-        ]
+        model = NavbarCategory
+        fields = ['id', 'name', 'slug', 'image', 'is_active', 'sort_order', 
+                  'subcategories', 'subcategory_count', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
-    def get_user_name(self, obj):
-        if obj.user:
-            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
-        return 'Anonymous'
-    
-    def get_vendor_name(self, obj):
-        if obj.product and obj.product.vendor:
-            return obj.product.vendor.business_name or obj.product.vendor.brand_name or 'N/A'
-        return 'N/A'
+    def get_subcategory_count(self, obj):
+        return obj.subcategories.filter(is_active=True).count()
+
+
+class NavbarCategoryCreateUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NavbarCategory
+        fields = ['id', 'name', 'slug', 'image', 'is_active', 'sort_order']
+        read_only_fields = ['id']
+
+
+class NavbarSubcategoryCreateUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NavbarSubcategory
+        fields = ['id', 'navbar_category', 'name', 'slug', 'link', 'is_active', 'sort_order']
+        read_only_fields = ['id']

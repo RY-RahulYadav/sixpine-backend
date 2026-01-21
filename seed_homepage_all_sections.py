@@ -47,11 +47,17 @@ def get_first_6_products():
             elif first_variant.discount_percentage:
                 discount = first_variant.discount_percentage
         
-        # Use variant image if available, then product main_image, otherwise use default image from list
+        # Use parent_main_image if available, then variant image, then product main_image, otherwise use default image from list
         fallback_image = default_images[idx % len(default_images)]
         product_image = fallback_image
-        if first_variant and first_variant.image:
+        
+        # PRIORITY 1: Check parent_main_image
+        if product.parent_main_image and product.parent_main_image.strip():
+            product_image = product.parent_main_image
+        # PRIORITY 2: Check variant image
+        elif first_variant and first_variant.image:
             product_image = first_variant.image
+        # PRIORITY 3: Check product main_image
         elif product.main_image and product.main_image.strip():
             product_image = product.main_image
         
@@ -71,6 +77,7 @@ def get_first_6_products():
             'subtitle': product.short_description[:50] if product.short_description else '',
             'image': product_image,  # Use 'image' for Discover & Top Rated sections
             'img': product_image,  # Also keep 'img' for banner cards
+            'parent_main_image': product.parent_main_image if product.parent_main_image else None,  # Add parent_main_image field
             'desc': (product.short_description[:100] if product.short_description else ''),
             'rating': float(product.average_rating) if product.average_rating else 4.0,
             'reviews': product.review_count or 0,
@@ -682,6 +689,59 @@ def seed_all_homepage_sections():
         }
     )
     print("✓ Seeded Furniture Info Section")
+    
+    # Seed Promotional Banner Section
+    promotional_banner_content = {
+        'isActive': True,
+        # Left Box - Sale Timer or Text
+        'useTimerMode': False,
+        # Timer Mode fields
+        'saleText': 'SALE',
+        'saleTextColor': '#d60f0f',
+        'countdownEndDate': '2026-02-15T23:59:59',
+        'timerTextColor': '#d60f0f',
+        'endsInText': 'ENDS IN',
+        'endsInColor': '#d60f0f',
+        # Text Mode fields
+        'mainHeadingText': 'New Year Sale',
+        'mainHeadingColor': '#d60f0f',
+        'subHeadingText': 'Limited Time Offer',
+        'subHeadingColor': '#374151',
+        'leftBoxBackground': '#ffffff',
+        # Middle Section - Offer
+        'showOfferSection': True,
+        'offerIconColor': '#f97316',
+        'offerText': 'Visit Your Nearest Store & Get Extra UPTO',
+        'offerTextColor': '#6b7280',
+        'discountText': '₹ 25,000 INSTANT DISCOUNT',
+        'discountTextColor': '#f97316',
+        # Right Section - Info Badges
+        'showInfoBadges': True,
+        'infoBadges': [
+            { 'icon': 'Users', 'topText': '20 Lakh+', 'bottomText': 'Customers' },
+            { 'icon': 'Package', 'topText': 'Free', 'bottomText': 'Delivery' },
+            { 'icon': 'CheckCircle', 'topText': 'Best', 'bottomText': 'Warranty*' },
+            { 'icon': 'Building2', 'topText': '15 Lakh sq. ft.', 'bottomText': 'Mfg. Unit' }
+        ],
+        'badgeIconColor': '#f97316',
+        'badgeTextColor': '#374151',
+        # Container
+        'containerBackground': '#f0f0f0',
+        'innerBoxBackground': '#ffffff',
+        # Navigate URL
+        'navigateUrl': ''
+    }
+    
+    HomePageContent.objects.update_or_create(
+        section_key='promotional-banner',
+        defaults={
+            'section_name': 'Promotional Banner',
+            'content': promotional_banner_content,
+            'is_active': True,
+            'order': 10
+        }
+    )
+    print("✓ Seeded Promotional Banner")
     
     print("\n" + "="*60)
     print("✅ All homepage sections seeded successfully!")

@@ -86,6 +86,7 @@ def generate_product_template(category_id):
         'Is Active',
         'Care Instructions',
         'What is in Box',
+        'Parent Main Image URL',
     ]
     
     # Add About Items columns (up to 10) - just description, no title
@@ -150,6 +151,7 @@ def generate_product_template(category_id):
     ws_parent.cell(row=row_num, column=col_idx, value='Yes'); col_idx += 1  # Is Active
     ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Care Instructions
     ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # What is in Box
+    ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Parent Main Image URL
     
     # About Items columns (all empty for template)
     for i in range(10):
@@ -409,6 +411,7 @@ def export_product_to_excel(product_id):
         'Is Active',
         'Care Instructions',
         'What is in Box',
+        'Parent Main Image URL',
     ]
     
     # Add About Items columns (up to 10) - just description, no title
@@ -473,6 +476,7 @@ def export_product_to_excel(product_id):
     ws_parent.cell(row=row_num, column=col_idx, value='Yes' if product.is_active else 'No'); col_idx += 1  # Is Active
     ws_parent.cell(row=row_num, column=col_idx, value=product.care_instructions or ''); col_idx += 1  # Care Instructions
     ws_parent.cell(row=row_num, column=col_idx, value=product.what_in_box or ''); col_idx += 1  # What is in Box
+    ws_parent.cell(row=row_num, column=col_idx, value=product.parent_main_image or ''); col_idx += 1  # Parent Main Image URL
     
     # About Items (up to 10)
     about_items = product.about_items.all().order_by('sort_order')[:10]

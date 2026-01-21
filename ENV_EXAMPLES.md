@@ -18,7 +18,16 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 # DB_HOST=
 # DB_PORT=
 
-# Email Configuration
+# Email Configuration - Brevo (formerly Sendinblue)
+BREVO_API_KEY=xkeysib-your-brevo-api-key-here
+BREVO_SENDER_EMAIL=noreply@sixpine.in
+BREVO_SENDER_NAME=Sixpine
+
+# Admin Notification Email - Receives order confirmations
+# For testing/development, use test email
+ADMIN_NOTIFICATION_EMAIL=ry.rahul036@gmail.com
+
+# Legacy Email Configuration (optional, not used - kept for backward compatibility)
 EMAIL_HOST_USER=your-email@gmail.com
 EMAIL_HOST_PASSWORD=your-app-password
 
@@ -30,6 +39,16 @@ GOOGLE_OAUTH2_REFRESH_TOKEN=your-refresh-token
 # Razorpay Configuration
 RAZORPAY_KEY_ID=your-razorpay-key-id
 RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+
+# Cashfree Configuration (optional)
+CASHFREE_APP_ID=your-cashfree-app-id
+CASHFREE_SECRET_KEY=your-cashfree-secret-key
+CASHFREE_ENVIRONMENT=sandbox
+
+# Cloudinary Configuration (for image storage)
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 
 # Frontend URL
 FRONTEND_URL=http://localhost:5173
@@ -62,7 +81,16 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_SSLMODE=prefer
 
-# Email Configuration
+# Email Configuration - Brevo (formerly Sendinblue)
+BREVO_API_KEY=xkeysib-your-brevo-production-api-key-here
+BREVO_SENDER_EMAIL=noreply@sixpine.in
+BREVO_SENDER_NAME=Sixpine
+
+# Admin Notification Email - Receives order confirmations
+# For production, use production admin email
+ADMIN_NOTIFICATION_EMAIL=skwoodcity@gmail.com
+
+# Legacy Email Configuration (optional, not used - kept for backward compatibility)
 EMAIL_HOST_USER=your-email@gmail.com
 EMAIL_HOST_PASSWORD=your-app-password
 
@@ -74,6 +102,16 @@ GOOGLE_OAUTH2_REFRESH_TOKEN=your-refresh-token
 # Razorpay Configuration
 RAZORPAY_KEY_ID=your-razorpay-key-id
 RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+
+# Cashfree Configuration (optional)
+CASHFREE_APP_ID=your-cashfree-app-id
+CASHFREE_SECRET_KEY=your-cashfree-secret-key
+CASHFREE_ENVIRONMENT=production
+
+# Cloudinary Configuration (for image storage)
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 
 # Frontend URL (Production)
 FRONTEND_URL=https://your-frontend-domain.com

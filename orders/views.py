@@ -9,6 +9,8 @@ from xhtml2pdf import pisa
 import razorpay
 import hmac
 import hashlib
+import json
+import requests
 from .models import Address, Order, OrderStatusHistory, ReturnRequest
 from products.models import Coupon
 from .serializers import (
@@ -34,6 +36,15 @@ if razorpay_key_id and razorpay_key_secret:
         razorpay_client = None
 else:
     razorpay_client = None
+
+# Cashfree Configuration
+CASHFREE_APP_ID = getattr(settings, 'CASHFREE_APP_ID', '').strip()
+CASHFREE_SECRET_KEY = getattr(settings, 'CASHFREE_SECRET_KEY', '').strip()
+CASHFREE_ENVIRONMENT = getattr(settings, 'CASHFREE_ENVIRONMENT', 'sandbox').strip()
+
+# Cashfree API URLs
+CASHFREE_API_URL = 'https://api.cashfree.com/pg' if CASHFREE_ENVIRONMENT == 'production' else 'https://sandbox.cashfree.com/pg'
+CASHFREE_API_VERSION = '2023-08-01'
 
 
 class AddressListCreateView(generics.ListCreateAPIView):
@@ -222,6 +233,32 @@ def cancel_order(request, order_id):
             item.variant.save()
     
     return Response({'message': 'Order cancelled successfully'})
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_razorpay_key(request):
+    """Get Razorpay key ID for the affordability widget - Public endpoint"""
+    if razorpay_key_id:
+        return Response({'key': razorpay_key_id}, status=status.HTTP_200_OK)
+    else:
+        return Response(
+            {'error': 'Razorpay is not configured'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_cashfree_app_id(request):
+    """Get Cashfree App ID for the BNPL widget - Public endpoint"""
+    if CASHFREE_APP_ID:
+        return Response({'app_id': CASHFREE_APP_ID}, status=status.HTTP_200_OK)
+    else:
+        return Response(
+            {'error': 'Cashfree is not configured'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(['POST'])
@@ -993,8 +1030,20 @@ def verify_razorpay_payment(request):
         created_by=request.user
     )
     
+    # Send order confirmation email to admin
+    try:
+        from .email_service import send_order_confirmation_to_admin
+        send_order_confirmation_to_admin(order)
+    except Exception as e:
+        # Log error but don't fail the order
+        import logging
+        logger = logging.getLogger('orders')
+        logger.error(f'Failed to send order confirmation email: {str(e)}', exc_info=True)
+    
     # Clear cart
     cart.items.all().delete()
+    
+    print(f'[RAZORPAY] ✅ Order {order.order_id} created successfully for user {request.user.email}')
     
     # Return order details
     from .serializers import OrderDetailSerializer
@@ -1102,6 +1151,16 @@ def complete_payment(request):
         notes='Payment completed successfully. Order confirmed.',
         created_by=request.user
     )
+    
+    # Send order confirmation email to admin
+    try:
+        from .email_service import send_order_confirmation_to_admin
+        send_order_confirmation_to_admin(order)
+    except Exception as e:
+        # Log error but don't fail the order
+        import logging
+        logger = logging.getLogger('orders')
+        logger.error(f'Failed to send order confirmation email: {str(e)}', exc_info=True)
     
     # Return order details
     from .serializers import OrderDetailSerializer
@@ -1247,7 +1306,8 @@ def get_payment_charges(request):
         'tax_rate': str(GlobalSettings.get_setting('tax_rate', '5.00')),
         'razorpay_enabled': get_setting_value('razorpay_enabled', True),
         'cod_enabled': get_setting_value('cod_enabled', True),
-        'coupons_enabled': get_setting_value('coupons_enabled', True)
+        'coupons_enabled': get_setting_value('coupons_enabled', True),
+        'active_payment_gateway': GlobalSettings.get_setting('active_payment_gateway', 'razorpay'),
     }
     return Response(data, status=status.HTTP_200_OK)
 
@@ -1750,3 +1810,518 @@ h1, h2, h3 {{
             {'error': f'Failed to generate quotation: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+# ==================== Cashfree Payment Gateway ====================
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def create_cashfree_order(request):
+    """Create a Cashfree order for payment"""
+    from cart.models import Cart
+    import logging
+    import uuid
+    
+    logger = logging.getLogger(__name__)
+    
+    # Check if Cashfree is the active gateway
+    active_gateway = GlobalSettings.get_setting('active_payment_gateway', 'razorpay')
+    if active_gateway != 'cashfree':
+        return Response(
+            {'error': 'Cashfree payment gateway is not active. Please use the configured payment method.'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Check if Cashfree is configured
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        return Response(
+            {'error': 'Cashfree is not configured. Please set CASHFREE_APP_ID and CASHFREE_SECRET_KEY in environment variables.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    amount = request.data.get('amount')  # Amount in rupees
+    shipping_address_id = request.data.get('shipping_address_id')
+    payment_method = request.data.get('payment_method', '')  # Get payment method (CC, NB, UPI)
+    
+    # Validate required fields
+    if amount is None or amount == '':
+        return Response(
+            {'error': 'Amount is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if shipping_address_id is None or shipping_address_id == '':
+        return Response(
+            {'error': 'Shipping address ID is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # Convert amount to float and validate
+        amount_float = float(amount)
+        if amount_float <= 0:
+            return Response(
+                {'error': 'Amount must be greater than 0'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verify address belongs to user
+        try:
+            address = Address.objects.get(id=shipping_address_id, user=request.user)
+        except Address.DoesNotExist:
+            return Response(
+                {'error': 'Invalid shipping address'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Generate unique order ID for Cashfree
+        cf_order_id = f'cf_order_{request.user.id}_{uuid.uuid4().hex[:12]}'
+        
+        # Get return URL from settings or use default
+        return_url = GlobalSettings.get_setting('cashfree_return_url', '')
+        if not return_url:
+            # Use frontend URL for return
+            return_url = request.data.get('return_url', 'https://sixpine.in/orders')
+        
+        # Map payment method to Cashfree payment_methods format
+        cashfree_payment_methods = ''
+        if payment_method:
+            payment_method_upper = payment_method.upper()
+            if payment_method_upper == 'CC':
+                cashfree_payment_methods = 'cc,dc'  # Credit and Debit cards
+            elif payment_method_upper == 'NB':
+                cashfree_payment_methods = 'nb'  # Net Banking
+            elif payment_method_upper == 'UPI':
+                cashfree_payment_methods = 'upi'  # UPI payments
+        
+        # Prepare order data for Cashfree
+        order_data = {
+            'order_id': cf_order_id,
+            'order_amount': round(amount_float, 2),
+            'order_currency': 'INR',
+            'customer_details': {
+                'customer_id': str(request.user.id),
+                'customer_name': f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email,
+                'customer_email': request.user.email,
+                'customer_phone': str(address.phone).replace('+91', '').replace(' ', '').strip() or request.user.mobile or '9999999999'
+            },
+            'order_meta': {
+                'return_url': f'{return_url}?order_id={cf_order_id}'
+            },
+            'order_note': f'Order for user {request.user.email}'
+        }
+        
+        # Add payment_methods to order_meta if specified
+        if cashfree_payment_methods:
+            order_data['order_meta']['payment_methods'] = cashfree_payment_methods
+            logger.info(f'[CASHFREE] Restricting payment methods to: {cashfree_payment_methods}')
+        
+        # Create Cashfree order via API
+        headers = {
+            'Content-Type': 'application/json',
+            'x-client-id': CASHFREE_APP_ID,
+            'x-client-secret': CASHFREE_SECRET_KEY,
+            'x-api-version': CASHFREE_API_VERSION
+        }
+        
+        logger.info(f'[CASHFREE] Creating order with data: {json.dumps(order_data)}')
+        
+        response = requests.post(
+            f'{CASHFREE_API_URL}/orders',
+            headers=headers,
+            json=order_data
+        )
+        
+        if response.status_code not in [200, 201]:
+            error_data = response.json() if response.content else {}
+            error_message = error_data.get('message', 'Failed to create Cashfree order')
+            logger.error(f'[CASHFREE] Order creation failed: {response.status_code} - {error_message}')
+            return Response(
+                {'error': f'Cashfree error: {error_message}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        cf_response = response.json()
+        logger.info(f'[CASHFREE] Order created successfully: {cf_response.get("cf_order_id")}')
+        
+        # Return data needed for frontend checkout
+        return Response({
+            'cf_order_id': cf_response.get('cf_order_id'),
+            'order_id': cf_order_id,
+            'payment_session_id': cf_response.get('payment_session_id'),
+            'order_amount': amount_float,
+            'order_currency': 'INR',
+            'environment': CASHFREE_ENVIRONMENT
+        }, status=status.HTTP_200_OK)
+        
+    except ValueError:
+        return Response(
+            {'error': 'Invalid amount format'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        logger.error(f'[CASHFREE] Exception: {str(e)}')
+        return Response(
+            {'error': f'Failed to create Cashfree order: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def verify_cashfree_payment(request):
+    """Verify Cashfree payment and create order"""
+    from cart.models import Cart
+    from decimal import Decimal
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    cf_order_id = request.data.get('cf_order_id')  # Cashfree's internal order ID
+    order_id = request.data.get('order_id')  # Our order ID we sent to Cashfree
+    shipping_address_id = request.data.get('shipping_address_id')
+    payment_method_from_request = request.data.get('payment_method', 'CASHFREE')
+    coupon_id = request.data.get('coupon_id', None)
+    
+    # Check if Cashfree is the active gateway
+    active_gateway = GlobalSettings.get_setting('active_payment_gateway', 'razorpay')
+    if active_gateway != 'cashfree':
+        return Response(
+            {'error': 'Cashfree payment gateway is not active.'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    if not order_id or not shipping_address_id:
+        return Response({'error': 'Missing required payment parameters'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if Cashfree is configured
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        return Response(
+            {'error': 'Cashfree is not configured.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # Verify payment status with Cashfree
+    try:
+        headers = {
+            'Content-Type': 'application/json',
+            'x-client-id': CASHFREE_APP_ID,
+            'x-client-secret': CASHFREE_SECRET_KEY,
+            'x-api-version': CASHFREE_API_VERSION
+        }
+        
+        # Fetch order status from Cashfree
+        response = requests.get(
+            f'{CASHFREE_API_URL}/orders/{order_id}',
+            headers=headers
+        )
+        
+        if response.status_code != 200:
+            error_data = response.json() if response.content else {}
+            error_message = error_data.get('message', 'Failed to verify payment')
+            logger.error(f'[CASHFREE] Payment verification failed: {response.status_code} - {error_message}')
+            return Response(
+                {'error': f'Payment verification failed: {error_message}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        cf_order = response.json()
+        order_status = cf_order.get('order_status', '').upper()
+        
+        logger.info(f'[CASHFREE] Order {order_id} status: {order_status}')
+        print(f'[CASHFREE] Order {order_id} status: {order_status}')
+        
+        # Check if payment is successful
+        if order_status != 'PAID':
+            # Payment not successful - create pending order
+            address = get_object_or_404(Address, id=shipping_address_id, user=request.user)
+            
+            try:
+                cart = Cart.objects.get(user=request.user)
+            except Cart.DoesNotExist:
+                return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not cart.items.exists():
+                return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Helper function to get price from cart item
+            def get_cart_item_price(cart_item):
+                if cart_item.variant and cart_item.variant.price:
+                    return cart_item.variant.price
+                first_variant = cart_item.product.variants.filter(is_active=True).first()
+                if first_variant and first_variant.price:
+                    return first_variant.price
+                raise ValueError(f'Product {cart_item.product.title} has no valid price')
+            
+            # Calculate totals
+            subtotal = Decimal('0.00')
+            for cart_item in cart.items.all():
+                try:
+                    price = get_cart_item_price(cart_item)
+                    subtotal += price * cart_item.quantity
+                except ValueError as e:
+                    return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Handle coupon if provided
+            coupon = None
+            coupon_discount = Decimal('0.00')
+            if coupon_id:
+                try:
+                    coupon = Coupon.objects.get(id=coupon_id)
+                    can_use, message = coupon.can_be_used_by_user(request.user)
+                    if can_use:
+                        if coupon.vendor:
+                            vendor_subtotal = Decimal('0.00')
+                            for cart_item in cart.items.all():
+                                if cart_item.product.vendor and cart_item.product.vendor.id == coupon.vendor.id:
+                                    try:
+                                        price = get_cart_item_price(cart_item)
+                                        vendor_subtotal += price * cart_item.quantity
+                                    except ValueError:
+                                        continue
+                            discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
+                        else:
+                            discount_amount, _ = coupon.calculate_discount(subtotal)
+                        coupon_discount = Decimal(str(discount_amount))
+                except Coupon.DoesNotExist:
+                    pass
+            
+            # Map payment method for platform fee calculation
+            payment_method_for_calc = payment_method_from_request.upper() if payment_method_from_request else 'CASHFREE'
+            
+            # Calculate totals
+            subtotal_after_discount = subtotal - coupon_discount
+            totals = calculate_order_totals(subtotal_after_discount, payment_method_for_calc)
+            
+            # Create pending order
+            order = Order.objects.create(
+                user=request.user,
+                shipping_address=address,
+                subtotal=subtotal,
+                coupon=coupon,
+                coupon_discount=coupon_discount,
+                shipping_cost=totals['shipping_cost'],
+                platform_fee=totals['platform_fee'],
+                tax_amount=totals['tax_amount'],
+                total_amount=totals['total_amount'],
+                payment_method=payment_method_for_calc,
+                cashfree_order_id=order_id,
+                payment_status='pending',
+                status='pending'
+            )
+            
+            # Create order items
+            for cart_item in cart.items.all():
+                from orders.models import OrderItem
+                try:
+                    price = get_cart_item_price(cart_item)
+                    variant = cart_item.variant
+                    if not variant:
+                        variant = cart_item.product.variants.filter(is_active=True).first()
+                except ValueError as e:
+                    return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                
+                OrderItem.objects.create(
+                    order=order,
+                    product=cart_item.product,
+                    variant=variant,
+                    quantity=cart_item.quantity,
+                    price=price,
+                    variant_color=variant.color.name if variant else '',
+                    variant_size=variant.size if variant else '',
+                    variant_pattern=variant.pattern if variant else ''
+                )
+            
+            # Create status history
+            OrderStatusHistory.objects.create(
+                order=order,
+                status='pending',
+                notes=f'Order created but payment not completed. Cashfree status: {order_status}',
+                created_by=request.user
+            )
+            
+            # Clear cart
+            cart.items.all().delete()
+            
+            return Response({
+                'error': f'Payment not completed. Status: {order_status}. Order created with pending payment status.',
+                'order_id': str(order.order_id)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Payment successful - create order
+        address = get_object_or_404(Address, id=shipping_address_id, user=request.user)
+        
+        try:
+            cart = Cart.objects.get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not cart.items.exists():
+            return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Helper function to get price from cart item
+        def get_cart_item_price(cart_item):
+            if cart_item.variant and cart_item.variant.price:
+                return cart_item.variant.price
+            first_variant = cart_item.product.variants.filter(is_active=True).first()
+            if first_variant and first_variant.price:
+                return first_variant.price
+            raise ValueError(f'Product {cart_item.product.title} has no valid price')
+        
+        # Calculate totals
+        subtotal = Decimal('0.00')
+        for cart_item in cart.items.all():
+            try:
+                price = get_cart_item_price(cart_item)
+                subtotal += price * cart_item.quantity
+            except ValueError as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Map payment method
+        payment_method_for_calc = payment_method_from_request.upper() if payment_method_from_request else 'CASHFREE'
+        
+        # Calculate initial totals
+        initial_totals = calculate_order_totals(subtotal, payment_method_for_calc)
+        
+        # Handle coupon if provided
+        coupon = None
+        coupon_discount = Decimal('0.00')
+        if coupon_id:
+            try:
+                coupon = Coupon.objects.get(id=coupon_id)
+                can_use, message = coupon.can_be_used_by_user(request.user)
+                if can_use:
+                    if coupon.coupon_type == 'seller':
+                        discount_amount, _ = coupon.calculate_discount(
+                            subtotal,
+                            platform_fee=initial_totals['platform_fee'],
+                            tax_amount=initial_totals['tax_amount']
+                        )
+                        coupon_discount = Decimal(str(discount_amount))
+                        totals = {
+                            'subtotal': subtotal,
+                            'platform_fee': initial_totals['platform_fee'],
+                            'tax_amount': initial_totals['tax_amount'],
+                            'shipping_cost': initial_totals['shipping_cost'],
+                            'total_amount': subtotal + initial_totals['platform_fee'] + initial_totals['tax_amount'] + initial_totals['shipping_cost'] - coupon_discount
+                        }
+                    else:
+                        if coupon.vendor:
+                            vendor_subtotal = Decimal('0.00')
+                            for cart_item in cart.items.all():
+                                if cart_item.product.vendor and cart_item.product.vendor.id == coupon.vendor.id:
+                                    try:
+                                        price = get_cart_item_price(cart_item)
+                                        vendor_subtotal += price * cart_item.quantity
+                                    except ValueError:
+                                        continue
+                            discount_amount, _ = coupon.calculate_discount(subtotal, vendor_subtotal)
+                        else:
+                            discount_amount, _ = coupon.calculate_discount(subtotal)
+                        coupon_discount = Decimal(str(discount_amount))
+                        subtotal_after_discount = subtotal - coupon_discount
+                        totals = calculate_order_totals(subtotal_after_discount, payment_method_for_calc)
+                    
+                    # Increment coupon usage
+                    coupon.increment_usage(request.user)
+                else:
+                    totals = initial_totals
+            except Coupon.DoesNotExist:
+                totals = initial_totals
+        else:
+            totals = initial_totals
+        
+        # Create order
+        order = Order.objects.create(
+            user=request.user,
+            shipping_address=address,
+            subtotal=subtotal,
+            coupon=coupon,
+            coupon_discount=coupon_discount,
+            shipping_cost=totals.get('shipping_cost', Decimal('0.00')),
+            platform_fee=totals.get('platform_fee', Decimal('0.00')),
+            tax_amount=totals.get('tax_amount', Decimal('0.00')),
+            total_amount=totals.get('total_amount', subtotal),
+            payment_method=payment_method_for_calc,
+            cashfree_order_id=order_id,
+            payment_status='paid',
+            status='confirmed'
+        )
+        
+        # Create order items and reduce stock
+        for cart_item in cart.items.all():
+            from orders.models import OrderItem
+            
+            try:
+                price = get_cart_item_price(cart_item)
+                variant = cart_item.variant
+                if not variant:
+                    variant = cart_item.product.variants.filter(is_active=True).first()
+            except ValueError as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+            OrderItem.objects.create(
+                order=order,
+                product=cart_item.product,
+                variant=variant,
+                quantity=cart_item.quantity,
+                price=price,
+                variant_color=variant.color.name if variant else '',
+                variant_size=variant.size if variant else '',
+                variant_pattern=variant.pattern if variant else ''
+            )
+            
+            # Reduce stock
+            if variant:
+                variant.stock_quantity = max(0, variant.stock_quantity - cart_item.quantity)
+                variant.is_in_stock = variant.stock_quantity > 0
+                variant.save()
+        
+        # Create status history
+        OrderStatusHistory.objects.create(
+            order=order,
+            status='confirmed',
+            notes='Order confirmed - Payment received via Cashfree',
+            created_by=request.user
+        )
+        
+        # Send order confirmation email to admin
+        try:
+            from .email_service import send_order_confirmation_to_admin
+            send_order_confirmation_to_admin(order)
+        except Exception as e:
+            # Log error but don't fail the order
+            logger.error(f'Failed to send order confirmation email: {str(e)}', exc_info=True)
+        
+        # Clear cart
+        cart.items.all().delete()
+        
+        logger.info(f'[CASHFREE] Order {order.order_id} created successfully for user {request.user.email}')
+        print(f'[CASHFREE] ✅ Order {order.order_id} created successfully for user {request.user.email}')
+        
+        return Response({
+            'message': 'Payment verified successfully',
+            'order': OrderDetailSerializer(order, context={'request': request}).data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f'[CASHFREE] Verification exception: {str(e)}')
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_active_payment_gateway(request):
+    """Get the currently active payment gateway"""
+    active_gateway = GlobalSettings.get_setting('active_payment_gateway', 'razorpay')
+    
+    # Check if the active gateway is properly configured
+    gateway_config = {
+        'active_gateway': active_gateway,
+        'razorpay_configured': bool(razorpay_key_id and razorpay_key_secret),
+        'cashfree_configured': bool(CASHFREE_APP_ID and CASHFREE_SECRET_KEY),
+        'cashfree_environment': CASHFREE_ENVIRONMENT
+    }
+    
+    return Response(gateway_config, status=status.HTTP_200_OK)

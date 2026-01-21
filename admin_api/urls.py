@@ -9,7 +9,8 @@ from .views import (
     AdminContactQueryViewSet, AdminBulkOrderViewSet, AdminLogViewSet,
     AdminHomePageContentViewSet, AdminBulkOrderPageContentViewSet, AdminFAQPageContentViewSet, AdminAdvertisementViewSet, AdminDataRequestViewSet,
     AdminBrandViewSet, AdminMediaViewSet, AdminPackagingFeedbackViewSet,
-    admin_review_list, admin_review_approve, admin_review_reject, admin_review_delete, admin_review_delete_all
+    admin_review_list, admin_review_approve, admin_review_reject, admin_review_delete, admin_review_delete_all,
+    NavbarCategoryViewSet, NavbarSubcategoryViewSet
 )
 from .communication import get_customers_list, get_vendors_list, admin_send_email
 from .auth import admin_login_view
@@ -36,6 +37,8 @@ router.register(r'data-requests', AdminDataRequestViewSet, basename='admin-data-
 router.register(r'brands', AdminBrandViewSet, basename='admin-brands')
 router.register(r'media', AdminMediaViewSet, basename='admin-media')
 router.register(r'packaging-feedback', AdminPackagingFeedbackViewSet, basename='admin-packaging-feedback')
+router.register(r'navbar-categories', NavbarCategoryViewSet, basename='admin-navbar-categories')
+router.register(r'navbar-subcategories', NavbarSubcategoryViewSet, basename='admin-navbar-subcategories')
 
 urlpatterns = [
     path('auth/login/', admin_login_view, name='admin-login'),

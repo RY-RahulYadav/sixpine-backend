@@ -23,7 +23,9 @@ from .serializers import (
     AdminCouponSerializer, HomePageContentSerializer, BulkOrderPageContentSerializer, FAQPageContentSerializer, AdvertisementSerializer,
     AdminDataRequestSerializer, AdminBrandSerializer, AdminBrandDetailSerializer,
     SellerOrderListSerializer, AdminMediaSerializer, AdminPackagingFeedbackSerializer,
-    CategorySpecificationTemplateSerializer
+    CategorySpecificationTemplateSerializer,
+    NavbarCategorySerializer, NavbarSubcategorySerializer,
+    NavbarCategoryCreateUpdateSerializer, NavbarSubcategoryCreateUpdateSerializer
 )
 from accounts.models import User, ContactQuery, BulkOrder, DataRequest, Vendor, Media, PackagingFeedback
 from accounts.data_export_utils import export_orders_to_excel, export_addresses_to_excel, export_payment_options_to_excel
@@ -32,7 +34,8 @@ from products.models import (
     Category, Subcategory, Color, Material, Product, ProductImage,
     ProductVariant, ProductVariantImage, ProductSpecification, ProductFeature,
     CategorySpecificationTemplate,
-    ProductOffer, Discount, Coupon, ProductReview
+    ProductOffer, Discount, Coupon, ProductReview,
+    NavbarCategory, NavbarSubcategory
 )
 from orders.models import Order, OrderItem, OrderStatusHistory, OrderNote
 from .models import AdminLog
@@ -1822,6 +1825,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                     
                     care_instructions = str(row[parent_col_map.get('Care Instructions', 0) - 1].value).strip() if parent_col_map.get('Care Instructions') and row[parent_col_map.get('Care Instructions', 0) - 1].value else ''
                     what_in_box = str(row[parent_col_map.get('What is in Box', 0) - 1].value).strip() if parent_col_map.get('What is in Box') and row[parent_col_map.get('What is in Box', 0) - 1].value else ''
+                    parent_main_image = str(row[parent_col_map.get('Parent Main Image URL', 0) - 1].value).strip() if parent_col_map.get('Parent Main Image URL') and row[parent_col_map.get('Parent Main Image URL', 0) - 1].value else ''
                     
                     meta_title = str(row[parent_col_map.get('Meta Title', 0) - 1].value).strip() if parent_col_map.get('Meta Title') and row[parent_col_map.get('Meta Title', 0) - 1].value else ''
                     meta_desc = str(row[parent_col_map.get('Meta Description', 0) - 1].value).strip() if parent_col_map.get('Meta Description') and row[parent_col_map.get('Meta Description', 0) - 1].value else ''
@@ -1858,6 +1862,7 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                         estimated_delivery_days=estimated_delivery,
                         care_instructions=care_instructions,
                         what_in_box=what_in_box,
+                        parent_main_image=parent_main_image,
                         meta_title=meta_title,
                         meta_description=meta_desc,
                         is_featured=is_featured,
@@ -2328,6 +2333,12 @@ class AdminOrderViewSet(AdminLoggingMixin, viewsets.ReadOnlyModelViewSet):
         
         old_status = order.status
         order.status = new_status
+        
+        # Set delivered_at timestamp when status changes to delivered
+        if new_status == 'delivered' and not order.delivered_at:
+            from django.utils import timezone
+            order.delivered_at = timezone.now()
+        
         order.save()
         
         # Create status history entry
@@ -2534,6 +2545,8 @@ def payment_charges_settings(request):
             'tax_rate': str(GlobalSettings.get_setting('tax_rate', '5.00')),
             'razorpay_enabled': get_setting_value('razorpay_enabled', True),
             'cod_enabled': get_setting_value('cod_enabled', True),
+            'active_payment_gateway': GlobalSettings.get_setting('active_payment_gateway', 'razorpay'),
+            'return_window_days': GlobalSettings.get_setting('return_window_days', 7),
         }
         serializer = PaymentChargeSerializer(settings)
         return Response(serializer.data)
@@ -2555,11 +2568,21 @@ def payment_charges_settings(request):
         if 'tax_rate' in data:
             GlobalSettings.set_setting('tax_rate', data.get('tax_rate', '5.00'), 'Tax rate percentage')
         
+        # Update return window days
+        if 'return_window_days' in data:
+            GlobalSettings.set_setting('return_window_days', data.get('return_window_days', 7), 'Number of days customers can request returns after delivery')
+        
         # Update payment method enabled flags
         if 'razorpay_enabled' in data:
             GlobalSettings.set_setting('razorpay_enabled', data.get('razorpay_enabled', True), 'Enable Razorpay payment gateway')
         if 'cod_enabled' in data:
             GlobalSettings.set_setting('cod_enabled', data.get('cod_enabled', True), 'Enable Cash on Delivery')
+        
+        # Update active payment gateway
+        if 'active_payment_gateway' in data:
+            gateway = data.get('active_payment_gateway', 'razorpay')
+            if gateway in ['razorpay', 'cashfree']:
+                GlobalSettings.set_setting('active_payment_gateway', gateway, 'Active payment gateway for online payments')
         
         create_admin_log(
             request=request,
@@ -2579,6 +2602,8 @@ def payment_charges_settings(request):
             'tax_rate': str(GlobalSettings.get_setting('tax_rate', '5.00')),
             'razorpay_enabled': get_setting_value('razorpay_enabled', True),
             'cod_enabled': get_setting_value('cod_enabled', True),
+            'active_payment_gateway': GlobalSettings.get_setting('active_payment_gateway', 'razorpay'),
+            'return_window_days': GlobalSettings.get_setting('return_window_days', 7),
         }
         serializer = PaymentChargeSerializer(settings)
         return Response(serializer.data)
@@ -3816,3 +3841,159 @@ def admin_review_delete_all(request):
             'success': False,
             'message': f'Failed to delete reviews: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ==================== Navbar Categories Views ====================
+class NavbarCategoryViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing navbar categories"""
+    queryset = NavbarCategory.objects.all()
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return NavbarCategoryCreateUpdateSerializer
+        return NavbarCategorySerializer
+    
+    def get_queryset(self):
+        queryset = NavbarCategory.objects.prefetch_related('subcategories').all()
+        
+        # Filter by active status
+        is_active = self.request.query_params.get('is_active', None)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        return queryset.order_by('sort_order', 'name')
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='create',
+            model_name='NavbarCategory',
+            object_id=instance.id,
+            object_repr=instance.name,
+            details={'data': request.data}
+        )
+        
+        return Response(NavbarCategorySerializer(instance).data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='update',
+            model_name='NavbarCategory',
+            object_id=instance.id,
+            object_repr=instance.name,
+            details={'data': request.data}
+        )
+        
+        return Response(NavbarCategorySerializer(instance).data)
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        name = instance.name
+        instance_id = instance.id
+        instance.delete()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='delete',
+            model_name='NavbarCategory',
+            object_id=instance_id,
+            object_repr=name,
+            details={}
+        )
+        
+        return Response({'message': f'Navbar category "{name}" deleted successfully'}, status=status.HTTP_200_OK)
+
+
+class NavbarSubcategoryViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing navbar subcategories"""
+    queryset = NavbarSubcategory.objects.all()
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return NavbarSubcategoryCreateUpdateSerializer
+        return NavbarSubcategorySerializer
+    
+    def get_queryset(self):
+        queryset = NavbarSubcategory.objects.all()
+        
+        # Filter by navbar category
+        navbar_category_id = self.request.query_params.get('navbar_category', None)
+        if navbar_category_id:
+            queryset = queryset.filter(navbar_category_id=navbar_category_id)
+        
+        # Filter by active status
+        is_active = self.request.query_params.get('is_active', None)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+        
+        return queryset.order_by('sort_order', 'name')
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='create',
+            model_name='NavbarSubcategory',
+            object_id=instance.id,
+            object_repr=f"{instance.navbar_category.name} - {instance.name}",
+            details={'data': request.data}
+        )
+        
+        return Response(NavbarSubcategorySerializer(instance).data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='update',
+            model_name='NavbarSubcategory',
+            object_id=instance.id,
+            object_repr=f"{instance.navbar_category.name} - {instance.name}",
+            details={'data': request.data}
+        )
+        
+        return Response(NavbarSubcategorySerializer(instance).data)
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        name = f"{instance.navbar_category.name} - {instance.name}"
+        instance_id = instance.id
+        instance.delete()
+        
+        # Log admin action
+        create_admin_log(
+            request=request,
+            action_type='delete',
+            model_name='NavbarSubcategory',
+            object_id=instance_id,
+            object_repr=name,
+            details={}
+        )
+        
+        return Response({'message': f'Navbar subcategory "{name}" deleted successfully'}, status=status.HTTP_200_OK)

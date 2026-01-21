@@ -70,6 +70,11 @@ jobs:
             CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
             CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
             CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            
+            CASHFREE_APP_ID=${{ secrets.CASHFREE_APP_ID }}
+            CASHFREE_SECRET_KEY=${{ secrets.CASHFREE_SECRET_KEY }}    
+            CASHFREE_ENVIRONMENT=${{ secrets.CASHFREE_ENVIRONMENT }}
+            ADMIN_NOTIFICATION_EMAIL=${{ secrets.ADMIN_NOTIFICATION_EMAIL }}
 
             # Frontend URL
             # FRONTEND_URL=${{ secrets.FRONTEND_URL }}

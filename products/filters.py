@@ -185,6 +185,8 @@ class ProductSortFilter:
         'price_low_to_high': 'min_variant_price',
         'price_high_to_low': '-min_variant_price',
         'newest': '-created_at',
+        'date_new_to_old': '-created_at',  # New to Old
+        'date_old_to_new': 'created_at',   # Old to New
         'rating': '-average_rating',
         'popularity': '-review_count',
     }

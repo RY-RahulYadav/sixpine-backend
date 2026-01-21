@@ -33,6 +33,11 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,sixpine-ser
 RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='')
 RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='')
 
+# Cashfree Configuration
+CASHFREE_APP_ID = config('CASHFREE_APP_ID', default='')
+CASHFREE_SECRET_KEY = config('CASHFREE_SECRET_KEY', default='')
+CASHFREE_ENVIRONMENT = config('CASHFREE_ENVIRONMENT', default='sandbox')  # 'sandbox' or 'production'
+
 
 # Application definition
 
@@ -216,6 +221,9 @@ BREVO_API_KEY = config('BREVO_API_KEY', default='')
 BREVO_SENDER_EMAIL = config('BREVO_SENDER_EMAIL', default='noreply@sixpine.in')
 BREVO_SENDER_NAME = config('BREVO_SENDER_NAME', default='Sixpine')
 DEFAULT_FROM_EMAIL = BREVO_SENDER_EMAIL
+
+# Admin Notification Email - Receives order confirmations
+ADMIN_NOTIFICATION_EMAIL = config('ADMIN_NOTIFICATION_EMAIL', default='ry.rahul036@gmail.com')
 
 # Legacy SMTP settings (kept for backward compatibility, but not used)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

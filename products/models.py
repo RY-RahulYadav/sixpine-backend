@@ -130,6 +130,8 @@ class Product(models.Model):
     # Images
     # store an external or CDN URL to the product's main image
     main_image = models.URLField(max_length=500, blank=True, null=True)
+    # Parent level main image - used as default for all variants/tiles
+    parent_main_image = models.URLField(max_length=500, blank=True, null=True, help_text='Main parent image URL - displayed in product tiles when variants reference parent')
     
     # Ratings and Reviews
     average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0, validators=[MinValueValidator(0), MaxValueValidator(5)])
@@ -290,7 +292,8 @@ class ProductVariant(models.Model):
 class ProductReview(models.Model):
     """Product reviews and ratings"""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='product_reviews')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='product_reviews', null=True, blank=True)
+    reviewer_name = models.CharField(max_length=200, blank=True, help_text='Custom reviewer name for admin-created reviews')
     rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     title = models.CharField(max_length=200, blank=True)
     comment = models.TextField(blank=True)
@@ -301,11 +304,12 @@ class ProductReview(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['product', 'user']
+        # Removed unique_together constraint to allow multiple admin reviews per product
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.product.title} - {self.rating} stars"
+        username = self.user.username if self.user else "Admin Review"
+        return f"{username} - {self.product.title} - {self.rating} stars"
 
 
 class ProductRecommendation(models.Model):
@@ -705,3 +709,56 @@ class Wishlist(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.product.title}"
+
+
+class NavbarCategory(models.Model):
+    """Categories displayed in the main site navigation dropdown"""
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, blank=True)
+    image = models.URLField(max_length=500, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Navbar Category"
+        verbose_name_plural = "Navbar Categories"
+        ordering = ['sort_order', 'name']
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class NavbarSubcategory(models.Model):
+    """Subcategories for navbar categories"""
+    navbar_category = models.ForeignKey(
+        NavbarCategory, 
+        on_delete=models.CASCADE, 
+        related_name='subcategories'
+    )
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, blank=True)
+    link = models.CharField(max_length=500, blank=True, help_text='Custom link URL (optional)')
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Navbar Subcategory"
+        verbose_name_plural = "Navbar Subcategories"
+        ordering = ['sort_order', 'name']
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.navbar_category.name} - {self.name}"

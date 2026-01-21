@@ -21,13 +21,41 @@ class OrderItemSerializer(serializers.ModelSerializer):
     variant = ProductVariantSerializer(read_only=True)
     variant_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     total_price = serializers.ReadOnlyField()
+    product_image = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
         fields = ['id', 'product', 'product_id', 'variant', 'variant_id', 
                  'variant_color', 'variant_size', 'variant_pattern',
-                 'quantity', 'price', 'total_price', 'created_at']
+                 'quantity', 'price', 'total_price', 'product_image', 'created_at']
         read_only_fields = ['price', 'total_price', 'variant_color', 'variant_size', 'variant_pattern', 'created_at']
+    
+    def get_product_image(self, obj):
+        """Get the correct image for this order item based on ordered variant"""
+        # Priority 1: Use the image from the variant that was actually ordered
+        if obj.variant and obj.variant.image and str(obj.variant.image).strip():
+            return str(obj.variant.image).strip()
+        
+        # Priority 2: Use first image from the ordered variant's image collection
+        if obj.variant:
+            first_variant_image = obj.variant.images.filter(is_active=True).order_by('sort_order').first()
+            if first_variant_image and first_variant_image.image and str(first_variant_image.image).strip():
+                return str(first_variant_image.image).strip()
+        
+        # Priority 3: Use parent_main_image as fallback
+        if obj.product.parent_main_image and str(obj.product.parent_main_image).strip():
+            return str(obj.product.parent_main_image).strip()
+        
+        # Priority 4: Use product's main_image
+        if obj.product.main_image and str(obj.product.main_image).strip():
+            return str(obj.product.main_image).strip()
+        
+        # Priority 5: Use first active variant's image (fallback)
+        first_variant = obj.product.variants.filter(is_active=True).first()
+        if first_variant and first_variant.image and str(first_variant.image).strip():
+            return str(first_variant.image).strip()
+        
+        return None
 
 
 class OrderStatusHistorySerializer(serializers.ModelSerializer):
@@ -59,12 +87,17 @@ class OrderListSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     items_count = serializers.ReadOnlyField()
     shipping_address = AddressSerializer(read_only=True)
+    is_return_allowed = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = ['order_id', 'status', 'payment_status', 'payment_method', 'total_amount', 'items_count',
-                 'shipping_address', 'items', 'created_at', 'estimated_delivery', 'tracking_number']
+                 'shipping_address', 'items', 'created_at', 'estimated_delivery', 'tracking_number', 'is_return_allowed', 'delivered_at']
         read_only_fields = ['order_id', 'created_at']
+    
+    def get_is_return_allowed(self, obj):
+        """Check if return is allowed for this order"""
+        return obj.is_return_allowed()
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
@@ -331,13 +364,11 @@ class ReturnRequestCreateSerializer(serializers.ModelSerializer):
         if order.status != 'delivered':
             raise serializers.ValidationError("Returns can only be requested for delivered orders")
         
-        # Check if return window is still valid (10 days from delivery)
-        if order.delivered_at:
-            from django.utils import timezone
-            from datetime import timedelta
-            days_since_delivery = (timezone.now().date() - order.delivered_at.date()).days
-            if days_since_delivery > 10:
-                raise serializers.ValidationError("Return window has expired. Returns must be requested within 10 days of delivery.")
+        # Check if return window is still valid using GlobalSettings
+        if not order.is_return_allowed():
+            from admin_api.models import GlobalSettings
+            return_window_days = GlobalSettings.get_setting('return_window_days', 7)
+            raise serializers.ValidationError(f"Return window has expired. Returns must be requested within {return_window_days} days of delivery.")
         
         # Check if there's already a pending return request for this item
         existing_return = ReturnRequest.objects.filter(

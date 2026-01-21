@@ -59,6 +59,7 @@ class Order(models.Model):
     PAYMENT_METHOD_CHOICES = [
         ('COD', 'Cash on Delivery'),
         ('RAZORPAY', 'Razorpay'),
+        ('CASHFREE', 'Cashfree'),
         ('CARD', 'Credit/Debit Card'),
         ('NET_BANKING', 'Net Banking'),
         ('UPI', 'UPI'),
@@ -98,6 +99,10 @@ class Order(models.Model):
     razorpay_payment_id = models.CharField(max_length=255, blank=True, null=True)
     razorpay_signature = models.CharField(max_length=255, blank=True, null=True)
     
+    # Cashfree Payment Fields
+    cashfree_order_id = models.CharField(max_length=255, blank=True, null=True)
+    cashfree_payment_id = models.CharField(max_length=255, blank=True, null=True)
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -111,6 +116,25 @@ class Order(models.Model):
     @property
     def items_count(self):
         return sum(item.quantity for item in self.items.all())
+    
+    def is_return_allowed(self):
+        """Check if return is allowed based on delivery date and return window setting"""
+        from admin_api.models import GlobalSettings
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Return not allowed if not delivered
+        if self.status != 'delivered' or not self.delivered_at:
+            return False
+        
+        # Get return window days from settings (default 7 days)
+        return_window_days = GlobalSettings.get_setting('return_window_days', 7)
+        
+        # Calculate the deadline
+        deadline = self.delivered_at + timedelta(days=return_window_days)
+        
+        # Check if current time is within the return window
+        return timezone.now() <= deadline
 
 
 class OrderItem(models.Model):

@@ -11,14 +11,16 @@ from django.utils import timezone
 from .models import (
     Product, Category, Subcategory, Color, Material, ProductVariant, ProductVariantImage,
     ProductReview, ProductRecommendation, ProductSpecification,
-    ProductFeature, ProductOffer, BrowsingHistory, Discount, Wishlist
+    ProductFeature, ProductOffer, BrowsingHistory, Discount, Wishlist,
+    NavbarCategory, NavbarSubcategory
 )
 from accounts.models import Vendor
 from .serializers import (
     ProductListSerializer, ProductDetailSerializer, ProductSearchSerializer,
     CategorySerializer, SubcategorySerializer, ColorSerializer, MaterialSerializer,
     ProductReviewSerializer, ProductFilterSerializer, ProductOfferSerializer,
-    BrowsingHistorySerializer, WishlistSerializer, WishlistCreateSerializer
+    BrowsingHistorySerializer, WishlistSerializer, WishlistCreateSerializer,
+    NavbarCategorySerializer
 )
 from .filters import ProductFilter, ProductSortFilter, ProductAggregationFilter
 
@@ -525,6 +527,17 @@ class CategoryListView(generics.ListAPIView):
         ).order_by('sort_order', 'name')
 
 
+class NavbarCategoryListView(generics.ListAPIView):
+    """List navbar categories with subcategories for main site navigation"""
+    serializer_class = NavbarCategorySerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        return NavbarCategory.objects.filter(is_active=True).prefetch_related(
+            'subcategories'
+        ).order_by('sort_order', 'name')
+
+
 class SubcategoryListView(generics.ListAPIView):
     """List subcategories for a specific category"""
     serializer_class = SubcategorySerializer
@@ -636,50 +649,29 @@ class ProductReviewListView(generics.ListCreateAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
-        # Check if user already has a review for this product
-        existing_review = ProductReview.objects.filter(
-            product=product,
-            user=request.user
-        ).first()
-        
         # Prepare data for serializer (exclude file fields)
         # Convert QueryDict to regular dict for proper JSON handling
         data = dict(request.data.items())
         # Remove file keys from data
         data = {k: v for k, v in data.items() if not k.startswith('attachment_')}
         
-        if existing_review:
-            # Update existing review instead of creating a new one
-            serializer = self.get_serializer(existing_review, data=data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            existing_review.rating = serializer.validated_data.get('rating', existing_review.rating)
-            existing_review.title = serializer.validated_data.get('title', existing_review.title)
-            existing_review.comment = serializer.validated_data.get('comment', existing_review.comment)
-            existing_review.attachments = attachments if attachments else serializer.validated_data.get('attachments', existing_review.attachments)
-            existing_review.is_verified_purchase = serializer.validated_data.get('is_verified_purchase', existing_review.is_verified_purchase)
-            existing_review.is_approved = False  # Require re-approval when updated
-            existing_review.save()
-            
-            # Return updated data - refresh from DB to get attachments
-            existing_review.refresh_from_db()
-            response_serializer = self.get_serializer(existing_review)
-            headers = self.get_success_headers(response_serializer.data)
-            return Response(response_serializer.data, status=status.HTTP_200_OK, headers=headers)
-        else:
-            # Create new review - requires approval
-            serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
-            # Save the review first
-            review = serializer.save(product=product, user=request.user, is_approved=False)
-            # Then set attachments directly (bypassing serializer for JSON field)
-            if attachments:
-                review.attachments = attachments
-                review.save(update_fields=['attachments'])
-            # Refresh from DB to get attachments in response
-            review.refresh_from_db()
-            response_serializer = self.get_serializer(review)
-            headers = self.get_success_headers(response_serializer.data)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        # Allow users to add multiple reviews - don't check for existing reviews
+        # Create new review - requires approval
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        # Extract reviewer_name from validated data
+        reviewer_name = serializer.validated_data.pop('reviewer_name', '')
+        # Save the review first
+        review = serializer.save(product=product, user=request.user, is_approved=False, reviewer_name=reviewer_name)
+        # Then set attachments directly (bypassing serializer for JSON field)
+        if attachments:
+            review.attachments = attachments
+            review.save(update_fields=['attachments'])
+        # Refresh from DB to get attachments in response
+        review.refresh_from_db()
+        response_serializer = self.get_serializer(review)
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
     def perform_create(self, serializer):
         # This method is overridden in create() method, so it won't be called
@@ -753,18 +745,130 @@ def get_home_data(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_homepage_content(request):
-    """Get homepage content sections for public display"""
+    """Get homepage content sections for public display with enriched product data"""
     from admin_api.models import HomePageContent
+    
+    def enrich_product_data(content_data):
+        """Enrich product data with latest database values including parent_main_image"""
+        if not isinstance(content_data, dict):
+            return content_data
+        
+        enriched_data = content_data.copy()
+        
+        # Process products in discover/topRated sections
+        for section_key in ['discover', 'topRated']:
+            if section_key in enriched_data and 'products' in enriched_data[section_key]:
+                products = enriched_data[section_key]['products']
+                if isinstance(products, list):
+                    for product in products:
+                        if isinstance(product, dict) and 'productId' in product:
+                            try:
+                                db_product = Product.objects.get(id=product['productId'])
+                                first_variant = db_product.variants.filter(is_active=True).first()
+                                
+                                # Update image with priority: parent_main_image > variant.image > product.main_image
+                                if db_product.parent_main_image:
+                                    product['image'] = db_product.parent_main_image
+                                    product['img'] = db_product.parent_main_image
+                                    product['parent_main_image'] = db_product.parent_main_image
+                                elif first_variant and first_variant.image:
+                                    product['image'] = first_variant.image
+                                    product['img'] = first_variant.image
+                                elif db_product.main_image:
+                                    product['image'] = db_product.main_image
+                                    product['img'] = db_product.main_image
+                            except Product.DoesNotExist:
+                                pass
+        
+        # Process slider products
+        for slider_key in ['slider1Products', 'slider2Products']:
+            if slider_key in enriched_data and isinstance(enriched_data[slider_key], list):
+                for product in enriched_data[slider_key]:
+                    if isinstance(product, dict) and 'productId' in product:
+                        try:
+                            db_product = Product.objects.get(id=product['productId'])
+                            first_variant = db_product.variants.filter(is_active=True).first()
+                            
+                            # Update image with priority
+                            if db_product.parent_main_image:
+                                product['img'] = db_product.parent_main_image
+                                product['image'] = db_product.parent_main_image
+                                product['parent_main_image'] = db_product.parent_main_image
+                            elif first_variant and first_variant.image:
+                                product['img'] = first_variant.image
+                                product['image'] = first_variant.image
+                            elif db_product.main_image:
+                                product['img'] = db_product.main_image
+                                product['image'] = db_product.main_image
+                        except Product.DoesNotExist:
+                            pass
+        
+        # Process trending products
+        if 'trendingProducts' in enriched_data and isinstance(enriched_data['trendingProducts'], list):
+            for product in enriched_data['trendingProducts']:
+                if isinstance(product, dict) and 'productId' in product:
+                    try:
+                        db_product = Product.objects.get(id=product['productId'])
+                        first_variant = db_product.variants.filter(is_active=True).first()
+                        
+                        if db_product.parent_main_image:
+                            product['image'] = db_product.parent_main_image
+                            product['parent_main_image'] = db_product.parent_main_image
+                        elif first_variant and first_variant.image:
+                            product['image'] = first_variant.image
+                        elif db_product.main_image:
+                            product['image'] = db_product.main_image
+                    except Product.DoesNotExist:
+                        pass
+        
+        # Process daily deals
+        if 'deals' in enriched_data and isinstance(enriched_data['deals'], list):
+            for deal in enriched_data['deals']:
+                if isinstance(deal, dict) and 'productId' in deal:
+                    try:
+                        db_product = Product.objects.get(id=deal['productId'])
+                        first_variant = db_product.variants.filter(is_active=True).first()
+                        
+                        if db_product.parent_main_image:
+                            deal['image'] = db_product.parent_main_image
+                            deal['parent_main_image'] = db_product.parent_main_image
+                        elif first_variant and first_variant.image:
+                            deal['image'] = first_variant.image
+                        elif db_product.main_image:
+                            deal['image'] = db_product.main_image
+                    except Product.DoesNotExist:
+                        pass
+        
+        # Process generic products array (used in trending, best deals, and other pages)
+        if 'products' in enriched_data and isinstance(enriched_data['products'], list):
+            for product in enriched_data['products']:
+                if isinstance(product, dict) and 'productId' in product:
+                    try:
+                        db_product = Product.objects.get(id=product['productId'])
+                        first_variant = db_product.variants.filter(is_active=True).first()
+                        
+                        if db_product.parent_main_image:
+                            product['image'] = db_product.parent_main_image
+                            product['parent_main_image'] = db_product.parent_main_image
+                        elif first_variant and first_variant.image:
+                            product['image'] = first_variant.image
+                        elif db_product.main_image:
+                            product['image'] = db_product.main_image
+                    except Product.DoesNotExist:
+                        pass
+        
+        return enriched_data
     
     section_key = request.query_params.get('section_key', None)
     
     if section_key:
         try:
             content = HomePageContent.objects.get(section_key=section_key, is_active=True)
+            enriched_content = enrich_product_data(content.content)
             return Response({
                 'section_key': content.section_key,
                 'section_name': content.section_name,
-                'content': content.content,
+                'content': enriched_content,
                 'is_active': content.is_active
             })
         except HomePageContent.DoesNotExist:
@@ -773,13 +877,14 @@ def get_homepage_content(request):
                 status=status.HTTP_404_NOT_FOUND
             )
     else:
-        # Return all active sections
+        # Return all active sections with enriched data
         contents = HomePageContent.objects.filter(is_active=True).order_by('order', 'section_name')
         result = {}
         for content in contents:
+            enriched_content = enrich_product_data(content.content)
             result[content.section_key] = {
                 'section_name': content.section_name,
-                'content': content.content,
+                'content': enriched_content,
                 'is_active': content.is_active
             }
         return Response(result)
@@ -1420,6 +1525,7 @@ def get_theme_colors(request):
         'subnav_bg_color', 'subnav_text_color',
         'category_tabs_bg_color', 'category_tabs_text_color',
         'footer_bg_color', 'footer_text_color',
+        'back_to_top_bg_color', 'back_to_top_text_color',
         'buy_button_bg_color', 'buy_button_text_color',
         'cart_icon_color', 'wishlist_icon_color', 'wishlist_icon_inactive_color',
         'logo_url'

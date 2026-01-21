@@ -123,7 +123,7 @@ class ProductAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('title', 'slug', 'short_description', 'long_description')
+            'fields': ('title', 'slug', 'short_description', 'long_description', 'meta_title', 'meta_description')
         }),
         ('Categorization', {
             'fields': ('category', 'subcategory', 'brand')
@@ -136,7 +136,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('main_image', 'material', 'dimensions', 'weight', 'warranty', 'assembly_required', 'style_description', 'what_in_box')
         }),
         ('SEO & Display', {
-            'fields': ('meta_title', 'meta_description', 'is_featured', 'is_active')
+            'fields': ('is_featured', 'is_active')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

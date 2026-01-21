@@ -15,6 +15,7 @@ urlpatterns = [
     
     # Categories and filters
     path('categories/', views.CategoryListView.as_view(), name='category-list'),
+    path('navbar-categories/', views.NavbarCategoryListView.as_view(), name='navbar-category-list'),
     path('categories/<slug:category_slug>/subcategories/', views.SubcategoryListView.as_view(), name='subcategory-list'),
     path('colors/', views.ColorListView.as_view(), name='color-list'),
     path('materials/', views.MaterialListView.as_view(), name='material-list'),

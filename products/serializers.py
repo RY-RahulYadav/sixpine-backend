@@ -4,7 +4,8 @@ from .models import (
     Category, Subcategory, Color, Material, Product, ProductImage, ProductVariant,
     ProductVariantImage, ProductReview, ProductRecommendation, ProductSpecification, 
     ProductFeature, ProductAboutItem, ProductOffer, BrowsingHistory, Wishlist,
-    VariantMeasurementSpec, VariantStyleSpec, VariantFeature, VariantUserGuide, VariantItemDetail
+    VariantMeasurementSpec, VariantStyleSpec, VariantFeature, VariantUserGuide, VariantItemDetail,
+    NavbarCategory, NavbarSubcategory
 )
 
 
@@ -32,6 +33,26 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'slug', 'description', 'image', 'sort_order', 'subcategories']
+
+
+# Navbar Category Serializers (for main site navigation)
+class NavbarSubcategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NavbarSubcategory
+        fields = ['id', 'name', 'slug', 'link', 'is_active', 'sort_order']
+
+
+class NavbarCategorySerializer(serializers.ModelSerializer):
+    subcategories = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = NavbarCategory
+        fields = ['id', 'name', 'slug', 'image', 'is_active', 'sort_order', 'subcategories']
+    
+    def get_subcategories(self, obj):
+        # Only return active subcategories, ordered by sort_order
+        active_subcategories = obj.subcategories.filter(is_active=True).order_by('sort_order', 'name')
+        return NavbarSubcategorySerializer(active_subcategories, many=True).data
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -186,7 +207,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'title', 'slug', 'short_description', 'main_image',
+            'id', 'title', 'slug', 'short_description', 'main_image', 'parent_main_image',
             'price', 'old_price', 'is_on_sale', 'discount_percentage',
             'average_rating', 'review_count', 'category', 'subcategory',
             'brand', 'material', 'images', 'variants', 'available_colors',
@@ -194,7 +215,12 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
     
     def get_main_image(self, obj):
-        """Get main image from first active variant - prioritize variant.image field"""
+        """Get main image - prioritize parent_main_image if set, otherwise use variant image"""
+        # FIRST PRIORITY: Use parent_main_image if it exists
+        if obj.parent_main_image:
+            return obj.parent_main_image
+        
+        # SECOND PRIORITY: Get from first active variant
         first_variant = obj.variants.filter(is_active=True).first()
         if first_variant:
             # First priority: variant.image field (designated main image by admin)
@@ -456,17 +482,35 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
 
 class ProductReviewSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
-    user_username = serializers.CharField(source='user.username', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    user_username = serializers.SerializerMethodField()
+    reviewer_name = serializers.CharField(required=False, allow_blank=True, write_only=True)  # Accept user's name
     # Attachments removed from public API - only visible in admin panel
     
     class Meta:
         model = ProductReview
         fields = [
-            'id', 'user_name', 'user_username', 'rating', 'title', 'comment',
+            'id', 'user_name', 'user_username', 'reviewer_name', 'rating', 'title', 'comment',
             'is_verified_purchase', 'created_at'
         ]
         read_only_fields = ['user', 'product']
+    
+    def get_user_name(self, obj):
+        """Return reviewer_name first, or user's full name, or 'Anonymous'"""
+        # Prioritize reviewer_name (custom name entered by user)
+        if obj.reviewer_name:
+            return obj.reviewer_name
+        # Fall back to user account name
+        if obj.user:
+            full_name = obj.user.get_full_name()
+            return full_name if full_name else obj.user.username
+        return 'Anonymous'
+    
+    def get_user_username(self, obj):
+        """Return username if user exists, otherwise None"""
+        if obj.user:
+            return obj.user.username
+        return None
 
 
 class ProductSearchSerializer(serializers.ModelSerializer):
@@ -548,6 +592,8 @@ class ProductFilterSerializer(serializers.Serializer):
         ('price_low_to_high', 'Price: Low to High'),
         ('price_high_to_low', 'Price: High to Low'),
         ('newest', 'Newest First'),
+        ('date_new_to_old', 'New to Old'),
+        ('date_old_to_new', 'Old to New'),
         ('rating', 'Customer Rating'),
         ('popularity', 'Most Popular'),
     ], required=False, default='relevance')

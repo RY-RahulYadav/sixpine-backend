@@ -52,8 +52,19 @@ def get_first_8_products():
         # Get description (prefer short_description, fallback to empty string)
         description = product.short_description if product.short_description else ''
         
+        # Use parent_main_image if available, then variant image, then product main_image, otherwise use default
         fallback_image = default_images[idx % len(default_images)]
-        product_image = product.main_image if product.main_image and product.main_image.strip() else fallback_image
+        product_image = fallback_image
+        
+        # PRIORITY 1: Check parent_main_image
+        if product.parent_main_image and product.parent_main_image.strip():
+            product_image = product.parent_main_image
+        # PRIORITY 2: Check first variant image
+        elif first_variant and first_variant.image:
+            product_image = first_variant.image
+        # PRIORITY 3: Check product main_image
+        elif product.main_image and product.main_image.strip():
+            product_image = product.main_image
         
         product_slug = product.slug or f'product-{product.id}'
         product_data = {
@@ -61,6 +72,7 @@ def get_first_8_products():
             'productId': product.id,
             'name': product.title,
             'image': product_image,
+            'parent_main_image': product.parent_main_image if product.parent_main_image else None,
             'originalPrice': f"₹{int(original_price):,}",
             'salePrice': f"₹{int(sale_price):,}",
             'discount': f"{discount}%",
