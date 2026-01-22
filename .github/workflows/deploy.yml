@@ -107,11 +107,11 @@ jobs:
 
             echo "📁 Collecting static files..."
             python manage.py collectstatic --noinput
-            python seed_trending_page_sections.py
-            python  seed_homepage_all_sections.py 
-            python seed_best_deals_page_sections.py
+            # python seed_trending_page_sections.py
+            # python  seed_homepage_all_sections.py 
+            # python seed_best_deals_page_sections.py
             # python upload_new_sixpine_watermark.py
-            python  seed_navbar_categories.py
+            # python  seed_navbar_categories.py
             # python manage.py fix_style_spec_order 2>&1
 
             echo "🔄 Restarting Gunicorn..."

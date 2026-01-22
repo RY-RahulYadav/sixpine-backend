@@ -1,12 +1,54 @@
 from rest_framework import serializers
 from .models import Cart, CartItem
-from products.serializers import ProductListSerializer, ProductVariantSerializer
+from products.models import Product, ProductVariant
+
+
+# Lightweight serializers to avoid heavy nested queries when returning cart data
+class VariantMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 'price', 'stock_quantity', 'image']
+
+
+class ProductMiniSerializer(serializers.ModelSerializer):
+    main_image = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'slug', 'main_image', 'price']
+
+    def get_main_image(self, obj):
+        # Prefer parent_main_image, then first active variant image, fallback to product main_image
+        if getattr(obj, 'parent_main_image', None):
+            return obj.parent_main_image
+        first_variant = getattr(obj, 'variants', None)
+        if first_variant is not None:
+            # If prefetching was used, `variants` will be a queryset
+            fv = obj.variants.filter(is_active=True).first()
+            if fv:
+                if fv.image:
+                    return fv.image
+                # try variant images if available
+                try:
+                    vi = fv.images.filter(is_active=True).order_by('sort_order').first()
+                    if vi and vi.image:
+                        return vi.image
+                except Exception:
+                    pass
+        return obj.main_image
+
+    def get_price(self, obj):
+        fv = obj.variants.filter(is_active=True).first()
+        if fv and fv.price:
+            return float(fv.price)
+        return None
 
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductListSerializer(read_only=True)
+    product = ProductMiniSerializer(read_only=True)
     product_id = serializers.IntegerField(write_only=True)
-    variant = ProductVariantSerializer(read_only=True)
+    variant = VariantMiniSerializer(read_only=True)
     variant_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     total_price = serializers.ReadOnlyField()
 

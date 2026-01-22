@@ -13,7 +13,13 @@ class CartView(generics.RetrieveAPIView):
 
     def get_object(self):
         cart, created = Cart.objects.get_or_create(user=self.request.user)
-        return cart
+        # Re-fetch cart with related prefetching to avoid N+1 during serialization
+        optimized = Cart.objects.filter(pk=cart.pk).select_related('user').prefetch_related(
+            'items__product__images',
+            'items__product__variants',
+            'items__variant__images'
+        ).first()
+        return optimized or cart
 
 
 @api_view(['POST'])
@@ -81,9 +87,16 @@ def add_to_cart(request):
         cart_item.quantity = new_quantity
         cart_item.save()
     
+    # Return optimized cart instance for serialization
+    optimized_cart = Cart.objects.filter(pk=cart.pk).select_related('user').prefetch_related(
+        'items__product__images',
+        'items__product__variants',
+        'items__variant__images'
+    ).first() or cart
+
     return Response({
         'message': 'Item added to cart successfully',
-        'cart': CartSerializer(cart, context={'request': request}).data
+        'cart': CartSerializer(optimized_cart, context={'request': request}).data
     })
 
 
@@ -93,7 +106,7 @@ def update_cart_item(request, item_id):
     """Update cart item quantity"""
     quantity = int(request.data.get('quantity', 1))
     
-    cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+    cart_item = get_object_or_404(CartItem.objects.select_related('variant', 'product'), id=item_id, cart__user=request.user)
     
     if quantity <= 0:
         cart_item.delete()
@@ -109,9 +122,15 @@ def update_cart_item(request, item_id):
     cart_item.quantity = quantity
     cart_item.save()
     
+    optimized_cart = Cart.objects.filter(pk=cart_item.cart.pk).select_related('user').prefetch_related(
+        'items__product__images',
+        'items__product__variants',
+        'items__variant__images'
+    ).first() or cart_item.cart
+
     return Response({
         'message': 'Cart updated successfully',
-        'cart': CartSerializer(cart_item.cart, context={'request': request}).data
+        'cart': CartSerializer(optimized_cart, context={'request': request}).data
     })
 
 
@@ -119,10 +138,17 @@ def update_cart_item(request, item_id):
 @permission_classes([permissions.IsAuthenticated])
 def remove_from_cart(request, item_id):
     """Remove item from cart"""
-    cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+    cart_item = get_object_or_404(CartItem.objects.select_related('cart'), id=item_id, cart__user=request.user)
+    cart = cart_item.cart
     cart_item.delete()
-    
-    return Response({'message': 'Item removed from cart successfully'})
+    # Optionally return optimized cart
+    optimized_cart = Cart.objects.filter(pk=cart.pk).select_related('user').prefetch_related(
+        'items__product__images',
+        'items__product__variants',
+        'items__variant__images'
+    ).first()
+
+    return Response({'message': 'Item removed from cart successfully', 'cart': CartSerializer(optimized_cart or cart, context={'request': request}).data})
 
 
 @api_view(['DELETE'])
