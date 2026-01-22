@@ -69,6 +69,8 @@ def generate_product_template(category_id):
         'Variation Relationship',
         'Product Title*',
         'SKU*',
+        'Price',
+        'Old Price',
         'Short Description*',
         'Long Description',
         'Category*',
@@ -134,6 +136,8 @@ def generate_product_template(category_id):
     ws_parent.cell(row=row_num, column=col_idx, value='Parent'); col_idx += 1  # Variation Relationship
     ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Product Title
     ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # SKU
+    ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Price
+    ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Old Price
     ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Short Description
     ws_parent.cell(row=row_num, column=col_idx, value=''); col_idx += 1  # Long Description
     ws_parent.cell(row=row_num, column=col_idx, value=category.name); col_idx += 1  # Category
@@ -394,6 +398,8 @@ def export_product_to_excel(product_id):
         'Variation Relationship',
         'Product Title*',
         'SKU*',
+        'Price',
+        'Old Price',
         'Short Description*',
         'Long Description',
         'Category*',
@@ -459,6 +465,10 @@ def export_product_to_excel(product_id):
     ws_parent.cell(row=row_num, column=col_idx, value='Parent'); col_idx += 1  # Variation Relationship
     ws_parent.cell(row=row_num, column=col_idx, value=product.title); col_idx += 1  # Product Title
     ws_parent.cell(row=row_num, column=col_idx, value=product.sku or ''); col_idx += 1  # SKU
+    # Use first active variant for price fields
+    first_variant = product.variants.filter(is_active=True).first()
+    ws_parent.cell(row=row_num, column=col_idx, value=float(first_variant.price) if first_variant and first_variant.price is not None else ''); col_idx += 1  # Price
+    ws_parent.cell(row=row_num, column=col_idx, value=float(first_variant.old_price) if first_variant and first_variant.old_price is not None else ''); col_idx += 1  # Old Price
     ws_parent.cell(row=row_num, column=col_idx, value=product.short_description); col_idx += 1  # Short Description
     ws_parent.cell(row=row_num, column=col_idx, value=product.long_description or ''); col_idx += 1  # Long Description
     ws_parent.cell(row=row_num, column=col_idx, value=category.name); col_idx += 1  # Category

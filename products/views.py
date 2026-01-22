@@ -777,6 +777,15 @@ def get_homepage_content(request):
                                 elif db_product.main_image:
                                     product['image'] = db_product.main_image
                                     product['img'] = db_product.main_image
+                                # Populate price fields from first active variant or fallback to product
+                                try:
+                                    product['price'] = float(first_variant.price) if first_variant and first_variant.price else (float(db_product.price) if db_product.price else None)
+                                except Exception:
+                                    product['price'] = None
+                                try:
+                                    product['old_price'] = float(first_variant.old_price) if first_variant and first_variant.old_price else (float(db_product.old_price) if db_product.old_price else None)
+                                except Exception:
+                                    product['old_price'] = None
                             except Product.DoesNotExist:
                                 pass
         
@@ -800,6 +809,15 @@ def get_homepage_content(request):
                             elif db_product.main_image:
                                 product['img'] = db_product.main_image
                                 product['image'] = db_product.main_image
+                            # Populate price fields from first active variant or fallback to product
+                            try:
+                                product['price'] = float(first_variant.price) if first_variant and first_variant.price else (float(db_product.price) if db_product.price else None)
+                            except Exception:
+                                product['price'] = None
+                            try:
+                                product['old_price'] = float(first_variant.old_price) if first_variant and first_variant.old_price else (float(db_product.old_price) if db_product.old_price else None)
+                            except Exception:
+                                product['old_price'] = None
                         except Product.DoesNotExist:
                             pass
         
@@ -818,6 +836,15 @@ def get_homepage_content(request):
                             product['image'] = first_variant.image
                         elif db_product.main_image:
                             product['image'] = db_product.main_image
+                        # Populate price fields from first active variant or fallback to product
+                        try:
+                            product['price'] = float(first_variant.price) if first_variant and first_variant.price else (float(db_product.price) if db_product.price else None)
+                        except Exception:
+                            product['price'] = None
+                        try:
+                            product['old_price'] = float(first_variant.old_price) if first_variant and first_variant.old_price else (float(db_product.old_price) if db_product.old_price else None)
+                        except Exception:
+                            product['old_price'] = None
                     except Product.DoesNotExist:
                         pass
         
@@ -836,6 +863,15 @@ def get_homepage_content(request):
                             deal['image'] = first_variant.image
                         elif db_product.main_image:
                             deal['image'] = db_product.main_image
+                        # Populate price fields from first active variant or fallback to product
+                        try:
+                            deal['price'] = float(first_variant.price) if first_variant and first_variant.price else (float(db_product.price) if db_product.price else None)
+                        except Exception:
+                            deal['price'] = None
+                        try:
+                            deal['old_price'] = float(first_variant.old_price) if first_variant and first_variant.old_price else (float(db_product.old_price) if db_product.old_price else None)
+                        except Exception:
+                            deal['old_price'] = None
                     except Product.DoesNotExist:
                         pass
         
@@ -854,6 +890,15 @@ def get_homepage_content(request):
                             product['image'] = first_variant.image
                         elif db_product.main_image:
                             product['image'] = db_product.main_image
+                        # Populate price fields from first active variant or fallback to product
+                        try:
+                            product['price'] = float(first_variant.price) if first_variant and first_variant.price else (float(db_product.price) if db_product.price else None)
+                        except Exception:
+                            product['price'] = None
+                        try:
+                            product['old_price'] = float(first_variant.old_price) if first_variant and first_variant.old_price else (float(db_product.old_price) if db_product.old_price else None)
+                        except Exception:
+                            product['old_price'] = None
                     except Product.DoesNotExist:
                         pass
         

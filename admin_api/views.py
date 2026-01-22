@@ -1280,6 +1280,34 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
             
             if product_updated:
                 product.save()
+            # If parent-level price fields provided in Excel, apply to first active variant
+            try:
+                if parent_col_map.get('Price') and parent_row[parent_col_map['Price'] - 1].value is not None:
+                    from decimal import Decimal
+                    first_variant = product.variants.filter(is_active=True).first()
+                    if first_variant:
+                        try:
+                            pv = Decimal(str(parent_row[parent_col_map['Price'] - 1].value))
+                            if first_variant.price != pv:
+                                first_variant.price = pv
+                                first_variant.save()
+                                variants_updated += 1
+                        except Exception:
+                            pass
+                if parent_col_map.get('Old Price') and parent_row[parent_col_map['Old Price'] - 1].value is not None:
+                    from decimal import Decimal
+                    first_variant = product.variants.filter(is_active=True).first()
+                    if first_variant:
+                        try:
+                            ov = Decimal(str(parent_row[parent_col_map['Old Price'] - 1].value))
+                            if first_variant.old_price != ov:
+                                first_variant.old_price = ov
+                                first_variant.save()
+                                variants_updated += 1
+                        except Exception:
+                            pass
+            except Exception:
+                pass
             
             # Step 2: Update/Create variants from Child Variation tab
             for row_num, row in enumerate(ws_child.iter_rows(min_row=2, values_only=False), start=2):
@@ -1946,7 +1974,26 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                                 except Exception as e:
                                     errors.append(f'Parent row {row_num}: Failed to create recommendation for {rec_label} Product {i}: {str(e)}')
                     
-                    parent_products[sku] = {'product': product, 'category': category}
+                    # Capture any parent-level Price / Old Price values so we can apply them to first variant later
+                    parent_price_val = None
+                    parent_old_price_val = None
+                    if parent_col_map.get('Price') and row[parent_col_map['Price'] - 1].value is not None:
+                        try:
+                            parent_price_val = Decimal(str(row[parent_col_map['Price'] - 1].value))
+                        except Exception:
+                            parent_price_val = None
+                    if parent_col_map.get('Old Price') and row[parent_col_map['Old Price'] - 1].value is not None:
+                        try:
+                            parent_old_price_val = Decimal(str(row[parent_col_map['Old Price'] - 1].value))
+                        except Exception:
+                            parent_old_price_val = None
+
+                    parent_products[sku] = {
+                        'product': product,
+                        'category': category,
+                        'parent_price': parent_price_val,
+                        'parent_old_price': parent_old_price_val
+                    }
                     products_created += 1
                     
                 except Exception as e:
@@ -2188,6 +2235,42 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                 # Bulk create variants
                 created_variants = ProductVariant.objects.bulk_create(variant_instances, batch_size=500)
                 variants_created = len(created_variants)
+
+                # Apply parent-level Price/Old Price to the first created variant for each product
+                try:
+                    applied_products = set()
+                    for idx, variant in enumerate(created_variants):
+                        vdata = variants_to_create[idx]
+                        product_obj = vdata.get('product')
+                        if not product_obj:
+                            continue
+                        sku = getattr(product_obj, 'sku', None)
+                        if not sku or sku in applied_products:
+                            continue
+                        parent_info = parent_products.get(sku)
+                        if not parent_info:
+                            continue
+                        parent_price = parent_info.get('parent_price')
+                        parent_old_price = parent_info.get('parent_old_price')
+                        changed = False
+                        if parent_price is not None:
+                            try:
+                                variant.price = parent_price
+                                changed = True
+                            except Exception:
+                                pass
+                        if parent_old_price is not None:
+                            try:
+                                variant.old_price = parent_old_price
+                                changed = True
+                            except Exception:
+                                pass
+                        if changed:
+                            variant.save()
+                        applied_products.add(sku)
+                except Exception:
+                    # Don't fail the entire import if price application fails
+                    pass
                 
                 # Now bulk create related objects
                 all_variant_images = []
@@ -2219,6 +2302,26 @@ class AdminProductViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
                                 value=spec_data['value'],
                                 sort_order=0
                             ))
+
+                    # If parent-level Price/Old Price was provided in Parent Product tab for this product,
+                    # apply it to the first created variant of that product (override child price if desired)
+                    try:
+                        sku = vdata['product'].sku
+                        parent_info = parent_products.get(sku)
+                        if parent_info:
+                            parent_price = parent_info.get('parent_price')
+                            parent_old = parent_info.get('parent_old_price')
+                            # Apply only to the first variant for this product (we'll check if any previous variant for this product was already updated)
+                            # Use a marker on the product to avoid multiple updates
+                            if parent_price is not None and not getattr(vdata['product'], '_parent_price_applied', False):
+                                variant.price = parent_price
+                                vdata['product']._parent_price_applied = True
+                            if parent_old is not None and not getattr(vdata['product'], '_parent_old_applied', False):
+                                variant.old_price = parent_old
+                                vdata['product']._parent_old_applied = True
+                    except Exception:
+                        # Don't fail import for this non-critical operation
+                        pass
                 
                 # Bulk create variant images
                 if all_variant_images:
