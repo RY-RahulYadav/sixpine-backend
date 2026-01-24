@@ -5,9 +5,16 @@ from products.models import Product, ProductVariant
 
 # Lightweight serializers to avoid heavy nested queries when returning cart data
 class VariantMiniSerializer(serializers.ModelSerializer):
+    color = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductVariant
-        fields = ['id', 'price', 'stock_quantity', 'image']
+        fields = ['id', 'title', 'price', 'stock_quantity', 'image', 'color', 'size', 'pattern', 'quality']
+
+    def get_color(self, obj):
+        if obj.color:
+            return {'id': obj.color.id, 'name': obj.color.name, 'hex_code': obj.color.hex_code}
+        return None
 
 
 class ProductMiniSerializer(serializers.ModelSerializer):
