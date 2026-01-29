@@ -1132,45 +1132,73 @@ class SellerMediaViewSet(viewsets.ModelViewSet):
         try:
             import cloudinary.uploader
             
-            # Prepare transformations with watermark and WebP format
-            transformations = [
-                {
-                    'fetch_format': 'webp',
-                    'quality': 'auto',
-                    'overlay': 'watermarks:sixpine_watermark',
-                    'opacity': 70,  # Higher opacity (70%) for more visible watermark protection
-                    'angle': -45,
-                    'flags': 'tiled',
-                    'width': 600,
-                    'height': 600,
-                    'gravity': 'center'
-                }
-            ]
-            
-            # Upload to Cloudinary with vendor-specific folder and transformations
+            # Read flags from request.data (may be sent as strings)
+            def truthy(val):
+                if val is None:
+                    return False
+                if isinstance(val, bool):
+                    return val
+                return str(val).lower() in ['1', 'true', 'yes', 'on']
+
+            apply_watermark = truthy(request.data.get('apply_watermark'))
+            convert_webp = truthy(request.data.get('convert_webp'))
+            keep_original = truthy(request.data.get('keep_original'))
+
+            # Determine transformations based on flags
+            transformations = None
+            if apply_watermark or convert_webp:
+                transformations = []
+                if apply_watermark:
+                    transformations.append({
+                        'overlay': 'watermarks:sixpine_watermark',
+                        'opacity': 70,
+                        'angle': -45,
+                        'flags': 'tiled',
+                        'gravity': 'center'
+                    })
+                if convert_webp:
+                    transformations.append({'fetch_format': 'webp', 'quality': 'auto'})
+
             folder_name = f'seller_media/{vendor.id}'
-            upload_result = cloudinary.uploader.upload(
-                image_file,
-                folder=folder_name,
-                resource_type='image',
-                transformation=transformations
-            )
-            
-            # Create Media record
-            media = Media(
-                uploaded_by_vendor=vendor,
-                cloudinary_url=upload_result['secure_url'],
-                cloudinary_public_id=upload_result['public_id'],
-                file_name=image_file.name,
-                file_size=image_file.size,
-                mime_type=image_file.content_type,
-                alt_text=request.data.get('alt_text', ''),
-                description=request.data.get('description', '')
-            )
-            media.full_clean()  # Validate model
-            media.save()
-            
-            serializer = AdminMediaSerializer(media)
+
+            def do_upload(file_obj, transformations=None):
+                params = {'folder': folder_name, 'resource_type': 'image'}
+                if transformations:
+                    params['transformation'] = transformations
+                result = cloudinary.uploader.upload(file_obj, **params)
+                media = Media(
+                    uploaded_by_vendor=vendor,
+                    cloudinary_url=result.get('secure_url'),
+                    cloudinary_public_id=result.get('public_id'),
+                    file_name=image_file.name,
+                    file_size=image_file.size,
+                    mime_type=image_file.content_type,
+                    alt_text=request.data.get('alt_text', ''),
+                    description=request.data.get('description', '')
+                )
+                media.full_clean()
+                media.save()
+                return result, media
+
+            transformed_result = None
+            transformed_media = None
+            original_result = None
+            original_media = None
+
+            if keep_original:
+                original_result, original_media = do_upload(image_file, transformations=None)
+
+            if transformations is not None:
+                transformed_result, transformed_media = do_upload(image_file, transformations=transformations)
+
+            if (not keep_original) and (transformations is None):
+                original_result, original_media = do_upload(image_file, transformations=None)
+
+            resp_media = transformed_media or original_media
+            if resp_media is None:
+                return Response({'error': 'Upload failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            serializer = AdminMediaSerializer(resp_media)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except Exception as e:

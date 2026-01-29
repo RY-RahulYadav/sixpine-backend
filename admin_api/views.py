@@ -3541,55 +3541,82 @@ class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         try:
             import cloudinary.uploader
             
-            # Prepare transformations for images only
-            transformations = []
-            if resource_type == 'image':
-                # Force WebP format and add tiled watermark with lower opacity
-                # Lower opacity ensures main image is clearly visible first, watermark appears subtle behind
-                transformations = [
-                    {
-                        'fetch_format': 'webp',
-                        'quality': 'auto',
+            # Read flags from request.data (may be sent as strings)
+            def truthy(val):
+                if val is None:
+                    return False
+                if isinstance(val, bool):
+                    return val
+                return str(val).lower() in ['1', 'true', 'yes', 'on']
+
+            apply_watermark = truthy(request.data.get('apply_watermark'))
+            convert_webp = truthy(request.data.get('convert_webp'))
+            keep_original = truthy(request.data.get('keep_original'))
+
+            # Helper to perform an upload with optional transformations
+            def do_upload(file_obj, transformations=None):
+                params = {
+                    'folder': 'admin_media',
+                    'resource_type': resource_type
+                }
+                if transformations:
+                    params['transformation'] = transformations
+                result = cloudinary.uploader.upload(file_obj, **params)
+                media_obj = Media(
+                    uploaded_by_user=request.user,
+                    cloudinary_url=result.get('secure_url'),
+                    cloudinary_public_id=result.get('public_id'),
+                    file_name=media_file.name,
+                    file_size=media_file.size,
+                    mime_type=media_file.content_type,
+                    alt_text=request.data.get('alt_text', ''),
+                    description=request.data.get('description', '')
+                )
+                media_obj.full_clean()
+                media_obj.save()
+                return result, media_obj
+
+            transformed_result = None
+            transformed_media = None
+
+            # Decide on transformations
+            transformations = None
+            if resource_type == 'image' and (apply_watermark or convert_webp):
+                transformations = []
+                # Add watermark overlay if requested
+                if apply_watermark:
+                    transformations.append({
                         'overlay': 'watermarks:sixpine_watermark',
-                        'opacity': 70,  # Higher opacity (70%) for more visible watermark protection
+                        'opacity': 70,
                         'angle': -45,
                         'flags': 'tiled',
-                        'width': 600,
-                        'height': 600,
                         'gravity': 'center'
-                    }
-                ]
-            
-            # Upload to Cloudinary with transformations
-            upload_params = {
-                'folder': 'admin_media',
-                'resource_type': resource_type
-            }
-            
-            # Add transformations only for images
-            if transformations:
-                upload_params['transformation'] = transformations
-            
-            upload_result = cloudinary.uploader.upload(
-                media_file,
-                **upload_params
-            )
-            
-            # Create Media record
-            media = Media(
-                uploaded_by_user=request.user,
-                cloudinary_url=upload_result['secure_url'],
-                cloudinary_public_id=upload_result['public_id'],
-                file_name=media_file.name,
-                file_size=media_file.size,
-                mime_type=media_file.content_type,
-                alt_text=request.data.get('alt_text', ''),
-                description=request.data.get('description', '')
-            )
-            media.full_clean()  # Validate model
-            media.save()
-            
-            serializer = AdminMediaSerializer(media)
+                    })
+                # Add conversion to webp if requested
+                if convert_webp:
+                    # Use fetch_format to let Cloudinary convert output
+                    transformations.append({'fetch_format': 'webp', 'quality': 'auto'})
+
+            # If keep_original requested, upload original first
+            original_media_obj = None
+            original_result = None
+            if keep_original:
+                original_result, original_media_obj = do_upload(media_file, transformations=None)
+
+            # If transformations requested, upload transformed version as separate file
+            if transformations is not None:
+                transformed_result, transformed_media = do_upload(media_file, transformations=transformations)
+
+            # If neither keep_original nor transformations requested, upload original once
+            if (not keep_original) and (transformations is None):
+                original_result, original_media_obj = do_upload(media_file, transformations=None)
+
+            # Prefer to return transformed result if present, otherwise the original upload
+            resp_media = transformed_media or original_media_obj
+            if resp_media is None:
+                return Response({'error': 'Upload failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            serializer = AdminMediaSerializer(resp_media)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
