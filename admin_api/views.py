@@ -3517,7 +3517,7 @@ class AdminMediaViewSet(AdminLoggingMixin, viewsets.ModelViewSet):
         resource_type = 'auto'
         allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
         allowed_video_types = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/ogg']
-        max_size = 10 * 1024 * 1024  # 10MB for images
+        max_size = 5 * 1024 * 1024  # 5MB for images
         
         if file_type in allowed_image_types:
             resource_type = 'image'
