@@ -201,11 +201,42 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv()
 )
 
-
 CORS_ALLOW_CREDENTIALS = True
 
 # Only allow all origins in development
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# Explicitly allow all necessary headers for file uploads
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+    'pragma',
+]
+
+# Allow all necessary HTTP methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Expose response headers to frontend
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'content-length',
+    'content-disposition',
+]
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
