@@ -11,7 +11,9 @@ djangorestframework>=3.14.0,<4.0.0
 # Use psycopg2-binary for easier installation (no compilation required)
 psycopg2-binary>=2.9.0,<3.0.0
 
-setuptools>=65.0.0
+# setuptools>=65.0.
+setuptools<81
+
 
 # ============================================
 # Django Extensions & Middleware
