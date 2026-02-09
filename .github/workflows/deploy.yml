@@ -113,6 +113,7 @@ jobs:
             # python upload_new_sixpine_watermark.py
             # python  seed_navbar_categories.py
             # python manage.py fix_style_spec_order 2>&1
+            python reset_orders_and_profits.py
 
             echo "🔄 Restarting Gunicorn..."
             systemctl restart gunicorn-sixpine
