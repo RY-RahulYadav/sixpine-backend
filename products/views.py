@@ -1032,15 +1032,6 @@ def get_active_advertisements(request):
     logger.info(f"Total advertisements in DB: {all_ads.count()}")
     logger.info(f"Active advertisements after filter: {advertisements.count()}")
     
-    # If no ads found with strict filter, try showing ads that are just marked active
-    # (ignore date constraints if they're causing issues)
-    if advertisements.count() == 0:
-        # Fallback: show ads that are just marked as active, regardless of dates
-        advertisements = Advertisement.objects.filter(
-            is_active=True
-        ).order_by('display_order', '-created_at')
-        logger.info(f"Fallback: Found {advertisements.count()} active ads (ignoring date constraints)")
-    
     # Serialize advertisements
     serialized_ads = []
     for ad in advertisements:
