@@ -105,8 +105,8 @@ jobs:
             export DJANGO_SETTINGS_MODULE=ecommerce_backend.settings
             python manage.py migrate --noinput
 
-            echo "🔑 Setting admin password..."
-            python set_admin_password.py
+            # echo "🔑 Setting admin password..."
+            # python set_admin_password.py
 
             echo "📁 Collecting static files..."
             python manage.py collectstatic --noinput
